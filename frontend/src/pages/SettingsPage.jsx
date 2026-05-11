@@ -538,7 +538,7 @@ export default function SettingsPage() {
       <div className="md:hidden rounded-3xl p-4"
         style={{ background:'var(--bg-card-grad)', border:'2px solid var(--border-color)' }}>
         <h3 className="font-display text-lg mb-1 text-gray-800 dark:text-gray-200 flex items-center gap-2">
-          <LogOut size={20} className="text-gray-500"/> Account
+          {/*<LogOut size={20} className="text-gray-500"/>*/} Account
         </h3>
         <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
           Signed in as <strong className="text-gray-700 dark:text-gray-300">{user?.username}</strong>
