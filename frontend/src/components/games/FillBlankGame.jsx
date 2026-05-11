@@ -125,7 +125,7 @@ export default function FillBlankGame({ activity, onSubmit, submitting }) {
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: `repeat(${Math.min(activeOptions.length, 4)}, 1fr)`,
+            gridTemplateColumns: `repeat(${Math.min(activeOptions.length, 2)}, 1fr)`,
             gap: 8,
           }}>
           {activeOptions.map(opt => {
