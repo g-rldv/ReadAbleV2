@@ -1,6 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import { useSettings } from '../../contexts/SettingsContext';
 import { Volume2, CheckCircle, AlertCircle } from 'lucide-react';
+import { playItemSound } from '../../utils/soundEffects';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Image path helper
