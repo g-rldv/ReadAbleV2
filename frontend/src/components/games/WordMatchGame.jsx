@@ -6,6 +6,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useSettings } from '../../contexts/SettingsContext';
 import { Volume2, CheckCircle, X } from 'lucide-react';
+import { playMatchSound } from '../../utils/soundEffects';
 
 export default function WordMatchGame({ activity, onSubmit, submitting }) {
   const { content } = activity;
@@ -59,17 +60,20 @@ export default function WordMatchGame({ activity, onSubmit, submitting }) {
   };
 
   const doMatch = (leftKey, value, source) => {
-    setMatches(prev => {
-      const next = { ...prev };
-      if (source === 'slot') {
-        const old = Object.keys(next).find(k => next[k] === value);
-        if (old) delete next[old];
-      }
-      next[leftKey] = value;
-      return next;
-    });
-    setSelected(null);
-  };
+  setMatches(prev => {
+    const next = { ...prev };
+    if (source === 'slot') {
+      const old = Object.keys(next).find(k => next[k] === value);
+      if (old) delete next[old];
+    }
+    next[leftKey] = value;
+    return next;
+  });
+  setSelected(null);
+  // Play sound: "Sky and Blue" / "Elephant" / etc.
+  playMatchSound(leftKey, value, speak);
+};
+  
   const removeMatch = (leftKey) => {
     setMatches(prev => { const n = { ...prev }; delete n[leftKey]; return n; });
     setSelected(null);
