@@ -67,8 +67,7 @@ function SmartLogo({ height = 28 }) {
           alt="ReadAble"
           style={{
             height, width: 'auto', display: 'block', objectFit: 'contain',
-            border: '2px solid #1a1a2e', borderRadius: Math.round(height * 0.22),
-            boxShadow: '0 2px 0 #1a1a2e', padding: 2,
+            borderRadius: Math.round(height * 0.22),
             background: isDark ? '#1a1a2e' : '#ffffff',
           }}
           onError={() => setFailed(true)}
