@@ -35,6 +35,9 @@ const SOUND_MAP = {
   // ── Weather / Nature ──────────────────────────────────────
   thunder:     '/sounds/thunder.mp3',
   rain:        '/sounds/rain.mp3',
+  river: '/sounds/wave.mp3',
+  ocean: '/sounds/wave.mp3',
+  lake: '/sounds/wave.mp3',
   // ── Correct / Wrong feedback ───────────────────────────────
   correct:     '/sounds/correct.mp3',
   wrong:       '/sounds/wrong.mp3',
