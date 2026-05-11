@@ -326,10 +326,10 @@ function DesktopSidebar({ user, settings, soundOn, xpPct, currentXP,
   return (
     <div className="flex flex-col h-full">
 
-      {/*
+      {/* Logo */}
       <div className="px-5 py-4 flex-shrink-0">
         <SmartLogo height={26} />
-      </div> */}
+      </div> 
 
       {/* User card — no border, subtle background */}
       <div className="px-3 mb-2 flex-shrink-0">
