@@ -63,9 +63,9 @@ function SmartLogo({ height = 32 }) {
             display: 'block',
             objectFit: 'contain',
             // App-icon style rounded border on logo image
-            border: '2px solid #1a1a2e',
+            // border: '2px solid #1a1a2e',
             borderRadius: Math.round(height * 0.22),
-            boxShadow: '0 2px 0 #1a1a2e',
+            // boxShadow: '0 2px 0 #1a1a2e',
             padding: 2,
             background: isDark ? '#1a1a2e' : '#ffffff',
           }}
