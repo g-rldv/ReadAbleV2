@@ -1,12 +1,21 @@
 // ============================================================
 // FillBlankGame — tap options to fill sentence blanks
-// Fix: activeOptions was referenced but never defined — now
-// correctly derived from content.sentences[activeIdx]?.options
+// Options are shuffled randomly on mount so they never appear
+// in the same order as the seeded data.
 // ============================================================
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useSettings } from '../../contexts/SettingsContext';
 import { Volume2 } from 'lucide-react';
 import { playItemSound } from '../../utils/soundEffects';
+
+function shuffleArray(arr) {
+  const copy = [...arr];
+  for (let i = copy.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+  }
+  return copy;
+}
 
 export default function FillBlankGame({ activity, onSubmit, submitting }) {
   const { content } = activity;
@@ -14,8 +23,15 @@ export default function FillBlankGame({ activity, onSubmit, submitting }) {
   const [answers, setAnswers] = useState(new Array(content.sentences.length).fill(''));
   const [activeIdx, setActiveIdx] = useState(0);
 
-  // ← THE FIX: derive activeOptions from the current sentence
-  const activeOptions = content.sentences[activeIdx]?.options || [];
+  // Shuffle each sentence's options once on mount
+  const shuffledSentences = useMemo(() =>
+    content.sentences.map(s => ({
+      ...s,
+      options: shuffleArray(s.options),
+    })),
+  []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const activeOptions = shuffledSentences[activeIdx]?.options || [];
 
   const pickAnswer = (opt) => {
     const next = [...answers];
@@ -101,7 +117,7 @@ export default function FillBlankGame({ activity, onSubmit, submitting }) {
         })}
       </div>
 
-      {/* Option buttons — full-width grid */}
+      {/* Option buttons — full-width grid, shuffled */}
       <div className="mb-5">
         <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-2">
           Choose for sentence {activeIdx + 1}
