@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { launchConfetti } from '../utils/confetti';
 import api from '../utils/api';
+import { playItemSound } from '../utils/soundEffects';
 
 // ── Theme darkness detection ──────────────────────────────────
 function useIsDark() {
@@ -927,8 +928,12 @@ export default function LandingPage() {
       return next;
     });
 
-    if (correct) { setTrialScore(s=>s+1); speak('Correct! Well done!'); }
-    else         { speak(`The answer was ${current.answer}. Keep trying!`); }
+    if (correct) {
+      playItemSound(current.answer, speak); // plays "Elephant" sound or TTS
+      setTrialScore(s => s + 1);
+    } else {
+      speak(`The answer was ${current.answer}. Keep trying!`);
+    }
 
     setShowFeedback(true);
     setTimeout(() => {
