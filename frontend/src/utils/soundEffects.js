@@ -22,7 +22,7 @@ const SOUND_MAP = {
   butterfly:   '/sounds/butterfly.mp3',
   crocodile:   '/sounds/crocodile.mp3',
   dolphin:     '/sounds/dolphin.mp3',
-  dog:         '/sounds/dog.mp3',
+  dog:         '/sounds/dog.wav',
   cat:         '/sounds/cat.mp3',
   cow:         '/sounds/cow.mp3',
   frog:        '/sounds/frog.mp3',
