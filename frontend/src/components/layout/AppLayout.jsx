@@ -395,9 +395,23 @@ export default function AppLayout() {
   const { settings, updateSettings } = useSettings();
   const navigate                     = useNavigate();
   const [showLogoutModal, setShowLogoutModal] = useState(false);
-  const [isFullscreen,    setIsFullscreen]    = useState(false);
-  const isPWA = window.matchMedia('(display-mode: standalone)').matches
-  || window.navigator.standalone === true;
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isPWA, setIsPWA] = useState(false);
+  
+  useEffect(() => {
+    const check = () => {
+      const isStandalone  = window.matchMedia('(display-mode: standalone)').matches;
+      const isMinimalUI   = window.matchMedia('(display-mode: minimal-ui)').matches;
+      const isFullscreenM = window.matchMedia('(display-mode: fullscreen)').matches;
+      const isIOS         = window.navigator.standalone === true;
+      setIsPWA(isStandalone || isMinimalUI || isFullscreenM || isIOS);
+    };
+    check();
+
+  const mq = window.matchMedia('(display-mode: standalone)');
+  mq.addEventListener('change', check);
+  return () => mq.removeEventListener('change', check);
+}, []);
 
   const handleLogout = () => { logout(); navigate('/'); };
   const soundOn = settings.tts_enabled || settings.bg_music_enabled;
