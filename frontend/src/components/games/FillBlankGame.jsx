@@ -6,6 +6,7 @@
 import React, { useState } from 'react';
 import { useSettings } from '../../contexts/SettingsContext';
 import { Volume2 } from 'lucide-react';
+import { playItemSound } from '../../utils/soundEffects';
 
 export default function FillBlankGame({ activity, onSubmit, submitting }) {
   const { content } = activity;
@@ -20,7 +21,7 @@ export default function FillBlankGame({ activity, onSubmit, submitting }) {
     const next = [...answers];
     next[activeIdx] = opt;
     setAnswers(next);
-    speak(opt);
+    playItemSound(opt, speak);
     const nextEmpty = next.findIndex((a, i) => i > activeIdx && !a);
     if (nextEmpty !== -1) setActiveIdx(nextEmpty);
   };
