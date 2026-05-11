@@ -152,7 +152,7 @@ export default function PictureWordGame({ activity, onSubmit, submitting }) {
 
   const handlePick = useCallback((opt) => {
     if (currentAnswer !== null) return;
-    speak(opt);
+    playItemSound(opt, speak);
     const next = [...answers];
     next[currentIdx] = opt;
     setAnswers(next);
