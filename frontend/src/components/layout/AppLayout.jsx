@@ -259,7 +259,7 @@ function MusicPicker({ settings, updateSettings }) {
 
 // ── Bottom sidebar controls — borderless, minimal ─────────────
 function BottomControls({ soundOn, settings, toggleSound, updateSettings,
-                          isFullscreen, toggleFullscreen, onLogoutClick }) {
+                          isFullscreen, toggleFullscreen, onLogoutClick, isPWA }) {
   return (
     <div className="px-3 pb-4 pt-2 space-y-0.5 flex-shrink-0"
       style={{ borderTop: '1px solid var(--border-color)' }}>
@@ -295,15 +295,18 @@ function BottomControls({ soundOn, settings, toggleSound, updateSettings,
       )}
 
       {/* Fullscreen */}
-      <button onClick={toggleFullscreen}
-        className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm font-medium
-                   text-gray-500 dark:text-gray-400 hover:bg-black/5 dark:hover:bg-white/5
-                   transition-colors text-left">
-        {isFullscreen
-          ? <Minimize size={16} className="text-indigo-400 flex-shrink-0"/>
-          : <Maximize2 size={16} className="text-gray-400 flex-shrink-0"/>}
-        {isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
-      </button>
+     {/* ← WRAP WITH !isPWA */}
+      {!isPWA && (
+        <button onClick={toggleFullscreen}
+          className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm font-medium
+                     text-gray-500 dark:text-gray-400 hover:bg-black/5 dark:hover:bg-white/5
+                     transition-colors text-left">
+          {isFullscreen
+            ? <Minimize size={16} className="text-indigo-400 flex-shrink-0"/>
+            : <Maximize2 size={16} className="text-gray-400 flex-shrink-0"/>}
+          {isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
+        </button>
+      )}
 
       {/* Sign out */}
       <button onClick={onLogoutClick}
@@ -318,7 +321,7 @@ function BottomControls({ soundOn, settings, toggleSound, updateSettings,
 // ── Desktop Sidebar ───────────────────────────────────────────
 function DesktopSidebar({ user, settings, soundOn, xpPct, currentXP,
                           toggleSound, updateSettings, onLogoutClick,
-                          isFullscreen, toggleFullscreen }) {
+                          isFullscreen, toggleFullscreen, isPWA }) {
   const equippedCharId = user?.equipped?.character || DEFAULT_CHARACTER_ID;
   return (
     <div className="flex flex-col h-full">
@@ -381,6 +384,7 @@ function DesktopSidebar({ user, settings, soundOn, xpPct, currentXP,
         toggleSound={toggleSound} updateSettings={updateSettings}
         isFullscreen={isFullscreen} toggleFullscreen={toggleFullscreen}
         onLogoutClick={onLogoutClick}
+        isPWA={isPWA}
       />
     </div>
   );
@@ -392,6 +396,8 @@ export default function AppLayout() {
   const navigate                     = useNavigate();
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [isFullscreen,    setIsFullscreen]    = useState(false);
+  const isPWA = window.matchMedia('(display-mode: standalone)').matches
+  || window.navigator.standalone === true;
 
   const handleLogout = () => { logout(); navigate('/'); };
   const soundOn = settings.tts_enabled || settings.bg_music_enabled;
@@ -444,6 +450,7 @@ export default function AppLayout() {
           toggleSound={toggleSound} updateSettings={updateSettings}
           isFullscreen={isFullscreen} toggleFullscreen={toggleFullscreen}
           onLogoutClick={() => setShowLogoutModal(true)}
+          isPWA={isPWA}
         />
       </aside>
 
@@ -480,23 +487,21 @@ export default function AppLayout() {
                   Lv {user?.level || 1}
                 </span>
               </div>
-              <button
-                onClick={toggleFullscreen}
-                title={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
-                style={{
-                  width: 34, height: 34, borderRadius: 10, flexShrink: 0,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  background: isFullscreen ? 'rgba(99,102,241,0.12)' : 'var(--border-color)',
-                  border: 'none',
-                  cursor: 'pointer',
-                  transition: 'background 0.15s',
-                }}
-              >
-                {isFullscreen
-                  ? <Minimize size={15} color="#6366f1" />
-                  : <Maximize2 size={15} color="#9ca3af" />
-                }
-              </button>
+              {/* ← WRAP WITH !isPWA */}
+              {!isPWA && (
+                <button
+                  onClick={toggleFullscreen}
+                  title={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
+                  style={{
+                    width: 34, height: 34, borderRadius: 10, flexShrink: 0,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    background: isFullscreen ? 'rgba(99,102,241,0.12)' : 'var(--border-color)',
+                    border: 'none', cursor: 'pointer', transition: 'background 0.15s',
+                  }}
+                >
+                  {isFullscreen ? <Minimize size={15} color="#6366f1" /> : <Maximize2 size={15} color="#9ca3af" />}
+                </button>
+              )}
             </div>
           </div>
         </header>
