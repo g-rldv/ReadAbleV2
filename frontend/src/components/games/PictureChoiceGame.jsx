@@ -6,6 +6,7 @@ import React, { useState } from 'react';
 import { useSettings } from '../../contexts/SettingsContext';
 import { Volume2, ChevronLeft, ChevronRight, CheckCircle, AlertCircle } from 'lucide-react';
 import { ACTIVITY_IMAGES, activityImagePath } from './PictureWordGame';
+import { playItemSound } from '../../utils/soundEffects';
 
 export default function PictureChoiceGame({ activity, onSubmit, submitting }) {
   const { content } = activity;
@@ -32,8 +33,8 @@ export default function PictureChoiceGame({ activity, onSubmit, submitting }) {
     next[currentIdx] = picture;
     setAnswers(next);
     setJustPicked(true);
-    const label = current.options.find(o => o.picture === picture)?.label || picture;
-    speak(label);
+    const label = current.options.find(o => o.emoji === emoji)?.label || emoji;
+    playItemSound(label, speak);
     setTimeout(() => {
       setJustPicked(false);
       if (currentIdx + 1 < content.questions.length) setCurrentIdx(i => i + 1);
