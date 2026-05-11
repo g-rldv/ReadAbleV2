@@ -99,9 +99,9 @@ function SmartLogo({ height = 32 }) {
 
 // ── Trial game data ───────────────────────────────────────────
 const TRIAL_ITEMS = [
-  { emoji:'🌞', answer:'Sun',     options:['Moon','Sun','Star','Cloud']        },
-  { emoji:'🐶', answer:'Dog',     options:['Cat','Bird','Dog','Fish']           },
-  { emoji:'🌈', answer:'Rainbow', options:['Rainbow','Sunset','Storm','Sky']   },
+  { image: '/images/activities/Sun.png', answer:'Sun', options:['Moon','Sun','Star','Cloud'] },
+  { image: '/images/activities/Dog.png', answer:'Dog',options:['Cat','Bird','Dog','Fish'] },
+  { image: '/images/activities/4_0_rainbow.png', answer:'Rainbow', options:['Rainbow','Sunset','Storm','Sky'] },
 ];
 
 const FEATURES = [
@@ -1031,8 +1031,15 @@ export default function LandingPage() {
                   })}
                 </div>
 
-                <p className="text-center text-sm font-semibold text-gray-500 mb-3">What is this? Tap the right answer!</p>
-                <div className="text-center text-7xl mb-6 animate-float" role="img">{current.emoji}</div>
+              <p className="text-center text-sm font-semibold text-gray-500 mb-3">What animal is this? Tap the right answer!</p>
+              <div className="flex justify-center mb-6">
+                <img
+                  src={current.image}
+                  alt="What is this?"
+                  className="animate-float"
+                  style={{ width: 180, height: 180, objectFit: 'cover', borderRadius: 20, boxShadow: '0 8px 24px rgba(0,0,0,0.18)' }}
+                />
+              </div>
 
                 <div className="grid grid-cols-2 gap-3">
                   {current.options.map(opt => {
