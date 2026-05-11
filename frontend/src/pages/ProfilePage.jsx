@@ -405,7 +405,7 @@ export default function ProfilePage() {
               boxShadow: '0 0 0 3px rgba(255,255,255,0.35)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}>
-              <AvatarDisplay equipped={equipped} avatar={user?.avatar} username={user?.username} size={64}/>
+              <AvatarDisplay equipped={equipped} avatar={user?.avatar} username={user?.username} size={72}/>
             </div>
 
             <div style={{ flex: 1, minWidth: 0 }}>
