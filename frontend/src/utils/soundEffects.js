@@ -15,7 +15,7 @@
 // Keys must be LOWERCASE. Values are paths relative to /public/
 const SOUND_MAP = {
   // ── Animals ───────────────────────────────────────────────
-  elephant:    '/sounds/elephant.mp3',
+  elephant:    '/sounds/elephant.wav',
   giraffe:     '/sounds/giraffe.mp3',
   lion:        '/sounds/lion.mp3',
   penguin:     '/sounds/penguin.mp3',
