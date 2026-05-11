@@ -561,8 +561,8 @@ export default function SettingsPage() {
         <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
           Permanently delete your account and all associated data. This cannot be undone.
         </p>
-        <button onClick={() => setShowDelete(true)}
-          className="w-full flex items-center gap-2 px-5 py-2.5 rounded-2xl
+         <button onClick={() => setShowDelete(true)}
+          className="w-full flex items-center justify-center gap-2 px-5 py-2.5 rounded-2xl
                      text-rose-600 dark:text-rose-400 font-bold text-sm
                      hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-colors"
           style={{ border:'2px solid rgba(244,63,94,0.5)' }}>
