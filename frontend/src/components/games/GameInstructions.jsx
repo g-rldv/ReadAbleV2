@@ -119,7 +119,6 @@ const FALLBACK = {
 
 const LS_KEY = 'readable_skip_instructions';
 
-// ── Helper — read skipped types from localStorage ─────────────
 function getSkipped() {
   try { return JSON.parse(localStorage.getItem(LS_KEY) || '{}'); } catch { return {}; }
 }
@@ -149,6 +148,13 @@ export default function GameInstructions({ type, onStart, onSkip }) {
     return () => clearTimeout(t);
   }, []);
 
+  // Lock body scroll while modal is open
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = prev; };
+  }, []);
+
   const handleStart = () => {
     if (dontShow) setSkipped(type);
     onStart();
@@ -159,21 +165,60 @@ export default function GameInstructions({ type, onStart, onSkip }) {
   };
 
   return (
+    /*
+     * Overlay — fixed to viewport edges, flex-centered both axes.
+     *
+     * Key fixes for reliable centering on all screen sizes:
+     *
+     * 1. inset: 0 pins all four edges to the viewport, not the
+     *    document scroll container, so it always fills the full screen.
+     *
+     * 2. alignItems / justifyContent center the card both vertically
+     *    and horizontally regardless of viewport height.
+     *
+     * 3. The inner wrapper uses a max-height with overflow-y: auto so
+     *    the card never taller than the screen. On small phones the
+     *    header/footer stay sticky while only the steps list scrolls.
+     *
+     * 4. paddingTop / paddingBottom account for the mobile top bar
+     *    (~52px) and bottom nav bar (~78px) so the card is never
+     *    obscured by app chrome on small screens.
+     */
     <div
       style={{
-        position: 'fixed', inset: 0, zIndex: 9998,
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        padding: '16px',
+        position: 'fixed',
+        inset: 0,
+        zIndex: 9998,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        // On mobile, leave room for the top bar (≈52px) + bottom nav (≈78px)
+        // so the modal floats between them rather than behind them.
+        paddingTop: 'max(16px, env(safe-area-inset-top, 0px))',
+        paddingBottom: 'max(16px, env(safe-area-inset-bottom, 0px))',
+        paddingLeft: 16,
+        paddingRight: 16,
         background: 'rgba(0,0,0,0.55)',
         backdropFilter: 'blur(3px)',
+        WebkitBackdropFilter: 'blur(3px)',
         transition: 'opacity 0.25s ease',
         opacity: visible ? 1 : 0,
+        // Intercept scroll so the page behind doesn't move
+        overscrollBehavior: 'contain',
       }}
       onClick={e => { if (e.target === e.currentTarget) handleSkip(); }}
     >
+      {/*
+       * Card wrapper — limits width and caps height so it never
+       * overflows the viewport on any screen size.
+       */}
       <div
         style={{
-          width: '100%', maxWidth: 440,
+          width: '100%',
+          maxWidth: 440,
+          // Cap at 90% of the visual viewport height to stay on-screen
+          // even on small phones (≈568px) or with the keyboard open.
+          maxHeight: '90svh',   // svh = small viewport height (keyboard-aware)
           background: 'var(--bg-card-grad)',
           border: `2px solid ${cfg.border}`,
           borderRadius: 24,
@@ -181,18 +226,19 @@ export default function GameInstructions({ type, onStart, onSkip }) {
           boxShadow: `0 24px 60px rgba(0,0,0,0.35), 0 0 0 1px ${cfg.border}`,
           transition: 'transform 0.35s cubic-bezier(0.175,0.885,0.32,1.275), opacity 0.25s ease',
           transform: visible ? 'translateY(0) scale(1)' : 'translateY(24px) scale(0.95)',
-          maxHeight: '90vh',
           display: 'flex',
           flexDirection: 'column',
         }}
       >
-        {/* ── Header band ── */}
-        <div style={{
-          background: cfg.bg,
-          borderBottom: `1px solid ${cfg.border}`,
-          padding: '18px 20px 14px',
-          flexShrink: 0,
-        }}>
+        {/* ── Header band — never scrolls ── */}
+        <div
+          style={{
+            background: cfg.bg,
+            borderBottom: `1px solid ${cfg.border}`,
+            padding: '18px 20px 14px',
+            flexShrink: 0,
+          }}
+        >
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
               <div style={{
@@ -204,8 +250,10 @@ export default function GameInstructions({ type, onStart, onSkip }) {
                 {cfg.emoji}
               </div>
               <div style={{ minWidth: 0 }}>
-                <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em',
-                  textTransform: 'uppercase', color: cfg.color, margin: 0, opacity: 0.8 }}>
+                <p style={{
+                  fontSize: 11, fontWeight: 700, letterSpacing: '0.08em',
+                  textTransform: 'uppercase', color: cfg.color, margin: 0, opacity: 0.8,
+                }}>
                   How this works
                 </p>
                 <h2 style={{
@@ -239,10 +287,12 @@ export default function GameInstructions({ type, onStart, onSkip }) {
           </p>
         </div>
 
-        {/* ── Steps ── */}
-        <div style={{ padding: '16px 20px', overflowY: 'auto', flex: 1 }}>
-          <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.07em',
-            textTransform: 'uppercase', color: '#9ca3af', marginBottom: 10 }}>
+        {/* ── Scrollable body — steps + tip + meta ── */}
+        <div style={{ padding: '16px 20px', overflowY: 'auto', flex: 1, WebkitOverflowScrolling: 'touch' }}>
+          <p style={{
+            fontSize: 11, fontWeight: 700, letterSpacing: '0.07em',
+            textTransform: 'uppercase', color: '#9ca3af', marginBottom: 10,
+          }}>
             Steps
           </p>
 
@@ -254,7 +304,6 @@ export default function GameInstructions({ type, onStart, onSkip }) {
                 background: 'var(--bg-primary)',
                 border: '1px solid var(--border-color)',
               }}>
-                {/* Step number + emoji */}
                 <div style={{
                   display: 'flex', flexDirection: 'column', alignItems: 'center',
                   gap: 2, flexShrink: 0,
@@ -283,7 +332,7 @@ export default function GameInstructions({ type, onStart, onSkip }) {
           <div style={{
             display: 'flex', alignItems: 'flex-start', gap: 10,
             marginTop: 12, padding: '10px 12px', borderRadius: 12,
-            background: `${cfg.bg}`,
+            background: cfg.bg,
             border: `1.5px solid ${cfg.border}`,
           }}>
             <Lightbulb size={15} style={{ color: cfg.color, flexShrink: 0, marginTop: 1 }} />
@@ -327,11 +376,12 @@ export default function GameInstructions({ type, onStart, onSkip }) {
           </label>
         </div>
 
-        {/* ── Footer buttons ── */}
+        {/* ── Footer buttons — never scrolls ── */}
         <div style={{
           padding: '12px 20px 16px',
           borderTop: '1px solid var(--border-color)',
           display: 'flex', gap: 10, flexShrink: 0,
+          background: 'var(--bg-card-grad)',
         }}>
           <button
             onClick={handleSkip}
