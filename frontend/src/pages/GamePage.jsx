@@ -15,6 +15,7 @@ import PictureWordGame  from '../components/games/PictureWordGame';
 import PictureChoiceGame from '../components/games/PictureChoiceGame';
 import CoinIcon from '../components/ui/CoinIcon';
 import { ArrowLeft, Volume2, RotateCcw, Home, CheckCircle, XCircle, ChevronDown } from 'lucide-react';
+import GameInstructions, { useShouldShowInstructions } from '../components/games/GameInstructions';
 
 const GAME_COMPONENTS = {
   word_match:     WordMatchGame,
@@ -122,6 +123,8 @@ export default function GamePage() {
   const achCtx = useAchievements();
   const notifyAchievement = achCtx?.notify;
 
+  const [showInstructions, setShowInstructions] = useState(false);
+  const [gameReady, setGameReady]   = useState(false);
   const [activity,   setActivity]   = useState(null);
   const [userProg,   setUserProg]   = useState(null);
   const [loading,    setLoading]    = useState(true);
@@ -152,9 +155,18 @@ export default function GamePage() {
         const act = parseContent(res.data.activity);
         setActivity(act);
         setUserProg(res.data.userProgress);
-        if (settings.tts_enabled)
-          setTimeout(() => speak(act.content?.instruction || act.title), 600);
-      })
+        const skipped = (() => {
+              try { return JSON.parse(localStorage.getItem('readable_skip_instructions') || '{}'); } catch { return {}; }
+            })();
+            if (!skipped[act.type]) {
+              setShowInstructions(true);
+              setGameReady(false);
+            } else {
+              setGameReady(true);
+              if (settings.tts_enabled)
+                setTimeout(() => speak(act.content?.instruction || act.title), 600);
+            }
+          })
       .catch(() => navigate('/activities'))
       .finally(() => setLoading(false));
   }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -277,8 +289,25 @@ export default function GamePage() {
         </div>
       )}
 
-      {/* Game */}
-      {GameComponent && !result && (
+      {/* Instructions modal */}
+      {showInstructions && activity && (
+        <GameInstructions
+          type={activity.type}
+          onStart={() => {
+            setShowInstructions(false);
+            setGameReady(true);
+            if (settings.tts_enabled)
+              setTimeout(() => speak(activity.content?.instruction || activity.title), 400);
+          }}
+          onSkip={() => {
+            setShowInstructions(false);
+            setGameReady(true);
+          }}
+        />
+      )}
+ 
+      {/* Game — only renders after instructions are dismissed */}
+      {GameComponent && !result && gameReady && (
         <div className="rounded-3xl p-6 shadow-card border border-gray-100 dark:border-gray-700 animate-pop"
           style={{ background:'var(--bg-card-grad)' }}>
           <GameComponent
