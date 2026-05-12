@@ -4,7 +4,6 @@ import { X, ChevronRight, Lightbulb } from 'lucide-react';
 // ── Per-type instruction config ───────────────────────────────
 const INSTRUCTIONS = {
   word_match: {
-    image: '/images/activities/word-match.png',
     title: 'Word Match',
     color: '#4D96FF',
     bg:    'rgba(77,150,255,0.10)',
@@ -21,7 +20,6 @@ const INSTRUCTIONS = {
     scoring: 'Each correct pair earns points. Partial credit is given.',
   },
   fill_blank: {
-    image: '/images/activities/fill.png',
     title: 'Fill in the Blank',
     color: '#F97B6B',
     bg:    'rgba(249,123,107,0.10)',
@@ -38,7 +36,6 @@ const INSTRUCTIONS = {
     scoring: 'Each correct word earns points. You can retry as many times as you like.',
   },
   sentence_sort: {
-    image: '/images/activities/sentence-sort.png',
     title: 'Sentence Sort',
     color: '#6BCB77',
     bg:    'rgba(107,203,119,0.10)',
@@ -55,7 +52,6 @@ const INSTRUCTIONS = {
     scoring: 'Every sentence in the right position earns points.',
   },
   picture_word: {
-    image: '/images/activities/picture-match.png',
     title: 'Picture & Word',
     color: '#FFD93D',
     bg:    'rgba(255,217,61,0.12)',
@@ -72,7 +68,6 @@ const INSTRUCTIONS = {
     scoring: 'One point per correct picture. Tap the speaker icon to hear the word.',
   },
   picture_choice: {
-    image: '/images/activities/picture-match.png',
     title: 'Picture Choice',
     color: '#9B59B6',
     bg:    'rgba(155,89,182,0.10)',
@@ -91,7 +86,6 @@ const INSTRUCTIONS = {
 };
 
 const FALLBACK = {
-  emoji: '🎮',
   title: 'Game Instructions',
   color: '#4D96FF',
   bg:    'rgba(77,150,255,0.10)',
@@ -183,65 +177,47 @@ export default function GameInstructions({ type, onStart, onSkip }) {
         {/* ── Header band ── */}
         <div style={{
           background: cfg.bg, borderBottom: `1px solid ${cfg.border}`,
-          padding: '18px 20px 14px', flexShrink: 0,
+          padding: '24px 24px 18px', flexShrink: 0,
         }}>
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
-              
-              {/* IMAGE / EMOJI CONTAINER */}
-              <div style={{
-                width: 64, height: 64, borderRadius: 16, flexShrink: 0,
-                background: cfg.color, display: 'flex', alignItems: 'center',
-                justifyContent: 'center', boxShadow: `0 4px 12px ${cfg.color}60`,
-                overflow: 'hidden' // Keeps image inside rounded corners
+            <div style={{ minWidth: 0 }}>
+              <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em',
+                textTransform: 'uppercase', color: cfg.color, margin: '0 0 4px 0', opacity: 0.8 }}>
+                How this works
+              </p>
+              <h2 style={{
+                fontFamily: '"Fredoka One", cursive', fontSize: 28,
+                color: '#ffffff', margin: 0, lineHeight: 1,
               }}>
-                {cfg.image ? (
-                  <img 
-                    src={cfg.image} 
-                    alt={cfg.title}
-                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                  />
-                ) : (
-                  <span style={{ fontSize: 32 }}>{cfg.emoji}</span>
-                )}
-              </div>
-
-              <div style={{ minWidth: 0 }}>
-                <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em',
-                  textTransform: 'uppercase', color: cfg.color, margin: 0, opacity: 0.8 }}>
-                  How this works
-                </p>
-                <h2 style={{
-                  fontFamily: '"Fredoka One", cursive', fontSize: 24,
-                  color: '#ffffff', margin: 0, lineHeight: 1.15,
-                }}>
-                  {cfg.title}
-                </h2>
-              </div>
+                {cfg.title}
+              </h2>
             </div>
+            
             <button
               onClick={handleSkip}
               style={{
-                width: 30, height: 30, borderRadius: 8, border: 'none',
+                width: 32, height: 32, borderRadius: 10, border: 'none',
                 background: 'rgba(255,255,255,0.1)', cursor: 'pointer',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                color: '#ffffff',
+                color: '#ffffff', transition: 'background 0.2s'
               }}
+              onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.2)'}
+              onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}
             >
-              <X size={18} />
+              <X size={20} />
             </button>
           </div>
 
           <p style={{
-            fontSize: 13, fontWeight: 500, color: '#ffffff',
-            margin: '12px 0 0', lineHeight: 1.5, opacity: 0.9,
+            fontSize: 14, fontWeight: 500, color: '#ffffff',
+            margin: '16px 0 0', lineHeight: 1.5, opacity: 0.9,
           }}>
             🎯 <strong>Goal:</strong> {cfg.goal}
           </p>
         </div>
 
         {/* ── Steps ── */}
-        <div style={{ padding: '16px 20px', overflowY: 'auto', flex: 1 }}>
+        <div style={{ padding: '20px 24px', overflowY: 'auto', flex: 1 }}>
           <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.07em',
             textTransform: 'uppercase', color: '#9ca3af', marginBottom: 12 }}>
             Steps
@@ -320,7 +296,7 @@ export default function GameInstructions({ type, onStart, onSkip }) {
 
         {/* ── Footer buttons ── */}
         <div style={{
-          padding: '16px 20px',
+          padding: '16px 24px 24px',
           borderTop: '1px solid rgba(255,255,255,0.1)',
           display: 'flex', gap: 12,
         }}>
