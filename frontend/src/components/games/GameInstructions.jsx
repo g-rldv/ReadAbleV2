@@ -180,7 +180,7 @@ export default function GameInstructions({ type, onStart, onSkip }) {
           overflow: 'hidden',
           boxShadow: `0 24px 60px rgba(0,0,0,0.35), 0 0 0 1px ${cfg.border}`,
           transition: 'transform 0.35s cubic-bezier(0.175,0.885,0.32,1.275), opacity 0.25s ease',
-          transform: visible ? 'translateY(0) scale(1)' : 'translateY(24px) scale(0.95)',
+          transform: visible ? 'translateY(400) scale(1)' : 'translateY(24px) scale(0.95)',
           maxHeight: '90vh',
           display: 'flex',
           flexDirection: 'column',
