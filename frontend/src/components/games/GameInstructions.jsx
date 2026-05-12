@@ -107,17 +107,46 @@ const FALLBACK = {
   scoring: 'Correct answers earn XP and coins.',
 };
 
+// ── Storage Logic with 24hr Expiration ───────────────────────
 const LS_KEY = 'readable_skip_instructions';
+const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000; 
 
-function getSkipped() {
+function getSkippedData() {
   try { return JSON.parse(localStorage.getItem(LS_KEY) || '{}'); } catch { return {}; }
 }
+
 function setSkipped(type) {
   try {
-    const s = getSkipped();
-    s[type] = true;
-    localStorage.setItem(LS_KEY, JSON.stringify(s));
+    const data = getSkippedData();
+    data[type] = Date.now(); // Store current timestamp
+    localStorage.setItem(LS_KEY, JSON.stringify(data));
   } catch (_) {}
+}
+
+/**
+ * Hook — returns whether instructions should show for a given type.
+ * Resets automatically if more than 24 hours have passed.
+ */
+export function useShouldShowInstructions(type) {
+  const data = getSkippedData();
+  const timestamp = data[type];
+
+  if (!timestamp) return true;
+
+  const elapsed = Date.now() - timestamp;
+  const isExpired = elapsed > TWENTY_FOUR_HOURS;
+
+  if (isExpired) {
+    // Clean up the expired entry
+    try {
+      const newData = { ...data };
+      delete newData[type];
+      localStorage.setItem(LS_KEY, JSON.stringify(newData));
+    } catch (_) {}
+    return true;
+  }
+
+  return false;
 }
 
 /**
@@ -358,9 +387,4 @@ export default function GameInstructions({ type, onStart, onSkip }) {
       </div>
     </div>
   );
-}
-
-export function useShouldShowInstructions(type) {
-  const skipped = getSkipped();
-  return !skipped[type];
 }
