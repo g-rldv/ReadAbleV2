@@ -4,7 +4,7 @@ import { X, ChevronRight, Lightbulb } from 'lucide-react';
 // ── Per-type instruction config ───────────────────────────────
 const INSTRUCTIONS = {
   word_match: {
-    emoji: '🔗',
+    image: '/images/activities/word-match.png',
     title: 'Word Match',
     color: '#4D96FF',
     bg:    'rgba(77,150,255,0.10)',
@@ -21,7 +21,7 @@ const INSTRUCTIONS = {
     scoring: 'Each correct pair earns points. Partial credit is given.',
   },
   fill_blank: {
-    emoji: '✏️',
+    image: '/images/activities/fill.png',
     title: 'Fill in the Blank',
     color: '#F97B6B',
     bg:    'rgba(249,123,107,0.10)',
@@ -38,7 +38,7 @@ const INSTRUCTIONS = {
     scoring: 'Each correct word earns points. You can retry as many times as you like.',
   },
   sentence_sort: {
-    emoji: '🔀',
+    image: '/images/activities/sentence-sort.png',
     title: 'Sentence Sort',
     color: '#6BCB77',
     bg:    'rgba(107,203,119,0.10)',
@@ -55,7 +55,7 @@ const INSTRUCTIONS = {
     scoring: 'Every sentence in the right position earns points.',
   },
   picture_word: {
-    emoji: '🖼️',
+    image: '/images/activities/picture-match.png',
     title: 'Picture & Word',
     color: '#FFD93D',
     bg:    'rgba(255,217,61,0.12)',
@@ -72,7 +72,7 @@ const INSTRUCTIONS = {
     scoring: 'One point per correct picture. Tap the speaker icon to hear the word.',
   },
   picture_choice: {
-    emoji: '🧩',
+    image: '/images/activities/picture-match.png',
     title: 'Picture Choice',
     color: '#9B59B6',
     bg:    'rgba(155,89,182,0.10)',
