@@ -107,7 +107,6 @@ const FALLBACK = {
   scoring: 'Correct answers earn XP and coins.',
 };
 
-// ── Storage Logic with 24hr Expiration ───────────────────────
 const LS_KEY = 'readable_skip_instructions';
 const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000; 
 
@@ -118,26 +117,18 @@ function getSkippedData() {
 function setSkipped(type) {
   try {
     const data = getSkippedData();
-    data[type] = Date.now(); // Store current timestamp
+    data[type] = Date.now(); 
     localStorage.setItem(LS_KEY, JSON.stringify(data));
   } catch (_) {}
 }
 
-/**
- * Hook — returns whether instructions should show for a given type.
- * Resets automatically if more than 24 hours have passed.
- */
 export function useShouldShowInstructions(type) {
   const data = getSkippedData();
   const timestamp = data[type];
-
   if (!timestamp) return true;
-
   const elapsed = Date.now() - timestamp;
   const isExpired = elapsed > TWENTY_FOUR_HOURS;
-
   if (isExpired) {
-    // Clean up the expired entry
     try {
       const newData = { ...data };
       delete newData[type];
@@ -145,13 +136,9 @@ export function useShouldShowInstructions(type) {
     } catch (_) {}
     return true;
   }
-
   return false;
 }
 
-/**
- * GameInstructions Component
- */
 export default function GameInstructions({ type, onStart, onSkip }) {
   const cfg = INSTRUCTIONS[type] || FALLBACK;
   const [dontShow, setDontShow] = useState(false);
@@ -174,63 +161,59 @@ export default function GameInstructions({ type, onStart, onSkip }) {
   return (
     <div
       style={{
-        position: 'fixed', 
-        inset: 0, 
-        zIndex: 9998,
-        display: 'flex',          
-        alignItems: 'center',     
-        justifyContent: 'center', 
-        padding: '16px',
-        background: 'rgba(0,0,0,0.55)',
-        backdropFilter: 'blur(3px)',
-        transition: 'opacity 0.25s ease',
+        position: 'fixed', inset: 0, zIndex: 9998,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: '16px', background: 'rgba(0,0,0,0.55)',
+        backdropFilter: 'blur(3px)', transition: 'opacity 0.25s ease',
         opacity: visible ? 1 : 0,
       }}
       onClick={e => { if (e.target === e.currentTarget) handleSkip(); }}
     >
       <div
         style={{
-          width: '100%', 
-          maxWidth: 440,
-          margin: 'auto', 
-          background: 'var(--bg-card-grad, #ffffff)',
-          border: `2px solid ${cfg.border}`,
-          borderRadius: 24,
-          overflow: 'hidden',
-          boxShadow: `0 24px 60px rgba(0,0,0,0.35), 0 0 0 1px ${cfg.border}`,
+          width: '100%', maxWidth: 440, margin: 'auto',
+          background: 'var(--bg-card-grad, #1a1a2e)',
+          border: `2px solid ${cfg.border}`, borderRadius: 24,
+          overflow: 'hidden', boxShadow: `0 24px 60px rgba(0,0,0,0.35)`,
           transition: 'transform 0.35s cubic-bezier(0.175,0.885,0.32,1.275), opacity 0.25s ease',
           transform: visible ? 'translateY(0) scale(1)' : 'translateY(24px) scale(0.95)',
-          maxHeight: '80vh',
-          display: 'flex',
-          flexDirection: 'column',
-          position: 'relative',
+          maxHeight: '80vh', display: 'flex', flexDirection: 'column',
         }}
       >
         {/* ── Header band ── */}
         <div style={{
-          background: cfg.bg,
-          borderBottom: `1px solid ${cfg.border}`,
-          padding: '18px 20px 14px',
-          flexShrink: 0,
+          background: cfg.bg, borderBottom: `1px solid ${cfg.border}`,
+          padding: '18px 20px 14px', flexShrink: 0,
         }}>
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
+              
+              {/* IMAGE / EMOJI CONTAINER */}
               <div style={{
-                width: 48, height: 48, borderRadius: 14, flexShrink: 0,
+                width: 64, height: 64, borderRadius: 16, flexShrink: 0,
                 background: cfg.color, display: 'flex', alignItems: 'center',
-                justifyContent: 'center', fontSize: 24,
-                boxShadow: `0 4px 12px ${cfg.color}60`,
+                justifyContent: 'center', boxShadow: `0 4px 12px ${cfg.color}60`,
+                overflow: 'hidden' // Keeps image inside rounded corners
               }}>
-                {cfg.emoji}
+                {cfg.image ? (
+                  <img 
+                    src={cfg.image} 
+                    alt={cfg.title}
+                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                  />
+                ) : (
+                  <span style={{ fontSize: 32 }}>{cfg.emoji}</span>
+                )}
               </div>
+
               <div style={{ minWidth: 0 }}>
                 <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em',
                   textTransform: 'uppercase', color: cfg.color, margin: 0, opacity: 0.8 }}>
                   How this works
                 </p>
                 <h2 style={{
-                  fontFamily: '"Fredoka One", cursive',
-                  fontSize: 22, color: 'var(--text-primary, #1f2937)', margin: 0, lineHeight: 1.15,
+                  fontFamily: '"Fredoka One", cursive', fontSize: 24,
+                  color: '#ffffff', margin: 0, lineHeight: 1.15,
                 }}>
                   {cfg.title}
                 </h2>
@@ -238,21 +221,20 @@ export default function GameInstructions({ type, onStart, onSkip }) {
             </div>
             <button
               onClick={handleSkip}
-              title="Skip instructions"
               style={{
                 width: 30, height: 30, borderRadius: 8, border: 'none',
-                background: 'rgba(156,163,175,0.15)', cursor: 'pointer', flexShrink: 0,
+                background: 'rgba(255,255,255,0.1)', cursor: 'pointer',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                color: '#9ca3af', transition: 'background 0.15s',
+                color: '#ffffff',
               }}
             >
-              <X size={15} />
+              <X size={18} />
             </button>
           </div>
 
           <p style={{
-            fontSize: 13, fontWeight: 600, color: 'var(--text-primary, #1f2937)',
-            margin: '10px 0 0', lineHeight: 1.5, opacity: 0.85,
+            fontSize: 13, fontWeight: 500, color: '#ffffff',
+            margin: '12px 0 0', lineHeight: 1.5, opacity: 0.9,
           }}>
             🎯 <strong>Goal:</strong> {cfg.goal}
           </p>
@@ -261,35 +243,29 @@ export default function GameInstructions({ type, onStart, onSkip }) {
         {/* ── Steps ── */}
         <div style={{ padding: '16px 20px', overflowY: 'auto', flex: 1 }}>
           <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.07em',
-            textTransform: 'uppercase', color: '#9ca3af', marginBottom: 10 }}>
+            textTransform: 'uppercase', color: '#9ca3af', marginBottom: 12 }}>
             Steps
           </p>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {cfg.steps.map((step, i) => (
               <div key={i} style={{
-                display: 'flex', alignItems: 'flex-start', gap: 12,
-                padding: '10px 12px', borderRadius: 12,
-                background: 'var(--bg-primary, #f9fafb)',
-                border: '1px solid var(--border-color, #e5e7eb)',
+                display: 'flex', alignItems: 'center', gap: 14,
+                padding: '12px 16px', borderRadius: 16,
+                background: 'rgba(255,255,255,0.05)',
+                border: '1px solid rgba(255,255,255,0.1)',
               }}>
                 <div style={{
-                  display: 'flex', flexDirection: 'column', alignItems: 'center',
-                  gap: 2, flexShrink: 0,
+                  width: 28, height: 28, borderRadius: '50%', flexShrink: 0,
+                  background: cfg.color, color: '#fff',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 14, fontWeight: 800,
                 }}>
-                  <div style={{
-                    width: 22, height: 22, borderRadius: '50%', flexShrink: 0,
-                    background: cfg.color, color: '#fff',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: 11, fontWeight: 800,
-                  }}>
-                    {i + 1}
-                  </div>
-                  <span style={{ fontSize: 14, lineHeight: 1 }}>{step.icon}</span>
+                  {i + 1}
                 </div>
                 <p style={{
-                  fontSize: 13, color: 'var(--text-primary, #1f2937)', margin: 0,
-                  lineHeight: 1.55, fontWeight: 500,
+                  fontSize: 14, color: '#ffffff', margin: 0,
+                  lineHeight: 1.4, fontWeight: 500,
                 }}>
                   {step.text}
                 </p>
@@ -297,69 +273,65 @@ export default function GameInstructions({ type, onStart, onSkip }) {
             ))}
           </div>
 
-          {/* Tip */}
           <div style={{
             display: 'flex', alignItems: 'flex-start', gap: 10,
-            marginTop: 12, padding: '10px 12px', borderRadius: 12,
-            background: `${cfg.bg}`,
-            border: `1.5px solid ${cfg.border}`,
+            marginTop: 16, padding: '12px', borderRadius: 12,
+            background: 'rgba(255,255,255,0.03)',
+            border: `1px dashed ${cfg.border}`,
           }}>
-            <Lightbulb size={15} style={{ color: cfg.color, flexShrink: 0, marginTop: 1 }} />
-            <p style={{ fontSize: 12, color: 'var(--text-primary, #1f2937)', margin: 0, lineHeight: 1.5, opacity: 0.85 }}>
-              <strong>Tip:</strong> {cfg.tip}
+            <Lightbulb size={18} style={{ color: cfg.color, flexShrink: 0 }} />
+            <p style={{ fontSize: 13, color: '#9ca3af', margin: 0, lineHeight: 1.5 }}>
+              <strong style={{ color: cfg.color }}>Tip:</strong> {cfg.tip}
             </p>
           </div>
 
-          {/* Meta row */}
-          <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
-            <span style={{
-              fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 999,
-              background: 'var(--bg-primary, #f3f4f6)', border: '1px solid var(--border-color, #e5e7eb)',
+          <div style={{ display: 'flex', gap: 8, marginTop: 16, flexWrap: 'wrap' }}>
+             <span style={{
+              fontSize: 12, fontWeight: 600, padding: '6px 12px', borderRadius: 99,
+              background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
               color: '#9ca3af',
             }}>
               ⏱ {cfg.time}
             </span>
             <span style={{
-              fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 999,
-              background: 'var(--bg-primary, #f3f4f6)', border: '1px solid var(--border-color, #e5e7eb)',
+              fontSize: 12, fontWeight: 600, padding: '6px 12px', borderRadius: 99,
+              background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
               color: '#9ca3af',
             }}>
               💡 {cfg.scoring}
             </span>
           </div>
 
-          {/* Don't show again */}
           <label style={{
-            display: 'flex', alignItems: 'center', gap: 8,
-            marginTop: 14, cursor: 'pointer', userSelect: 'none',
+            display: 'flex', alignItems: 'center', gap: 10,
+            marginTop: 20, cursor: 'pointer', userSelect: 'none',
           }}>
             <input
               type="checkbox"
               checked={dontShow}
               onChange={e => setDontShow(e.target.checked)}
-              style={{ width: 15, height: 15, accentColor: cfg.color, cursor: 'pointer' }}
+              style={{ width: 18, height: 18, accentColor: cfg.color }}
             />
-            <span style={{ fontSize: 12, color: '#9ca3af', fontWeight: 500 }}>
-              Don't show this again for {cfg.title}
+            <span style={{ fontSize: 13, color: '#9ca3af', fontWeight: 500 }}>
+              Don't show this again for 24 hours
             </span>
           </label>
         </div>
 
         {/* ── Footer buttons ── */}
         <div style={{
-          padding: '12px 20px 16px',
-          borderTop: '1px solid var(--border-color, #e5e7eb)',
-          display: 'flex', gap: 10, flexShrink: 0,
+          padding: '16px 20px',
+          borderTop: '1px solid rgba(255,255,255,0.1)',
+          display: 'flex', gap: 12,
         }}>
           <button
             onClick={handleSkip}
             style={{
-              flex: '0 0 auto', padding: '10px 16px', borderRadius: 14,
-              fontSize: 13, fontWeight: 700, cursor: 'pointer',
-              background: 'var(--bg-primary, #ffffff)',
-              border: '1.5px solid var(--border-color, #e5e7eb)',
-              color: '#9ca3af', fontFamily: 'inherit',
-              transition: 'opacity 0.15s',
+              padding: '12px 20px', borderRadius: 16,
+              fontSize: 14, fontWeight: 700, cursor: 'pointer',
+              background: 'rgba(255,255,255,0.05)',
+              border: '1px solid rgba(255,255,255,0.1)',
+              color: '#9ca3af',
             }}
           >
             Skip
@@ -367,21 +339,15 @@ export default function GameInstructions({ type, onStart, onSkip }) {
           <button
             onClick={handleStart}
             style={{
-              flex: 1, padding: '11px 16px', borderRadius: 14,
-              fontSize: 14, fontWeight: 800, cursor: 'pointer',
-              background: cfg.color,
-              border: `2px solid ${cfg.color}`,
+              flex: 1, padding: '12px', borderRadius: 16,
+              fontSize: 16, fontWeight: 800, cursor: 'pointer',
+              background: cfg.color, border: 'none',
               color: '#ffffff', fontFamily: '"Fredoka One", cursive',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-              boxShadow: `0 4px 12px ${cfg.color}50`,
-              transition: 'filter 0.15s, transform 0.1s',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+              boxShadow: `0 8px 20px ${cfg.color}40`,
             }}
-            onMouseEnter={e => { e.currentTarget.style.filter = 'brightness(1.08)'; }}
-            onMouseLeave={e => { e.currentTarget.style.filter = 'brightness(1)'; }}
-            onMouseDown={e  => { e.currentTarget.style.transform = 'scale(0.97)'; }}
-            onMouseUp={e    => { e.currentTarget.style.transform = 'scale(1)'; }}
           >
-            Let's Play! <ChevronRight size={17} strokeWidth={2.5} />
+            Let's Play! <ChevronRight size={20} />
           </button>
         </div>
       </div>
