@@ -1,13 +1,12 @@
 // ============================================================
 // GameInstructions.jsx — Pre-game "How this works" modal
-// Shows before every game, skippable, with "don't show again"
-// Covers: word_match, fill_blank, sentence_sort,
-//         picture_word, picture_choice
+// Uses ReactDOM.createPortal to guarantee true viewport centering
+// regardless of any parent stacking context (sidebar, layout wrappers).
 // ============================================================
 import React, { useState, useEffect } from 'react';
+import ReactDOM from 'react-dom';
 import { X, ChevronRight, Lightbulb } from 'lucide-react';
 
-// ── Per-type instruction config ───────────────────────────────
 const INSTRUCTIONS = {
   word_match: {
     emoji: '🔗',
@@ -26,7 +25,6 @@ const INSTRUCTIONS = {
     time: '1–3 minutes',
     scoring: 'Each correct pair earns points. Partial credit is given.',
   },
-
   fill_blank: {
     emoji: '✏️',
     title: 'Fill in the Blank',
@@ -44,7 +42,6 @@ const INSTRUCTIONS = {
     time: '2–4 minutes',
     scoring: 'Each correct word earns points. You can retry as many times as you like.',
   },
-
   sentence_sort: {
     emoji: '🔀',
     title: 'Sentence Sort',
@@ -62,7 +59,6 @@ const INSTRUCTIONS = {
     time: '2–5 minutes',
     scoring: 'Every sentence in the right position earns points.',
   },
-
   picture_word: {
     emoji: '🖼️',
     title: 'Picture & Word',
@@ -80,7 +76,6 @@ const INSTRUCTIONS = {
     time: '1–3 minutes',
     scoring: 'One point per correct picture. Tap the speaker icon to hear the word.',
   },
-
   picture_choice: {
     emoji: '🧩',
     title: 'Picture Choice',
@@ -130,25 +125,17 @@ function setSkipped(type) {
   } catch (_) {}
 }
 
-// ── Main component ────────────────────────────────────────────
-/**
- * Props:
- *   type       — activity.type string
- *   onStart    — called when user clicks "Let's Play!"
- *   onSkip     — called when user skips (same effect as onStart for gameplay)
- */
 export default function GameInstructions({ type, onStart, onSkip }) {
   const cfg = INSTRUCTIONS[type] || FALLBACK;
   const [dontShow, setDontShow] = useState(false);
   const [visible,  setVisible]  = useState(false);
 
-  // Animate in
   useEffect(() => {
     const t = setTimeout(() => setVisible(true), 30);
     return () => clearTimeout(t);
   }, []);
 
-  // Lock body scroll while modal is open
+  // Lock body scroll while open
   useEffect(() => {
     const prev = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
@@ -160,91 +147,60 @@ export default function GameInstructions({ type, onStart, onSkip }) {
     onStart();
   };
 
-  const handleSkip = () => {
-    onSkip();
-  };
-
-  return (
-    /*
-     * Overlay — fixed to viewport edges, flex-centered both axes.
-     *
-     * Key fixes for reliable centering on all screen sizes:
-     *
-     * 1. inset: 0 pins all four edges to the viewport, not the
-     *    document scroll container, so it always fills the full screen.
-     *
-     * 2. alignItems / justifyContent center the card both vertically
-     *    and horizontally regardless of viewport height.
-     *
-     * 3. The inner wrapper uses a max-height with overflow-y: auto so
-     *    the card never taller than the screen. On small phones the
-     *    header/footer stay sticky while only the steps list scrolls.
-     *
-     * 4. paddingTop / paddingBottom account for the mobile top bar
-     *    (~52px) and bottom nav bar (~78px) so the card is never
-     *    obscured by app chrome on small screens.
-     */
+  // Portal renders directly into document.body — this is the key fix.
+  // The sidebar uses transform/isolation which creates its own stacking
+  // context and clips any position:fixed children inside it.
+  // By portalling to body we bypass all parent stacking contexts entirely.
+  return ReactDOM.createPortal(
     <div
       style={{
         position: 'fixed',
-        inset: 0,
-        zIndex: 9998,
+        top: 0, left: 0, right: 0, bottom: 0,
+        zIndex: 99999,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        // On mobile, leave room for the top bar (≈52px) + bottom nav (≈78px)
-        // so the modal floats between them rather than behind them.
-        paddingTop: 'max(16px, env(safe-area-inset-top, 0px))',
-        paddingBottom: 'max(16px, env(safe-area-inset-bottom, 0px))',
-        paddingLeft: 16,
-        paddingRight: 16,
-        background: 'rgba(0,0,0,0.55)',
-        backdropFilter: 'blur(3px)',
-        WebkitBackdropFilter: 'blur(3px)',
-        transition: 'opacity 0.25s ease',
+        padding: 16,
+        background: 'rgba(0,0,0,0.60)',
+        backdropFilter: 'blur(4px)',
+        WebkitBackdropFilter: 'blur(4px)',
         opacity: visible ? 1 : 0,
-        // Intercept scroll so the page behind doesn't move
-        overscrollBehavior: 'contain',
+        transition: 'opacity 0.22s ease',
       }}
       onClick={e => { if (e.target === e.currentTarget) handleSkip(); }}
     >
-      {/*
-       * Card wrapper — limits width and caps height so it never
-       * overflows the viewport on any screen size.
-       */}
+      {/* Card */}
       <div
         style={{
           width: '100%',
           maxWidth: 440,
-          // Cap at 90% of the visual viewport height to stay on-screen
-          // even on small phones (≈568px) or with the keyboard open.
-          maxHeight: '90svh',   // svh = small viewport height (keyboard-aware)
+          maxHeight: 'min(90svh, 90vh)',
           background: 'var(--bg-card-grad)',
           border: `2px solid ${cfg.border}`,
           borderRadius: 24,
           overflow: 'hidden',
-          boxShadow: `0 24px 60px rgba(0,0,0,0.35), 0 0 0 1px ${cfg.border}`,
-          transition: 'transform 0.35s cubic-bezier(0.175,0.885,0.32,1.275), opacity 0.25s ease',
-          transform: visible ? 'translateY(0) scale(1)' : 'translateY(24px) scale(0.95)',
+          boxShadow: '0 24px 60px rgba(0,0,0,0.45)',
           display: 'flex',
           flexDirection: 'column',
+          transform: visible ? 'translateY(0) scale(1)' : 'translateY(20px) scale(0.96)',
+          transition: 'transform 0.32s cubic-bezier(0.175,0.885,0.32,1.275), opacity 0.22s ease',
+          opacity: visible ? 1 : 0,
         }}
       >
-        {/* ── Header band — never scrolls ── */}
-        <div
-          style={{
-            background: cfg.bg,
-            borderBottom: `1px solid ${cfg.border}`,
-            padding: '18px 20px 14px',
-            flexShrink: 0,
-          }}
-        >
+        {/* Header — never scrolls */}
+        <div style={{
+          background: cfg.bg,
+          borderBottom: `1px solid ${cfg.border}`,
+          padding: '18px 20px 14px',
+          flexShrink: 0,
+        }}>
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
               <div style={{
                 width: 48, height: 48, borderRadius: 14, flexShrink: 0,
-                background: cfg.color, display: 'flex', alignItems: 'center',
-                justifyContent: 'center', fontSize: 24,
+                background: cfg.color,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 24,
                 boxShadow: `0 4px 12px ${cfg.color}60`,
               }}>
                 {cfg.emoji}
@@ -266,19 +222,17 @@ export default function GameInstructions({ type, onStart, onSkip }) {
             </div>
             <button
               onClick={handleSkip}
-              title="Skip instructions"
+              title="Skip"
               style={{
                 width: 30, height: 30, borderRadius: 8, border: 'none',
-                background: 'rgba(156,163,175,0.15)', cursor: 'pointer', flexShrink: 0,
+                background: 'rgba(156,163,175,0.18)', cursor: 'pointer', flexShrink: 0,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                color: '#9ca3af', transition: 'background 0.15s',
+                color: '#9ca3af',
               }}
             >
               <X size={15} />
             </button>
           </div>
-
-          {/* Goal */}
           <p style={{
             fontSize: 13, fontWeight: 600, color: 'var(--text-primary)',
             margin: '10px 0 0', lineHeight: 1.5, opacity: 0.85,
@@ -287,11 +241,16 @@ export default function GameInstructions({ type, onStart, onSkip }) {
           </p>
         </div>
 
-        {/* ── Scrollable body — steps + tip + meta ── */}
-        <div style={{ padding: '16px 20px', overflowY: 'auto', flex: 1, WebkitOverflowScrolling: 'touch' }}>
+        {/* Scrollable body */}
+        <div style={{
+          padding: '16px 20px',
+          overflowY: 'auto',
+          flex: 1,
+          WebkitOverflowScrolling: 'touch',
+        }}>
           <p style={{
             fontSize: 11, fontWeight: 700, letterSpacing: '0.07em',
-            textTransform: 'uppercase', color: '#9ca3af', marginBottom: 10,
+            textTransform: 'uppercase', color: '#9ca3af', margin: '0 0 10px',
           }}>
             Steps
           </p>
@@ -304,12 +263,9 @@ export default function GameInstructions({ type, onStart, onSkip }) {
                 background: 'var(--bg-primary)',
                 border: '1px solid var(--border-color)',
               }}>
-                <div style={{
-                  display: 'flex', flexDirection: 'column', alignItems: 'center',
-                  gap: 2, flexShrink: 0,
-                }}>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, flexShrink: 0 }}>
                   <div style={{
-                    width: 22, height: 22, borderRadius: '50%', flexShrink: 0,
+                    width: 22, height: 22, borderRadius: '50%',
                     background: cfg.color, color: '#fff',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     fontSize: 11, fontWeight: 800,
@@ -319,8 +275,8 @@ export default function GameInstructions({ type, onStart, onSkip }) {
                   <span style={{ fontSize: 14, lineHeight: 1 }}>{step.icon}</span>
                 </div>
                 <p style={{
-                  fontSize: 13, color: 'var(--text-primary)', margin: 0,
-                  lineHeight: 1.55, fontWeight: 500,
+                  fontSize: 13, color: 'var(--text-primary)',
+                  margin: 0, lineHeight: 1.55, fontWeight: 500,
                 }}>
                   {step.text}
                 </p>
@@ -332,8 +288,7 @@ export default function GameInstructions({ type, onStart, onSkip }) {
           <div style={{
             display: 'flex', alignItems: 'flex-start', gap: 10,
             marginTop: 12, padding: '10px 12px', borderRadius: 12,
-            background: cfg.bg,
-            border: `1.5px solid ${cfg.border}`,
+            background: cfg.bg, border: `1.5px solid ${cfg.border}`,
           }}>
             <Lightbulb size={15} style={{ color: cfg.color, flexShrink: 0, marginTop: 1 }} />
             <p style={{ fontSize: 12, color: 'var(--text-primary)', margin: 0, lineHeight: 1.5, opacity: 0.85 }}>
@@ -341,22 +296,17 @@ export default function GameInstructions({ type, onStart, onSkip }) {
             </p>
           </div>
 
-          {/* Meta row */}
+          {/* Meta pills */}
           <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
-            <span style={{
-              fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 999,
-              background: 'var(--bg-primary)', border: '1px solid var(--border-color)',
-              color: '#9ca3af',
-            }}>
-              ⏱ {cfg.time}
-            </span>
-            <span style={{
-              fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 999,
-              background: 'var(--bg-primary)', border: '1px solid var(--border-color)',
-              color: '#9ca3af',
-            }}>
-              💡 {cfg.scoring}
-            </span>
+            {[`⏱ ${cfg.time}`, `💡 ${cfg.scoring}`].map(label => (
+              <span key={label} style={{
+                fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 999,
+                background: 'var(--bg-primary)', border: '1px solid var(--border-color)',
+                color: '#9ca3af',
+              }}>
+                {label}
+              </span>
+            ))}
           </div>
 
           {/* Don't show again */}
@@ -376,7 +326,7 @@ export default function GameInstructions({ type, onStart, onSkip }) {
           </label>
         </div>
 
-        {/* ── Footer buttons — never scrolls ── */}
+        {/* Footer — never scrolls */}
         <div style={{
           padding: '12px 20px 16px',
           borderTop: '1px solid var(--border-color)',
@@ -386,12 +336,11 @@ export default function GameInstructions({ type, onStart, onSkip }) {
           <button
             onClick={handleSkip}
             style={{
-              flex: '0 0 auto', padding: '10px 16px', borderRadius: 14,
+              flex: '0 0 auto', padding: '10px 18px', borderRadius: 14,
               fontSize: 13, fontWeight: 700, cursor: 'pointer',
               background: 'var(--bg-primary)',
               border: '1.5px solid var(--border-color)',
               color: '#9ca3af', fontFamily: 'inherit',
-              transition: 'opacity 0.15s',
             }}
           >
             Skip
@@ -403,12 +352,11 @@ export default function GameInstructions({ type, onStart, onSkip }) {
               fontSize: 14, fontWeight: 800, cursor: 'pointer',
               background: cfg.color,
               border: `2px solid ${cfg.color}`,
-              color: '#ffffff', fontFamily: '"Fredoka One", cursive',
+              color: '#fff', fontFamily: '"Fredoka One", cursive',
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-              boxShadow: `0 4px 12px ${cfg.color}50`,
-              transition: 'filter 0.15s, transform 0.1s',
+              boxShadow: `0 4px 14px ${cfg.color}55`,
             }}
-            onMouseEnter={e => { e.currentTarget.style.filter = 'brightness(1.08)'; }}
+            onMouseEnter={e => { e.currentTarget.style.filter = 'brightness(1.09)'; }}
             onMouseLeave={e => { e.currentTarget.style.filter = 'brightness(1)'; }}
             onMouseDown={e  => { e.currentTarget.style.transform = 'scale(0.97)'; }}
             onMouseUp={e    => { e.currentTarget.style.transform = 'scale(1)'; }}
@@ -417,7 +365,8 @@ export default function GameInstructions({ type, onStart, onSkip }) {
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body   // ← portal target: bypasses all parent stacking contexts
   );
 }
 
