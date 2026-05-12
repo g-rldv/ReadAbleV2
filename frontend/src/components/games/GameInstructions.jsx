@@ -1,9 +1,3 @@
-// ============================================================
-// GameInstructions.jsx — Pre-game "How this works" modal
-// Shows before every game, skippable, with "don't show again"
-// Covers: word_match, fill_blank, sentence_sort,
-//         picture_word, picture_choice
-// ============================================================
 import React, { useState, useEffect } from 'react';
 import { X, ChevronRight, Lightbulb } from 'lucide-react';
 
@@ -26,7 +20,6 @@ const INSTRUCTIONS = {
     time: '1–3 minutes',
     scoring: 'Each correct pair earns points. Partial credit is given.',
   },
-
   fill_blank: {
     emoji: '✏️',
     title: 'Fill in the Blank',
@@ -44,7 +37,6 @@ const INSTRUCTIONS = {
     time: '2–4 minutes',
     scoring: 'Each correct word earns points. You can retry as many times as you like.',
   },
-
   sentence_sort: {
     emoji: '🔀',
     title: 'Sentence Sort',
@@ -62,7 +54,6 @@ const INSTRUCTIONS = {
     time: '2–5 minutes',
     scoring: 'Every sentence in the right position earns points.',
   },
-
   picture_word: {
     emoji: '🖼️',
     title: 'Picture & Word',
@@ -80,7 +71,6 @@ const INSTRUCTIONS = {
     time: '1–3 minutes',
     scoring: 'One point per correct picture. Tap the speaker icon to hear the word.',
   },
-
   picture_choice: {
     emoji: '🧩',
     title: 'Picture Choice',
@@ -119,7 +109,6 @@ const FALLBACK = {
 
 const LS_KEY = 'readable_skip_instructions';
 
-// ── Helper — read skipped types from localStorage ─────────────
 function getSkipped() {
   try { return JSON.parse(localStorage.getItem(LS_KEY) || '{}'); } catch { return {}; }
 }
@@ -131,19 +120,15 @@ function setSkipped(type) {
   } catch (_) {}
 }
 
-// ── Main component ────────────────────────────────────────────
 /**
- * Props:
- *   type       — activity.type string
- *   onStart    — called when user clicks "Let's Play!"
- *   onSkip     — called when user skips (same effect as onStart for gameplay)
+ * GameInstructions Component
+ * Centered horizontally and vertically using Flexbox on the parent container.
  */
 export default function GameInstructions({ type, onStart, onSkip }) {
   const cfg = INSTRUCTIONS[type] || FALLBACK;
   const [dontShow, setDontShow] = useState(false);
   const [visible,  setVisible]  = useState(false);
 
-  // Animate in
   useEffect(() => {
     const t = setTimeout(() => setVisible(true), 30);
     return () => clearTimeout(t);
@@ -161,8 +146,12 @@ export default function GameInstructions({ type, onStart, onSkip }) {
   return (
     <div
       style={{
-        position: 'fixed', inset: 0, zIndex: 9998,
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        position: 'fixed', 
+        inset: 0, 
+        zIndex: 9998,
+        display: 'flex',          
+        alignItems: 'center',     // Vertical center
+        justifyContent: 'center', // Horizontal center
         padding: '16px',
         background: 'rgba(0,0,0,0.55)',
         backdropFilter: 'blur(3px)',
@@ -173,17 +162,20 @@ export default function GameInstructions({ type, onStart, onSkip }) {
     >
       <div
         style={{
-          width: '100%', maxWidth: 440,
-          background: 'var(--bg-card-grad)',
+          width: '100%', 
+          maxWidth: 440,
+          margin: 'auto', // Ensures centering even if container behaves oddly
+          background: 'var(--bg-card-grad, #ffffff)',
           border: `2px solid ${cfg.border}`,
           borderRadius: 24,
           overflow: 'hidden',
           boxShadow: `0 24px 60px rgba(0,0,0,0.35), 0 0 0 1px ${cfg.border}`,
           transition: 'transform 0.35s cubic-bezier(0.175,0.885,0.32,1.275), opacity 0.25s ease',
-          transform: visible ? 'translateY(400) scale(1)' : 'translateY(24px) scale(0.95)',
+          transform: visible ? 'translateY(0) scale(1)' : 'translateY(24px) scale(0.95)',
           maxHeight: '90vh',
           display: 'flex',
           flexDirection: 'column',
+          position: 'relative',
         }}
       >
         {/* ── Header band ── */}
@@ -210,7 +202,7 @@ export default function GameInstructions({ type, onStart, onSkip }) {
                 </p>
                 <h2 style={{
                   fontFamily: '"Fredoka One", cursive',
-                  fontSize: 22, color: 'var(--text-primary)', margin: 0, lineHeight: 1.15,
+                  fontSize: 22, color: 'var(--text-primary, #1f2937)', margin: 0, lineHeight: 1.15,
                 }}>
                   {cfg.title}
                 </h2>
@@ -230,9 +222,8 @@ export default function GameInstructions({ type, onStart, onSkip }) {
             </button>
           </div>
 
-          {/* Goal */}
           <p style={{
-            fontSize: 13, fontWeight: 600, color: 'var(--text-primary)',
+            fontSize: 13, fontWeight: 600, color: 'var(--text-primary, #1f2937)',
             margin: '10px 0 0', lineHeight: 1.5, opacity: 0.85,
           }}>
             🎯 <strong>Goal:</strong> {cfg.goal}
@@ -251,10 +242,9 @@ export default function GameInstructions({ type, onStart, onSkip }) {
               <div key={i} style={{
                 display: 'flex', alignItems: 'flex-start', gap: 12,
                 padding: '10px 12px', borderRadius: 12,
-                background: 'var(--bg-primary)',
-                border: '1px solid var(--border-color)',
+                background: 'var(--bg-primary, #f9fafb)',
+                border: '1px solid var(--border-color, #e5e7eb)',
               }}>
-                {/* Step number + emoji */}
                 <div style={{
                   display: 'flex', flexDirection: 'column', alignItems: 'center',
                   gap: 2, flexShrink: 0,
@@ -270,7 +260,7 @@ export default function GameInstructions({ type, onStart, onSkip }) {
                   <span style={{ fontSize: 14, lineHeight: 1 }}>{step.icon}</span>
                 </div>
                 <p style={{
-                  fontSize: 13, color: 'var(--text-primary)', margin: 0,
+                  fontSize: 13, color: 'var(--text-primary, #1f2937)', margin: 0,
                   lineHeight: 1.55, fontWeight: 500,
                 }}>
                   {step.text}
@@ -287,7 +277,7 @@ export default function GameInstructions({ type, onStart, onSkip }) {
             border: `1.5px solid ${cfg.border}`,
           }}>
             <Lightbulb size={15} style={{ color: cfg.color, flexShrink: 0, marginTop: 1 }} />
-            <p style={{ fontSize: 12, color: 'var(--text-primary)', margin: 0, lineHeight: 1.5, opacity: 0.85 }}>
+            <p style={{ fontSize: 12, color: 'var(--text-primary, #1f2937)', margin: 0, lineHeight: 1.5, opacity: 0.85 }}>
               <strong>Tip:</strong> {cfg.tip}
             </p>
           </div>
@@ -296,14 +286,14 @@ export default function GameInstructions({ type, onStart, onSkip }) {
           <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
             <span style={{
               fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 999,
-              background: 'var(--bg-primary)', border: '1px solid var(--border-color)',
+              background: 'var(--bg-primary, #f3f4f6)', border: '1px solid var(--border-color, #e5e7eb)',
               color: '#9ca3af',
             }}>
               ⏱ {cfg.time}
             </span>
             <span style={{
               fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 999,
-              background: 'var(--bg-primary)', border: '1px solid var(--border-color)',
+              background: 'var(--bg-primary, #f3f4f6)', border: '1px solid var(--border-color, #e5e7eb)',
               color: '#9ca3af',
             }}>
               💡 {cfg.scoring}
@@ -330,7 +320,7 @@ export default function GameInstructions({ type, onStart, onSkip }) {
         {/* ── Footer buttons ── */}
         <div style={{
           padding: '12px 20px 16px',
-          borderTop: '1px solid var(--border-color)',
+          borderTop: '1px solid var(--border-color, #e5e7eb)',
           display: 'flex', gap: 10, flexShrink: 0,
         }}>
           <button
@@ -338,8 +328,8 @@ export default function GameInstructions({ type, onStart, onSkip }) {
             style={{
               flex: '0 0 auto', padding: '10px 16px', borderRadius: 14,
               fontSize: 13, fontWeight: 700, cursor: 'pointer',
-              background: 'var(--bg-primary)',
-              border: '1.5px solid var(--border-color)',
+              background: 'var(--bg-primary, #ffffff)',
+              border: '1.5px solid var(--border-color, #e5e7eb)',
               color: '#9ca3af', fontFamily: 'inherit',
               transition: 'opacity 0.15s',
             }}
@@ -371,10 +361,6 @@ export default function GameInstructions({ type, onStart, onSkip }) {
   );
 }
 
-/**
- * Hook — returns whether instructions should show for a given type.
- * Returns false immediately if user previously clicked "Don't show again".
- */
 export function useShouldShowInstructions(type) {
   const skipped = getSkipped();
   return !skipped[type];
