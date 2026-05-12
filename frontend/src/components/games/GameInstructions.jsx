@@ -11,13 +11,13 @@ const INSTRUCTIONS = {
     border:'rgba(77,150,255,0.30)',
     goal:  'Match every word on the left to its pair on the right.',
     steps: [
-      { icon: '👆', text: 'Tap a word on the right side to select it (it turns blue).' },
-      { icon: '🎯', text: 'Then tap the matching word on the left to connect them.' },
-      { icon: '↩️', text: 'Tap a matched word to undo and try again — no penalty!' },
-      { icon: '✅', text: 'Match all pairs, then press Check Answers.' },
+      { text: 'Tap a word on the right side to select it (it turns blue).' },
+      { text: 'Then tap the matching word on the left to connect them.' },
+      { text: 'Tap a matched word to undo and try again — no penalty!' },
+      { text: 'Match all pairs, then press Check Answers.' },
     ],
     tip: 'On a tablet or desktop you can drag and drop instead of tapping!',
-    time: '1–3 minutes',
+    time: 'Usually, It takes 1–3 minutes',
     scoring: 'Each correct pair earns points. Partial credit is given.',
   },
   fill_blank: {
@@ -28,13 +28,13 @@ const INSTRUCTIONS = {
     border:'rgba(249,123,107,0.30)',
     goal:  'Choose the correct missing word for each sentence.',
     steps: [
-      { icon: '📖', text: 'Read each sentence — the missing word is shown as ___.' },
-      { icon: '👆', text: 'Tap the correct word from the choices below.' },
-      { icon: '🔄', text: 'Tap the filled word in the sentence to change your answer.' },
-      { icon: '✅', text: 'Fill all blanks, then press Check Answers.' },
+      { text: 'Read each sentence — the missing word is shown as ___.' },
+      { text: 'Tap the correct word from the choices below.' },
+      { text: 'Tap the filled word in the sentence to change your answer.' },
+      { text: 'Fill all blanks, then press Check Answers.' },
     ],
     tip: 'Read the whole sentence before choosing — context clues help a lot!',
-    time: '2–4 minutes',
+    time: 'Usually, It takes 2–4 minutes',
     scoring: 'Each correct word earns points. You can retry as many times as you like.',
   },
   sentence_sort: {
@@ -45,13 +45,13 @@ const INSTRUCTIONS = {
     border:'rgba(107,203,119,0.30)',
     goal:  'Put the sentences in the correct order to make a story or sequence.',
     steps: [
-      { icon: '📝', text: 'Read all the sentences first to understand the topic.' },
-      { icon: '↕️',  text: 'Use the ↑ and ↓ arrow buttons to move each sentence up or down.' },
-      { icon: '✋', text: 'Or drag and drop the sentences into place.' },
-      { icon: '✅', text: 'When happy with the order, press Check My Order.' },
+      { text: 'Read all the sentences first to understand the topic.' },
+      { text: 'Use the ↑ and ↓ arrow buttons to move each sentence up or down.' },
+      { text: 'Or drag and drop the sentences into place.' },
+      { text: 'When happy with the order, press Check My Order.' },
     ],
     tip: 'Look for time words like "first", "then", "finally" — they hint at the order!',
-    time: '2–5 minutes',
+    time: 'Usually, It takes 2–5 minutes',
     scoring: 'Every sentence in the right position earns points.',
   },
   picture_word: {
@@ -62,13 +62,13 @@ const INSTRUCTIONS = {
     border:'rgba(255,217,61,0.40)',
     goal:  'Look at each picture and pick the word that matches it.',
     steps: [
-      { icon: '👀', text: 'Look at the big picture (emoji or image) shown on screen.' },
-      { icon: '👆', text: 'Tap the correct word from the four choices.' },
-      { icon: '⏭️', text: 'The game moves to the next picture automatically after you answer.' },
-      { icon: '✅', text: 'After all pictures, press Check Answers to see your score.' },
+      { text: 'Look at the big picture (emoji or image) shown on screen.' },
+      { text: 'Tap the correct word from the four choices.' },
+      { text: 'The game moves to the next picture automatically after you answer.' },
+      { text: 'After all pictures, press Check Answers to see your score.' },
     ],
     tip: 'Take your time — there is no timer, so look carefully before tapping!',
-    time: '1–3 minutes',
+    time: 'Usually, It takes 1–3 minutes',
     scoring: 'One point per correct picture. Tap the speaker icon to hear the word.',
   },
   picture_choice: {
@@ -79,13 +79,13 @@ const INSTRUCTIONS = {
     border:'rgba(155,89,182,0.30)',
     goal:  'Read each question and tap the correct picture as your answer.',
     steps: [
-      { icon: '📖', text: 'Read the question at the top of the card carefully.' },
-      { icon: '🖼️', text: 'Tap the picture that best answers the question.' },
-      { icon: '◀▶', text: 'Use Prev / Next to go back and change any answer.' },
-      { icon: '✅', text: 'Answer all questions, then press Check Answers.' },
+      { text: 'Read the question at the top of the card carefully.' },
+      { text: 'Tap the picture that best answers the question.' },
+      { text: 'Use Prev / Next to go back and change any answer.' },
+      { text: 'Answer all questions, then press Check Answers.' },
     ],
     tip: 'Not sure? Tap the speaker icon next to each option to hear its label!',
-    time: '2–4 minutes',
+    time: 'Usually, It takes 2–4 minutes',
     scoring: 'Each correct picture earns points. You can revisit questions freely.',
   },
 };
@@ -98,12 +98,12 @@ const FALLBACK = {
   border:'rgba(77,150,255,0.30)',
   goal:  'Complete the activity to earn XP and coins.',
   steps: [
-    { icon: '👀', text: 'Read the instructions on screen carefully.' },
-    { icon: '👆', text: 'Interact with the elements as directed.' },
-    { icon: '✅', text: 'Submit your answers when you are ready.' },
+    { text: 'Read the instructions on screen carefully.' },
+    { text: 'Interact with the elements as directed.' },
+    { text: 'Submit your answers when you are ready.' },
   ],
   tip: 'Take your time — there is no time limit!',
-  time: '1–5 minutes',
+  time: 'Usually, It takes 1–5 minutes',
   scoring: 'Correct answers earn XP and coins.',
 };
 
@@ -122,7 +122,6 @@ function setSkipped(type) {
 
 /**
  * GameInstructions Component
- * Centered horizontally and vertically using Flexbox on the parent container.
  */
 export default function GameInstructions({ type, onStart, onSkip }) {
   const cfg = INSTRUCTIONS[type] || FALLBACK;
@@ -150,8 +149,8 @@ export default function GameInstructions({ type, onStart, onSkip }) {
         inset: 0, 
         zIndex: 9998,
         display: 'flex',          
-        alignItems: 'center',     // Vertical center
-        justifyContent: 'center', // Horizontal center
+        alignItems: 'center',     
+        justifyContent: 'center', 
         padding: '16px',
         background: 'rgba(0,0,0,0.55)',
         backdropFilter: 'blur(3px)',
@@ -164,7 +163,7 @@ export default function GameInstructions({ type, onStart, onSkip }) {
         style={{
           width: '100%', 
           maxWidth: 440,
-          margin: 'auto', // Ensures centering even if container behaves oddly
+          margin: 'auto', 
           background: 'var(--bg-card-grad, #ffffff)',
           border: `2px solid ${cfg.border}`,
           borderRadius: 24,
