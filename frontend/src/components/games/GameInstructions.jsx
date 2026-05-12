@@ -1,380 +1,334 @@
 // ============================================================
-// GameInstructions.jsx — Pre-game "How this works" modal
-// Uses ReactDOM.createPortal to guarantee true viewport centering
-// regardless of any parent stacking context (sidebar, layout wrappers).
+// GamePage — loads activity, shows instructions modal, renders game
 // ============================================================
-import React, { useState, useEffect } from 'react';
-import ReactDOM from 'react-dom';
-import { X, ChevronRight, Lightbulb } from 'lucide-react';
+import React, { useEffect, useState, useRef } from 'react';
+import { useParams, useNavigate, Link } from 'react-router-dom';
+import api from '../utils/api';
+import { useAuth }         from '../contexts/AuthContext';
+import { useSettings }     from '../contexts/SettingsContext';
+import { useAchievements } from '../components/ui/AchievementNotification';
+import { launchConfetti }  from '../utils/confetti';
+import WordMatchGame    from '../components/games/WordMatchGame';
+import FillBlankGame    from '../components/games/FillBlankGame';
+import SentenceSortGame from '../components/games/SentenceSortGame';
+import PictureWordGame  from '../components/games/PictureWordGame';
+import PictureChoiceGame from '../components/games/PictureChoiceGame';
+import GameInstructions, { useShouldShowInstructions } from '../components/ui/GameInstructions';
+import CoinIcon from '../components/ui/CoinIcon';
+import { ArrowLeft, Volume2, RotateCcw, Home, CheckCircle, XCircle, ChevronDown } from 'lucide-react';
 
-const INSTRUCTIONS = {
-  word_match: {
-    emoji: '🔗',
-    title: 'Word Match',
-    color: '#4D96FF',
-    bg:    'rgba(77,150,255,0.10)',
-    border:'rgba(77,150,255,0.30)',
-    goal:  'Match every word on the left to its pair on the right.',
-    steps: [
-      { icon: '👆', text: 'Tap a word on the right side to select it (it turns blue).' },
-      { icon: '🎯', text: 'Then tap the matching word on the left to connect them.' },
-      { icon: '↩️', text: 'Tap a matched word to undo and try again — no penalty!' },
-      { icon: '✅', text: 'Match all pairs, then press Check Answers.' },
-    ],
-    tip: 'On a tablet or desktop you can drag and drop instead of tapping!',
-    time: '1–3 minutes',
-    scoring: 'Each correct pair earns points. Partial credit is given.',
-  },
-  fill_blank: {
-    emoji: '✏️',
-    title: 'Fill in the Blank',
-    color: '#F97B6B',
-    bg:    'rgba(249,123,107,0.10)',
-    border:'rgba(249,123,107,0.30)',
-    goal:  'Choose the correct missing word for each sentence.',
-    steps: [
-      { icon: '📖', text: 'Read each sentence — the missing word is shown as ___.' },
-      { icon: '👆', text: 'Tap the correct word from the choices below.' },
-      { icon: '🔄', text: 'Tap the filled word in the sentence to change your answer.' },
-      { icon: '✅', text: 'Fill all blanks, then press Check Answers.' },
-    ],
-    tip: 'Read the whole sentence before choosing — context clues help a lot!',
-    time: '2–4 minutes',
-    scoring: 'Each correct word earns points. You can retry as many times as you like.',
-  },
-  sentence_sort: {
-    emoji: '🔀',
-    title: 'Sentence Sort',
-    color: '#6BCB77',
-    bg:    'rgba(107,203,119,0.10)',
-    border:'rgba(107,203,119,0.30)',
-    goal:  'Put the sentences in the correct order to make a story or sequence.',
-    steps: [
-      { icon: '📝', text: 'Read all the sentences first to understand the topic.' },
-      { icon: '↕️',  text: 'Use the ↑ and ↓ arrow buttons to move each sentence up or down.' },
-      { icon: '✋', text: 'Or drag and drop the sentences into place.' },
-      { icon: '✅', text: 'When happy with the order, press Check My Order.' },
-    ],
-    tip: 'Look for time words like "first", "then", "finally" — they hint at the order!',
-    time: '2–5 minutes',
-    scoring: 'Every sentence in the right position earns points.',
-  },
-  picture_word: {
-    emoji: '🖼️',
-    title: 'Picture & Word',
-    color: '#FFD93D',
-    bg:    'rgba(255,217,61,0.12)',
-    border:'rgba(255,217,61,0.40)',
-    goal:  'Look at each picture and pick the word that matches it.',
-    steps: [
-      { icon: '👀', text: 'Look at the big picture (emoji or image) shown on screen.' },
-      { icon: '👆', text: 'Tap the correct word from the four choices.' },
-      { icon: '⏭️', text: 'The game moves to the next picture automatically after you answer.' },
-      { icon: '✅', text: 'After all pictures, press Check Answers to see your score.' },
-    ],
-    tip: 'Take your time — there is no timer, so look carefully before tapping!',
-    time: '1–3 minutes',
-    scoring: 'One point per correct picture. Tap the speaker icon to hear the word.',
-  },
-  picture_choice: {
-    emoji: '🧩',
-    title: 'Picture Choice',
-    color: '#9B59B6',
-    bg:    'rgba(155,89,182,0.10)',
-    border:'rgba(155,89,182,0.30)',
-    goal:  'Read each question and tap the correct picture as your answer.',
-    steps: [
-      { icon: '📖', text: 'Read the question at the top of the card carefully.' },
-      { icon: '🖼️', text: 'Tap the picture that best answers the question.' },
-      { icon: '◀▶', text: 'Use Prev / Next to go back and change any answer.' },
-      { icon: '✅', text: 'Answer all questions, then press Check Answers.' },
-    ],
-    tip: 'Not sure? Tap the speaker icon next to each option to hear its label!',
-    time: '2–4 minutes',
-    scoring: 'Each correct picture earns points. You can revisit questions freely.',
-  },
+const GAME_COMPONENTS = {
+  word_match:     WordMatchGame,
+  fill_blank:     FillBlankGame,
+  sentence_sort:  SentenceSortGame,
+  picture_word:   PictureWordGame,
+  picture_choice: PictureChoiceGame,
 };
 
-const FALLBACK = {
-  emoji: '🎮',
-  title: 'Game Instructions',
-  color: '#4D96FF',
-  bg:    'rgba(77,150,255,0.10)',
-  border:'rgba(77,150,255,0.30)',
-  goal:  'Complete the activity to earn XP and coins.',
-  steps: [
-    { icon: '👀', text: 'Read the instructions on screen carefully.' },
-    { icon: '👆', text: 'Interact with the elements as directed.' },
-    { icon: '✅', text: 'Submit your answers when you are ready.' },
-  ],
-  tip: 'Take your time — there is no time limit!',
-  time: '1–5 minutes',
-  scoring: 'Correct answers earn XP and coins.',
+const DIFF_STYLE = {
+  easy:   'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300',
+  medium: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300',
+  hard:   'bg-rose-100 text-rose-600 dark:bg-rose-900/40 dark:text-rose-400',
 };
 
-const LS_KEY = 'readable_skip_instructions';
-
-function getSkipped() {
-  try { return JSON.parse(localStorage.getItem(LS_KEY) || '{}'); } catch { return {}; }
-}
-function setSkipped(type) {
-  try {
-    const s = getSkipped();
-    s[type] = true;
-    localStorage.setItem(LS_KEY, JSON.stringify(s));
-  } catch (_) {}
+function parseContent(activity) {
+  if (!activity) return activity;
+  if (typeof activity.content === 'string') {
+    try { activity.content = JSON.parse(activity.content); } catch (_) {}
+  }
+  if (typeof activity.correct_answer === 'string') {
+    try { activity.correct_answer = JSON.parse(activity.correct_answer); } catch (_) {}
+  }
+  return activity;
 }
 
-export default function GameInstructions({ type, onStart, onSkip }) {
-  const cfg = INSTRUCTIONS[type] || FALLBACK;
-  const [dontShow, setDontShow] = useState(false);
-  const [visible,  setVisible]  = useState(false);
+function AnswerSummary({ details, type }) {
+  const [open, setOpen] = React.useState(false);
+  if (!details || details.length === 0) return null;
+  const wrongCount = details.filter(d => !d.ok).length;
 
-  useEffect(() => {
-    const t = setTimeout(() => setVisible(true), 30);
-    return () => clearTimeout(t);
-  }, []);
-
-  // Lock body scroll while open
-  useEffect(() => {
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => { document.body.style.overflow = prev; };
-  }, []);
-
-  const handleStart = () => {
-    if (dontShow) setSkipped(type);
-    onStart();
-  };
-
-  // Portal renders directly into document.body — this is the key fix.
-  // The sidebar uses transform/isolation which creates its own stacking
-  // context and clips any position:fixed children inside it.
-  // By portalling to body we bypass all parent stacking contexts entirely.
-  return ReactDOM.createPortal(
-    <div
-      style={{
-        position: 'fixed',
-        top: 0, left: 0, right: 0, bottom: 0,
-        zIndex: 99999,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: 16,
-        background: 'rgba(0,0,0,0.60)',
-        backdropFilter: 'blur(4px)',
-        WebkitBackdropFilter: 'blur(4px)',
-        opacity: visible ? 1 : 0,
-        transition: 'opacity 0.22s ease',
-      }}
-      onClick={e => { if (e.target === e.currentTarget) handleSkip(); }}
-    >
-      {/* Card */}
-      <div
-        style={{
-          width: '100%',
-          maxWidth: 440,
-          maxHeight: 'min(90svh, 90vh)',
-          background: 'var(--bg-card-grad)',
-          border: `2px solid ${cfg.border}`,
-          borderRadius: 24,
-          overflow: 'hidden',
-          boxShadow: '0 24px 60px rgba(0,0,0,0.45)',
-          display: 'flex',
-          flexDirection: 'column',
-          transform: visible ? 'translateY(0) scale(1)' : 'translateY(20px) scale(0.96)',
-          transition: 'transform 0.32s cubic-bezier(0.175,0.885,0.32,1.275), opacity 0.22s ease',
-          opacity: visible ? 1 : 0,
-        }}
-      >
-        {/* Header — never scrolls */}
-        <div style={{
-          background: cfg.bg,
-          borderBottom: `1px solid ${cfg.border}`,
-          padding: '18px 20px 14px',
-          flexShrink: 0,
-        }}>
-          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
-              <div style={{
-                width: 48, height: 48, borderRadius: 14, flexShrink: 0,
-                background: cfg.color,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 24,
-                boxShadow: `0 4px 12px ${cfg.color}60`,
-              }}>
-                {cfg.emoji}
-              </div>
-              <div style={{ minWidth: 0 }}>
-                <p style={{
-                  fontSize: 11, fontWeight: 700, letterSpacing: '0.08em',
-                  textTransform: 'uppercase', color: cfg.color, margin: 0, opacity: 0.8,
-                }}>
-                  How this works
-                </p>
-                <h2 style={{
-                  fontFamily: '"Fredoka One", cursive',
-                  fontSize: 22, color: 'var(--text-primary)', margin: 0, lineHeight: 1.15,
-                }}>
-                  {cfg.title}
-                </h2>
-              </div>
-            </div>
-            <button
-              onClick={handleSkip}
-              title="Skip"
-              style={{
-                width: 30, height: 30, borderRadius: 8, border: 'none',
-                background: 'rgba(156,163,175,0.18)', cursor: 'pointer', flexShrink: 0,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                color: '#9ca3af',
-              }}
-            >
-              <X size={15} />
-            </button>
-          </div>
-          <p style={{
-            fontSize: 13, fontWeight: 600, color: 'var(--text-primary)',
-            margin: '10px 0 0', lineHeight: 1.5, opacity: 0.85,
-          }}>
-            🎯 <strong>Goal:</strong> {cfg.goal}
-          </p>
-        </div>
-
-        {/* Scrollable body */}
-        <div style={{
-          padding: '16px 20px',
-          overflowY: 'auto',
-          flex: 1,
-          WebkitOverflowScrolling: 'touch',
-        }}>
-          <p style={{
-            fontSize: 11, fontWeight: 700, letterSpacing: '0.07em',
-            textTransform: 'uppercase', color: '#9ca3af', margin: '0 0 10px',
-          }}>
-            Steps
-          </p>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {cfg.steps.map((step, i) => (
-              <div key={i} style={{
-                display: 'flex', alignItems: 'flex-start', gap: 12,
-                padding: '10px 12px', borderRadius: 12,
-                background: 'var(--bg-primary)',
-                border: '1px solid var(--border-color)',
-              }}>
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, flexShrink: 0 }}>
-                  <div style={{
-                    width: 22, height: 22, borderRadius: '50%',
-                    background: cfg.color, color: '#fff',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: 11, fontWeight: 800,
-                  }}>
-                    {i + 1}
-                  </div>
-                  <span style={{ fontSize: 14, lineHeight: 1 }}>{step.icon}</span>
-                </div>
-                <p style={{
-                  fontSize: 13, color: 'var(--text-primary)',
-                  margin: 0, lineHeight: 1.55, fontWeight: 500,
-                }}>
-                  {step.text}
-                </p>
-              </div>
-            ))}
-          </div>
-
-          {/* Tip */}
-          <div style={{
-            display: 'flex', alignItems: 'flex-start', gap: 10,
-            marginTop: 12, padding: '10px 12px', borderRadius: 12,
-            background: cfg.bg, border: `1.5px solid ${cfg.border}`,
-          }}>
-            <Lightbulb size={15} style={{ color: cfg.color, flexShrink: 0, marginTop: 1 }} />
-            <p style={{ fontSize: 12, color: 'var(--text-primary)', margin: 0, lineHeight: 1.5, opacity: 0.85 }}>
-              <strong>Tip:</strong> {cfg.tip}
-            </p>
-          </div>
-
-          {/* Meta pills */}
-          <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
-            {[`⏱ ${cfg.time}`, `💡 ${cfg.scoring}`].map(label => (
-              <span key={label} style={{
-                fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 999,
-                background: 'var(--bg-primary)', border: '1px solid var(--border-color)',
-                color: '#9ca3af',
-              }}>
-                {label}
-              </span>
-            ))}
-          </div>
-
-          {/* Don't show again */}
-          <label style={{
-            display: 'flex', alignItems: 'center', gap: 8,
-            marginTop: 14, cursor: 'pointer', userSelect: 'none',
-          }}>
-            <input
-              type="checkbox"
-              checked={dontShow}
-              onChange={e => setDontShow(e.target.checked)}
-              style={{ width: 15, height: 15, accentColor: cfg.color, cursor: 'pointer' }}
-            />
-            <span style={{ fontSize: 12, color: '#9ca3af', fontWeight: 500 }}>
-              Don't show this again for {cfg.title}
-            </span>
-          </label>
-        </div>
-
-        {/* Footer — never scrolls */}
-        <div style={{
-          padding: '12px 20px 16px',
-          borderTop: '1px solid var(--border-color)',
-          display: 'flex', gap: 10, flexShrink: 0,
-          background: 'var(--bg-card-grad)',
-        }}>
-          <button
-            onClick={handleSkip}
-            style={{
-              flex: '0 0 auto', padding: '10px 18px', borderRadius: 14,
-              fontSize: 13, fontWeight: 700, cursor: 'pointer',
-              background: 'var(--bg-primary)',
-              border: '1.5px solid var(--border-color)',
-              color: '#9ca3af', fontFamily: 'inherit',
-            }}
-          >
-            Skip
-          </button>
-          <button
-            onClick={handleStart}
-            style={{
-              flex: 1, padding: '11px 16px', borderRadius: 14,
-              fontSize: 14, fontWeight: 800, cursor: 'pointer',
-              background: cfg.color,
-              border: `2px solid ${cfg.color}`,
-              color: '#fff', fontFamily: '"Fredoka One", cursive',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-              boxShadow: `0 4px 14px ${cfg.color}55`,
-            }}
-            onMouseEnter={e => { e.currentTarget.style.filter = 'brightness(1.09)'; }}
-            onMouseLeave={e => { e.currentTarget.style.filter = 'brightness(1)'; }}
-            onMouseDown={e  => { e.currentTarget.style.transform = 'scale(0.97)'; }}
-            onMouseUp={e    => { e.currentTarget.style.transform = 'scale(1)'; }}
-          >
-            Let's Play! <ChevronRight size={17} strokeWidth={2.5} />
-          </button>
-        </div>
+  const ItemRow = ({ d, i }) => (
+    <div key={i}
+      className={`flex items-start gap-2 p-2.5 rounded-xl text-xs
+        ${d.ok
+          ? 'bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800'
+          : 'bg-rose-50   dark:bg-rose-900/20   border border-rose-200   dark:border-rose-800'}`}>
+      {d.ok
+        ? <CheckCircle size={13} className="text-emerald-500 flex-shrink-0 mt-0.5"/>
+        : <XCircle    size={13} className="text-rose-500   flex-shrink-0 mt-0.5"/>}
+      <div className="min-w-0">
+        <span className="font-bold text-gray-600 dark:text-gray-400 mr-1">{d.label}:</span>
+        {d.ok ? (
+          <span className="font-semibold text-emerald-700 dark:text-emerald-300 break-words">{d.correct}</span>
+        ) : (
+          <>
+            <span className="line-through text-rose-400 break-words mr-1">{d.given || '—'}</span>
+            <span className="font-semibold text-emerald-700 dark:text-emerald-300 break-words">→ {d.correct}</span>
+          </>
+        )}
       </div>
-    </div>,
-    document.body   // ← portal target: bypasses all parent stacking contexts
+    </div>
+  );
+
+  return (
+    <div className="w-full mt-4 text-left border rounded-2xl overflow-hidden"
+      style={{ borderColor:'var(--border-color)' }}>
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center justify-between px-4 py-3 text-left
+                   hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
+        style={{ background:'var(--bg-primary)' }}>
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-bold uppercase tracking-wide text-gray-500">Answer Breakdown</span>
+          {wrongCount > 0 && (
+            <span className="text-[10px] bg-rose-100 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400
+                             px-2 py-0.5 rounded-full font-bold">
+              {wrongCount} wrong
+            </span>
+          )}
+          {wrongCount === 0 && (
+            <span className="text-[10px] bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400
+                             px-2 py-0.5 rounded-full font-bold">
+              All correct!
+            </span>
+          )}
+        </div>
+        <ChevronDown
+          size={16}
+          className={`text-gray-400 transition-transform duration-200 ${open ? 'rotate-180' : ''}`}/>
+      </button>
+
+      {open && (
+        <div className="px-4 pb-4 pt-2" style={{ background:'var(--bg-card-grad)' }}>
+          {type === 'sentence_sort' ? (
+            <div className="space-y-1.5">
+              {details.map((d, i) => <ItemRow key={i} d={d} i={i}/>)}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+              {details.map((d, i) => <ItemRow key={i} d={d} i={i}/>)}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
   );
 }
 
-/**
- * Hook — returns whether instructions should show for a given type.
- * Returns false immediately if user previously clicked "Don't show again".
- */
-export function useShouldShowInstructions(type) {
-  const skipped = getSkipped();
-  return !skipped[type];
+export default function GamePage() {
+  const { id }          = useParams();
+  const navigate        = useNavigate();
+  const { token, refreshUser } = useAuth();
+  const { speak, settings } = useSettings();
+  const { notify: notifyAchievement } = useAchievements();
+
+  const [activity,        setActivity]        = useState(null);
+  const [userProg,        setUserProg]        = useState(null);
+  const [loading,         setLoading]         = useState(true);
+  const [submitting,      setSubmitting]      = useState(false);
+  const [result,          setResult]          = useState(null);
+  const [gameKey,         setGameKey]         = useState(0);
+  // Controls whether the instructions modal is visible
+  const [showInstructions, setShowInstructions] = useState(false);
+  const resultRef = useRef(null);
+
+  useEffect(() => {
+    if (token) {
+      api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+    }
+  }, [token]);
+
+  useEffect(() => {
+    setLoading(true);
+    setResult(null);
+    setShowInstructions(false);
+
+    api.get(`/activities/${id}`)
+      .then(res => {
+        const act = parseContent(res.data.activity);
+        setActivity(act);
+        setUserProg(res.data.userProgress);
+
+        // Show instructions only if user hasn't dismissed them for this type
+        if (act?.type && useShouldShowInstructions(act.type)) {
+          setShowInstructions(true);
+        }
+
+        if (settings.tts_enabled)
+          setTimeout(() => speak(act.content?.instruction || act.title), 600);
+      })
+      .catch(() => navigate('/activities'))
+      .finally(() => setLoading(false));
+  }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleSubmit = async (answer) => {
+    if (submitting) return;
+    setSubmitting(true);
+    try {
+      if (token) {
+        api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      }
+      const res  = await api.post(`/activities/${id}/submit`, { answer });
+      const data = res.data;
+      setResult(data);
+
+      if (data.isCorrect) launchConfetti();
+      speak(data.feedback);
+
+      if (data.newAchievements?.length > 0) {
+        notifyAchievement(data.newAchievements);
+      }
+
+      await refreshUser();
+      setTimeout(() => resultRef.current?.scrollIntoView({ behavior:'smooth', block:'nearest' }), 120);
+    } catch (err) {
+      console.error('[GamePage/Submit]', err);
+      if (err.status === 401) navigate('/login');
+    } finally { setSubmitting(false); }
+  };
+
+  const handleReset = () => { setResult(null); setGameKey(k => k + 1); };
+
+  if (loading) return (
+    <div className="flex flex-col items-center justify-center h-48 gap-3">
+      <div className="w-8 h-8 border-4 border-sky border-t-transparent rounded-full animate-spin"/>
+      <p className="font-display text-base text-sky">Loading…</p>
+    </div>
+  );
+
+  const GameComponent = GAME_COMPONENTS[activity?.type];
+  if (!GameComponent && activity) {
+    return (
+      <div className="max-w-2xl mx-auto text-center py-20">
+        <p className="text-4xl mb-3">🎮</p>
+        <h2 className="font-display text-xl text-gray-700 dark:text-gray-200 mb-2">
+          Game type not supported
+        </h2>
+        <p className="text-sm text-gray-400 mb-5">
+          Activity type <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded">{activity.type}</code> is not recognised.
+        </p>
+        <Link to="/activities" className="btn-game bg-sky text-white inline-flex items-center gap-2">
+          <Home size={16}/> Back to Activities
+        </Link>
+      </div>
+    );
+  }
+
+  return (
+    <div className="max-w-2xl mx-auto animate-fade-in px-1">
+
+      {/* Instructions modal — portalled to body, centered over everything */}
+      {showInstructions && activity && (
+        <GameInstructions
+          type={activity.type}
+          onStart={() => setShowInstructions(false)}
+          onSkip={() => setShowInstructions(false)}
+        />
+      )}
+
+      {/* Header */}
+      <div className="flex items-start gap-2 mb-4">
+        <Link to="/activities"
+          className="p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex-shrink-0 mt-0.5">
+          <ArrowLeft size={20} className="text-gray-600 dark:text-gray-400"/>
+        </Link>
+        <div className="flex-1 min-w-0">
+          <h1 className="font-display text-2xl text-gray-800 dark:text-gray-100 leading-tight">
+            {activity?.title}
+          </h1>
+          <p className="text-sm text-gray-500 mt-0.5 line-clamp-2">{activity?.description}</p>
+          <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+            <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold capitalize ${DIFF_STYLE[activity?.difficulty]}`}>
+              {activity?.difficulty}
+            </span>
+            <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-sky/15 text-sky dark:bg-sky/25">
+              +{activity?.xp_reward} XP
+            </span>
+            {userProg && (
+              <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${
+                userProg.score >= 80 ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
+                : 'bg-gray-100 text-gray-500 dark:bg-gray-800'}`}>
+                Best: {userProg.score}%
+              </span>
+            )}
+            <button onClick={() => speak(activity?.content?.instruction || activity?.title)}
+              className="p-1.5 rounded-lg bg-sky/10 text-sky hover:bg-sky/20 transition-colors ml-auto"
+              title="Read aloud">
+              <Volume2 size={15}/>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Game */}
+      {GameComponent && !result && (
+        <div className="rounded-3xl p-6 shadow-card border border-gray-100 dark:border-gray-700 animate-pop"
+          style={{ background:'var(--bg-card-grad)' }}>
+          <GameComponent
+            key={gameKey}
+            activity={activity}
+            onSubmit={handleSubmit}
+            submitting={submitting}
+          />
+        </div>
+      )}
+
+      {/* Result */}
+      {result && (
+        <div ref={resultRef}
+          className="rounded-3xl p-4 md:p-6 shadow-xl border-2 animate-pop"
+          style={{ background:'var(--bg-card-grad)',
+            borderColor: result.isCorrect ? '#6BCB77' : result.score >= 50 ? '#FFD93D' : '#FF6B6B' }}>
+
+          <div className="text-center mb-4">
+            <div className="font-display text-4xl md:text-5xl mb-1" style={{
+              color: result.isCorrect ? '#6BCB77' : result.score >= 50 ? '#F0C000' : '#FF6B6B'
+            }}>{result.score}%</div>
+            <p className="text-base font-bold text-gray-700 dark:text-gray-200 leading-snug">
+              {result.feedback}
+            </p>
+          </div>
+
+          <div className="flex flex-wrap justify-center gap-2 mb-3">
+            {(result.xpAwarded ?? 0) > 0 && (
+              <span className="inline-flex items-center gap-2 bg-sky/15 text-sky px-4 py-1.5 rounded-full font-bold text-sm">
+                ✨ +{result.xpAwarded} XP earned!
+              </span>
+            )}
+            {(result.coinsAwarded ?? 0) > 0 && (
+              <span className="inline-flex items-center gap-2 bg-amber-400/15 text-amber-700 dark:text-amber-400 px-4 py-1.5 rounded-full font-bold text-sm">
+                <CoinIcon size={14}/> +{result.coinsAwarded} coins!
+              </span>
+            )}
+          </div>
+
+          {result.newAchievements?.length > 0 && (
+            <div className="mb-3 space-y-1.5">
+              {result.newAchievements.map(ach => (
+                <div key={ach.key}
+                  className="flex items-center justify-center gap-2 bg-amber-50 dark:bg-amber-900/20
+                             border border-amber-200 dark:border-amber-800 px-4 py-2 rounded-2xl">
+                  <span className="text-lg">{ach.icon}</span>
+                  <span className="font-bold text-sm text-amber-700 dark:text-amber-300">{ach.title} unlocked!</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <AnswerSummary details={result.details} type={activity?.type}/>
+
+          <div className="flex gap-3 justify-center flex-wrap mt-5">
+            <button onClick={handleReset}
+              className="btn-game bg-sky text-white flex items-center gap-2 text-sm">
+              <RotateCcw size={15}/> Try Again
+            </button>
+            <Link to="/activities"
+              className="btn-game bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 flex items-center gap-2 text-sm">
+              <Home size={15}/> More Games
+            </Link>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
