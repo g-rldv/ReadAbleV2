@@ -1036,7 +1036,7 @@ export default function LandingPage() {
                   })}
                 </div>
 
-              <p className="text-center text-sm font-semibold text-gray-500 mb-3">What animal is this? Tap the right answer!</p>
+              <p className="text-center text-sm font-semibold text-gray-500 mb-3">Can you guess the picture? Tap the right answer!</p>
               <div className="flex justify-center mb-6">
                 <img
                   src={current.image}
