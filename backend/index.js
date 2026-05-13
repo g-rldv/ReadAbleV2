@@ -165,6 +165,123 @@ async function setupDatabase() {
       );
     `);
 
+    await client.query(`
+      DO $$ BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name='users' AND column_name='role'
+        ) THEN
+          ALTER TABLE users ADD COLUMN role VARCHAR(20) NOT NULL DEFAULT 'parent';
+        END IF;
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name='users' AND column_name='first_name'
+        ) THEN
+          ALTER TABLE users ADD COLUMN first_name VARCHAR(100) DEFAULT '';
+        END IF;
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name='users' AND column_name='last_name'
+        ) THEN
+          ALTER TABLE users ADD COLUMN last_name VARCHAR(100) DEFAULT '';
+        END IF;
+      END $$;
+    `);
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS children (
+        id            SERIAL PRIMARY KEY,
+        parent_id     INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        teacher_id    INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        first_name    VARCHAR(100),
+        last_name     VARCHAR(100),
+        date_of_birth DATE,
+        age           INTEGER,
+        gender        VARCHAR(50),
+        avatar        VARCHAR(255),
+        asd_notes     TEXT,
+        created_at    TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+      );
+
+      CREATE TABLE IF NOT EXISTS assessments (
+        id           SERIAL PRIMARY KEY,
+        teacher_id   INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        title        VARCHAR(255) NOT NULL,
+        difficulty   VARCHAR(50),
+        story_theme  VARCHAR(255),
+        description  TEXT,
+        is_published BOOLEAN DEFAULT FALSE,
+        created_at   TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        updated_at   TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+      );
+
+      CREATE TABLE IF NOT EXISTS assessment_pages (
+        id                SERIAL PRIMARY KEY,
+        assessment_id     INTEGER REFERENCES assessments(id) ON DELETE CASCADE,
+        page_number       INTEGER NOT NULL,
+        image_url         VARCHAR(255),
+        image_description TEXT,
+        audio_hint        TEXT,
+        page_text         TEXT,
+        created_at        TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+      );
+
+      CREATE TABLE IF NOT EXISTS assessment_questions (
+        id             SERIAL PRIMARY KEY,
+        assessment_id  INTEGER REFERENCES assessments(id) ON DELETE CASCADE,
+        order_index    INTEGER DEFAULT 0,
+        question_text  TEXT NOT NULL,
+        question_type  VARCHAR(50) NOT NULL,
+        image_url      VARCHAR(255),
+        correct_answer JSONB,
+        options        JSONB DEFAULT '[]',
+        points         INTEGER DEFAULT 0,
+        created_at     TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+      );
+
+      CREATE TABLE IF NOT EXISTS assessment_sessions (
+        id                     SERIAL PRIMARY KEY,
+        assessment_id          INTEGER REFERENCES assessments(id) ON DELETE SET NULL,
+        child_id               INTEGER REFERENCES children(id) ON DELETE SET NULL,
+        teacher_id             INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        initiated_by_parent_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        status                 VARCHAR(50) DEFAULT 'in_progress',
+        started_at             TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        completed_at           TIMESTAMP WITH TIME ZONE,
+        total_score            INTEGER DEFAULT 0,
+        max_score              INTEGER DEFAULT 0,
+        percentage             DOUBLE PRECISION DEFAULT 0,
+        time_spent_seconds     INTEGER DEFAULT 0
+      );
+
+      CREATE TABLE IF NOT EXISTS session_answers (
+        id                 SERIAL PRIMARY KEY,
+        session_id         INTEGER REFERENCES assessment_sessions(id) ON DELETE CASCADE,
+        question_id        INTEGER REFERENCES assessment_questions(id) ON DELETE SET NULL,
+        child_id           INTEGER REFERENCES children(id) ON DELETE SET NULL,
+        given_answer       JSONB,
+        is_correct         BOOLEAN DEFAULT FALSE,
+        points_earned      INTEGER DEFAULT 0,
+        time_spent_seconds INTEGER DEFAULT 0,
+        answered_at        TIMESTAMP WITH TIME ZONE
+      );
+
+      CREATE TABLE IF NOT EXISTS reports (
+        id                 SERIAL PRIMARY KEY,
+        session_id         INTEGER REFERENCES assessment_sessions(id) ON DELETE CASCADE,
+        child_id           INTEGER REFERENCES children(id) ON DELETE SET NULL,
+        teacher_id         INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        parent_id          INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        title              VARCHAR(255) NOT NULL,
+        summary            TEXT,
+        recommendations    TEXT,
+        detailed_breakdown JSONB DEFAULT '{}',
+        sent_at            TIMESTAMP WITH TIME ZONE,
+        is_read            BOOLEAN DEFAULT FALSE,
+        read_at            TIMESTAMP WITH TIME ZONE
+      );
+    `);
+
     console.log('[DB] ✅ Tables ready');
 
     // ── Achievements ─────────────────────────────────────────

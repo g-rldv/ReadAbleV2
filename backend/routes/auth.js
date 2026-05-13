@@ -58,18 +58,19 @@ router.post('/register', async (req, res) => {
     if (!otpResult.rows[0]) {
       return res.status(400).json({ error: 'Invalid or expired verification code. Please request a new one.' });
     }
+    const otpTokenId = otpResult.rows[0].id;
 
     const existing = await pool.query(
       'SELECT id FROM users WHERE email=$1 OR username=$2',
-      [email.toLowerCase(), username]
+      [email.toLowerCase().trim(), username.trim()]
     );
     if (existing.rows.length > 0) {
       return res.status(409).json({ error: 'Username or email already taken' });
     }
 
     await pool.query(
-      'UPDATE otp_tokens SET used=TRUE WHERE email=$1 AND type=$2',
-      [email.toLowerCase().trim(), 'register']
+      'UPDATE otp_tokens SET used=TRUE WHERE id=$1',
+      [otpTokenId]
     );
 
     const password_hash = await bcrypt.hash(password, 12);
@@ -77,7 +78,7 @@ router.post('/register', async (req, res) => {
       `INSERT INTO users (username, email, password_hash, role, first_name, last_name)
        VALUES ($1, $2, $3, $4, $5, $6)
        RETURNING id, username, email, role, first_name, last_name, created_at, last_login`,
-      [username, email.toLowerCase(), password_hash, role, first_name.trim(), last_name.trim()]
+      [username.trim(), email.toLowerCase(), password_hash, role, first_name.trim(), last_name.trim()]
     );
 
     const user = result.rows[0];
@@ -158,22 +159,18 @@ router.post('/send-otp', async (req, res) => {
   const { email, type } = req.body;
   if (!email) return res.status(400).json({ error: 'Email required' });
 
+  const otpType = type === 'register' ? 'register' : 'reset';
   res.json({ message: 'If that email is eligible, a code was sent.' });
 
   try {
     const normalizedEmail = email.toLowerCase().trim();
-    if (type === 'register') {
-      const existing = await pool.query(
-        'SELECT id FROM users WHERE email=$1',
-        [normalizedEmail]
-      );
-      if (existing.rows[0]) return;
-    } else {
-      const existing = await pool.query(
-        'SELECT id FROM users WHERE email=$1',
-        [normalizedEmail]
-      );
-      if (!existing.rows[0]) return;
+    const existing = await pool.query('SELECT id FROM users WHERE email=$1', [normalizedEmail]);
+
+    if (otpType === 'register' && existing.rows[0]) {
+      return;
+    }
+    if (otpType === 'reset' && !existing.rows[0]) {
+      return;
     }
 
     const otp = generateOTP();
@@ -182,11 +179,14 @@ router.post('/send-otp', async (req, res) => {
       `INSERT INTO otp_tokens (email, otp, type, expires_at)
        VALUES ($1, $2, $3, $4)
        ON CONFLICT (email, type) DO UPDATE
-         SET otp=$2, expires_at=$4, used=FALSE, created_at=NOW()`,
-      [normalizedEmail, otp, type || 'reset', expiresAt]
+         SET otp = EXCLUDED.otp,
+             expires_at = EXCLUDED.expires_at,
+             used = FALSE,
+             created_at = NOW()`,
+      [normalizedEmail, otp, otpType, expiresAt]
     );
 
-    await sendOTPEmail(normalizedEmail, otp, type || 'reset');
+    await sendOTPEmail(normalizedEmail, otp, otpType);
   } catch (err) {
     console.error('[Auth/SendOTP]', err.message);
   }
@@ -200,23 +200,25 @@ router.post('/reset-password', async (req, res) => {
     if (new_password.length < 6)
       return res.status(400).json({ error: 'Password must be at least 6 characters.' });
 
+    const normalizedEmail = email.toLowerCase().trim();
     const result = await pool.query(
       `SELECT id FROM otp_tokens
        WHERE email=$1 AND otp=$2 AND type='reset'
          AND used=FALSE AND expires_at > NOW()`,
-      [email.toLowerCase().trim(), otp_code]
+      [normalizedEmail, otp_code]
     );
     if (!result.rows[0])
       return res.status(400).json({ error: 'Invalid or expired code. Please request a new one.' });
 
+    const otpTokenId = result.rows[0].id;
     const password_hash = await bcrypt.hash(new_password, 12);
     await pool.query(
       'UPDATE users SET password_hash=$1 WHERE email=$2',
-      [password_hash, email.toLowerCase().trim()]
+      [password_hash, normalizedEmail]
     );
     await pool.query(
-      'UPDATE otp_tokens SET used=TRUE WHERE email=$1 AND type=$2',
-      [email.toLowerCase().trim(), 'reset']
+      'UPDATE otp_tokens SET used=TRUE WHERE id=$1',
+      [otpTokenId]
     );
 
     res.json({ message: 'Password reset successfully.' });
