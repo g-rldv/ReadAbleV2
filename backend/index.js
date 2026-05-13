@@ -862,14 +862,13 @@ app.get('/health', (_, res) =>
   res.json({ status: 'ok', service: 'ReadAble API', timestamp: new Date().toISOString() })
 );
 
-const { settingsRouter } = require('./routes/settings');
 app.use('/api/auth',        require('./routes/auth'));
 app.use('/api/teacher',     require('./routes/teacher'));
 app.use('/api/parent',      require('./routes/parent'));
 app.use('/api/assessments', require('./routes/assessments'));
 app.use('/api/sessions',    require('./routes/sessions'));
 app.use('/api/reports',     require('./routes/reports'));
-app.use('/api/settings',    settingsRouter);
+app.use('/api/settings',    require('./routes/settings'));
 
 app.use((err, req, res, next) => {
   console.error('[Error]', err.stack);
