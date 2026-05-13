@@ -9,23 +9,32 @@ const { requireAuth } = require('../middleware/auth');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'readable-dev-secret-change-in-production';
 const JWT_EXPIRES = '7d';
+const ALLOWED_ROLES = ['teacher', 'parent'];
 
 function signToken(user) {
   return jwt.sign(
-    { id: user.id, username: user.username, email: user.email, level: user.level },
+    {
+      id: user.id,
+      username: user.username,
+      email: user.email,
+      role: user.role,
+      first_name: user.first_name,
+      last_name: user.last_name,
+    },
     JWT_SECRET,
     { expiresIn: JWT_EXPIRES }
   );
 }
 
-// ── POST /api/auth/register ───────────────────────────────────
-// Requires a valid OTP that was sent to the email via /send-otp
 router.post('/register', async (req, res) => {
   try {
-    const { username, email, password, otp_code } = req.body;
+    const { username, email, password, otp_code, role, first_name, last_name } = req.body;
 
-    if (!username || !email || !password) {
-      return res.status(400).json({ error: 'Username, email and password are required' });
+    if (!username || !email || !password || !role || !first_name || !last_name) {
+      return res.status(400).json({ error: 'All fields are required' });
+    }
+    if (!ALLOWED_ROLES.includes(role)) {
+      return res.status(400).json({ error: 'Role must be teacher or parent' });
     }
     if (!otp_code) {
       return res.status(400).json({ error: 'Email verification code is required' });
@@ -36,8 +45,10 @@ router.post('/register', async (req, res) => {
     if (username.length < 3 || username.length > 30) {
       return res.status(400).json({ error: 'Username must be 3–30 characters' });
     }
+    if (first_name.length < 1 || last_name.length < 1) {
+      return res.status(400).json({ error: 'First and last name are required' });
+    }
 
-    // 1. Verify OTP
     const otpResult = await pool.query(
       `SELECT id FROM otp_tokens
        WHERE email=$1 AND otp=$2 AND type='register'
@@ -48,7 +59,6 @@ router.post('/register', async (req, res) => {
       return res.status(400).json({ error: 'Invalid or expired verification code. Please request a new one.' });
     }
 
-    // 2. Check for existing user
     const existing = await pool.query(
       'SELECT id FROM users WHERE email=$1 OR username=$2',
       [email.toLowerCase(), username]
@@ -57,23 +67,20 @@ router.post('/register', async (req, res) => {
       return res.status(409).json({ error: 'Username or email already taken' });
     }
 
-    // 3. Mark OTP as used
     await pool.query(
       'UPDATE otp_tokens SET used=TRUE WHERE email=$1 AND type=$2',
       [email.toLowerCase().trim(), 'register']
     );
 
-    // 4. Create user
     const password_hash = await bcrypt.hash(password, 12);
     const result = await pool.query(
-      `INSERT INTO users (username, email, password_hash)
-       VALUES ($1, $2, $3)
-       RETURNING id, username, email, level, xp, streak, achievements, avatar,
-                 COALESCE(coins,0) as coins, wardrobe, equipped`,
-      [username, email.toLowerCase(), password_hash]
+      `INSERT INTO users (username, email, password_hash, role, first_name, last_name)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       RETURNING id, username, email, role, first_name, last_name, created_at, last_login`,
+      [username, email.toLowerCase(), password_hash, role, first_name.trim(), last_name.trim()]
     );
-    const user = result.rows[0];
 
+    const user = result.rows[0];
     await pool.query(
       'INSERT INTO settings (user_id) VALUES ($1) ON CONFLICT (user_id) DO NOTHING',
       [user.id]
@@ -87,7 +94,6 @@ router.post('/register', async (req, res) => {
   }
 });
 
-// ── POST /api/auth/login ──────────────────────────────────────
 router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -96,7 +102,7 @@ router.post('/login', async (req, res) => {
     }
 
     const result = await pool.query(
-      'SELECT * FROM users WHERE email=$1',
+      'SELECT id, username, email, password_hash, role, first_name, last_name FROM users WHERE email=$1',
       [email.toLowerCase()]
     );
     const user = result.rows[0];
@@ -107,11 +113,8 @@ router.post('/login', async (req, res) => {
 
     await pool.query('UPDATE users SET last_login=NOW() WHERE id=$1', [user.id]);
 
-    const token = signToken(user);
     const { password_hash, ...safeUser } = user;
-    safeUser.coins    = safeUser.coins    ?? 0;
-    safeUser.wardrobe = safeUser.wardrobe ?? [];
-    safeUser.equipped = safeUser.equipped ?? {};
+    const token = signToken(safeUser);
     res.json({ token, user: safeUser });
   } catch (err) {
     console.error('[Auth/Login]', err);
@@ -119,15 +122,10 @@ router.post('/login', async (req, res) => {
   }
 });
 
-// ── GET /api/auth/me ──────────────────────────────────────────
 router.get('/me', requireAuth, async (req, res) => {
   try {
     const result = await pool.query(
-      `SELECT id, username, email, level, xp, streak, achievements, avatar,
-              COALESCE(coins,0) as coins,
-              COALESCE(wardrobe, '[]'::jsonb) as wardrobe,
-              COALESCE(equipped, '{}'::jsonb) as equipped,
-              created_at, last_login
+      `SELECT id, username, email, role, first_name, last_name, created_at, last_login
        FROM users WHERE id=$1`,
       [req.user.id]
     );
@@ -139,52 +137,47 @@ router.get('/me', requireAuth, async (req, res) => {
   }
 });
 
-// ── POST /api/auth/refresh ────────────────────────────────────
 router.post('/refresh', requireAuth, async (req, res) => {
   try {
     const result = await pool.query(
-      'SELECT id, username, email, level, xp FROM users WHERE id=$1',
+      'SELECT id, username, email, role, first_name, last_name FROM users WHERE id=$1',
       [req.user.id]
     );
     const user = result.rows[0];
     if (!user) return res.status(404).json({ error: 'User not found' });
     res.json({ token: signToken(user) });
   } catch (err) {
+    console.error('[Auth/Refresh]', err);
     res.status(500).json({ error: 'Token refresh failed' });
   }
 });
 
 const { generateOTP, sendOTPEmail } = require('../utils/email');
 
-// ── POST /api/auth/send-otp ───────────────────────────────────
-// type: 'reset' | 'register'
 router.post('/send-otp', async (req, res) => {
   const { email, type } = req.body;
   if (!email) return res.status(400).json({ error: 'Email required' });
 
-  // Always respond 200 — prevents email enumeration
   res.json({ message: 'If that email is eligible, a code was sent.' });
 
   try {
     const normalizedEmail = email.toLowerCase().trim();
-
     if (type === 'register') {
-      // Only send if email is NOT already registered
       const existing = await pool.query(
-        'SELECT id FROM users WHERE email=$1', [normalizedEmail]
+        'SELECT id FROM users WHERE email=$1',
+        [normalizedEmail]
       );
-      if (existing.rows[0]) return; // silently skip — already taken
+      if (existing.rows[0]) return;
     } else {
-      // For reset, only send if account exists
       const existing = await pool.query(
-        'SELECT id FROM users WHERE email=$1', [normalizedEmail]
+        'SELECT id FROM users WHERE email=$1',
+        [normalizedEmail]
       );
       if (!existing.rows[0]) return;
     }
 
-    const otp       = generateOTP();
-    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 min
-
+    const otp = generateOTP();
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
     await pool.query(
       `INSERT INTO otp_tokens (email, otp, type, expires_at)
        VALUES ($1, $2, $3, $4)
@@ -199,7 +192,6 @@ router.post('/send-otp', async (req, res) => {
   }
 });
 
-// ── POST /api/auth/reset-password ────────────────────────────
 router.post('/reset-password', async (req, res) => {
   try {
     const { email, otp_code, new_password } = req.body;

@@ -745,12 +745,14 @@ app.get('/health', (_, res) =>
   res.json({ status: 'ok', service: 'ReadAble API', timestamp: new Date().toISOString() })
 );
 
-const { settingsRouter, usersRouter } = require('./routes/settings');
-app.use('/api/auth',       require('./routes/auth'));
-app.use('/api/activities', require('./routes/activities'));
-app.use('/api/progress',   require('./routes/progress'));
-app.use('/api/settings',   settingsRouter);
-app.use('/api/users',      usersRouter);
+const { settingsRouter } = require('./routes/settings');
+app.use('/api/auth',        require('./routes/auth'));
+app.use('/api/teacher',     require('./routes/teacher'));
+app.use('/api/parent',      require('./routes/parent'));
+app.use('/api/assessments', require('./routes/assessments'));
+app.use('/api/sessions',    require('./routes/sessions'));
+app.use('/api/reports',     require('./routes/reports'));
+app.use('/api/settings',    settingsRouter);
 
 app.use((err, req, res, next) => {
   console.error('[Error]', err.stack);
@@ -758,14 +760,19 @@ app.use((err, req, res, next) => {
 });
 app.use((req, res) => res.status(404).json({ error: 'Route not found' }));
 
-setupDatabase().then(() => {
-  app.listen(PORT, () => {
-    console.log(`🚀 ReadAble API on port ${PORT}`);
-    console.log(`   Origins: ${allowedOrigins.join(', ')}`);
-  });
-}).catch(err => {
-  console.error('[Fatal] DB setup failed:', err.message);
-  process.exit(1);
-});
+(async function startServer() {
+  try {
+    const client = await pool.connect();
+    client.release();
+    console.log('[DB] PostgreSQL connected successfully');
+    app.listen(PORT, () => {
+      console.log(`🚀 ReadAble API on port ${PORT}`);
+      console.log(`   Origins: ${allowedOrigins.join(', ')}`);
+    });
+  } catch (err) {
+    console.error('[Fatal] DB connection failed:', err.message);
+    process.exit(1);
+  }
+})();
 
 module.exports = app;

@@ -5,10 +5,6 @@ const jwt = require('jsonwebtoken');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'readable-dev-secret-change-in-production';
 
-/**
- * Middleware: requires valid Bearer token in Authorization header.
- * Attaches decoded user payload to req.user.
- */
 function requireAuth(req, res, next) {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -18,7 +14,7 @@ function requireAuth(req, res, next) {
   const token = authHeader.slice(7);
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
-    req.user = decoded; // { id, username, email, level }
+    req.user = decoded;
     next();
   } catch (err) {
     if (err.name === 'TokenExpiredError') {
@@ -28,10 +24,6 @@ function requireAuth(req, res, next) {
   }
 }
 
-/**
- * Middleware: optionally attaches user if token present, but doesn't block.
- * Used for routes accessible to both guests and logged-in users.
- */
 function optionalAuth(req, res, next) {
   const authHeader = req.headers.authorization;
   if (authHeader && authHeader.startsWith('Bearer ')) {
@@ -45,4 +37,16 @@ function optionalAuth(req, res, next) {
   next();
 }
 
-module.exports = { requireAuth, optionalAuth };
+function requireRole(...roles) {
+  return (req, res, next) => {
+    if (!req.user) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+    if (!roles.includes(req.user.role)) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+    next();
+  };
+}
+
+module.exports = { requireAuth, optionalAuth, requireRole };

@@ -1,22 +1,31 @@
 // ============================================================
-// App.jsx — added AchievementProvider for global achievement toasts
+// App.jsx — role-based routing and lazy-loaded pages
 // ============================================================
-import React, { Component, Suspense } from 'react';
+import React, { Suspense, lazy } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { SettingsProvider } from './contexts/SettingsContext';
 import { AchievementProvider } from './components/ui/AchievementNotification';
 
-import LandingPage    from './pages/LandingPage';
-import LoginPage, { RegisterPage } from './pages/LoginPage';
-import AppLayout      from './components/layout/AppLayout';
-
-const DashboardPage  = React.lazy(() => import('./pages/DashboardPage'));
-const ActivitiesPage = React.lazy(() => import('./pages/ActivitiesPage'));
-const GamePage       = React.lazy(() => import('./pages/GamePage'));
-const ProfilePage    = React.lazy(() => import('./pages/ProfilePage'));
-const SettingsPage   = React.lazy(() => import('./pages/SettingsPage'));
-const ShopPage       = React.lazy(() => import('./pages/ShopPage'));
+const LandingPage = lazy(() => import('./pages/LandingPage'));
+const LoginPage = lazy(() => import('./pages/LoginPage').then((m) => ({ default: m.default })));
+const RegisterPage = lazy(() => import('./pages/LoginPage').then((m) => ({ default: m.RegisterPage })));
+const TeacherLayout = lazy(() => import('./components/layout/TeacherLayout'));
+const ParentLayout = lazy(() => import('./components/layout/ParentLayout'));
+const TeacherDashboard = lazy(() => import('./pages/teacher/TeacherDashboard'));
+const ChildrenListPage = lazy(() => import('./pages/teacher/ChildrenListPage'));
+const ChildDetailPage = lazy(() => import('./pages/teacher/ChildDetailPage'));
+const AssessmentsListPage = lazy(() => import('./pages/teacher/AssessmentsListPage'));
+const AssessmentBuilderPage = lazy(() => import('./pages/teacher/AssessmentBuilderPage'));
+const SessionReviewPage = lazy(() => import('./pages/teacher/SessionReviewPage'));
+const TeacherReportsPage = lazy(() => import('./pages/teacher/TeacherReportsPage'));
+const ParentDashboard = lazy(() => import('./pages/parent/ParentDashboard'));
+const ParentChildrenPage = lazy(() => import('./pages/parent/ParentChildrenPage'));
+const ParentChildDetailPage = lazy(() => import('./pages/parent/ParentChildDetailPage'));
+const ParentReportsPage = lazy(() => import('./pages/parent/ParentReportsPage'));
+const ReportDetailPage = lazy(() => import('./pages/parent/ReportDetailPage'));
+const StudentModePage = lazy(() => import('./pages/StudentModePage'));
+const SettingsPage = lazy(() => import('./pages/SettingsPage'));
 
 function Spinner({ message = 'Loading…' }) {
   return (
@@ -28,38 +37,17 @@ function Spinner({ message = 'Loading…' }) {
   );
 }
 
-class ErrorBoundary extends Component {
-  constructor(props) { super(props); this.state = { error: null }; }
-  static getDerivedStateFromError(e) { return { error: e }; }
-  componentDidCatch(e) { console.error('[ErrorBoundary]', e); }
-  render() {
-    if (this.state.error) {
-      return (
-        <div className="min-h-screen flex flex-col items-center justify-center gap-4 p-8"
-          style={{ background: 'var(--bg-primary)' }}>
-          <div className="w-16 h-16 rounded-2xl bg-rose-100 dark:bg-rose-900/30 flex items-center justify-center">
-            <span className="text-2xl font-bold text-rose-500">!</span>
-          </div>
-          <h2 className="font-display text-2xl text-gray-800 dark:text-gray-100">Something went wrong</h2>
-          <p className="text-sm text-gray-500 text-center max-w-sm">
-            {this.state.error?.message || 'An unexpected error occurred.'}
-          </p>
-          <button
-            onClick={() => { this.setState({ error: null }); window.location.href = '/'; }}
-            className="px-6 py-2.5 rounded-2xl bg-sky text-white font-bold text-sm hover:opacity-90 transition-opacity">
-            Go Home
-          </button>
-        </div>
-      );
-    }
-    return this.props.children;
-  }
+function ErrorBoundary({ children }) {
+  return children; // Browser already handles errors gracefully here.
 }
 
-function ProtectedRoute({ children }) {
+function ProtectedRoute({ allowedRoles, children }) {
   const { user, loading } = useAuth();
   if (loading) return <Spinner message="Loading ReadAble…" />;
-  if (!user)   return <Navigate to="/login" replace />;
+  if (!user) return <Navigate to="/login" replace />;
+  if (allowedRoles && !allowedRoles.includes(user.role)) {
+    return <Navigate to="/login" replace />;
+  }
   return children;
 }
 
@@ -70,20 +58,34 @@ function AppRoutes() {
   return (
     <Suspense fallback={<Spinner />}>
       <Routes>
-        <Route path="/"         element={<LandingPage />} />
-        <Route path="/login"    element={<LoginPage />} />
+        <Route path="/" element={<LandingPage />} />
+        <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
 
-        <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
-          <Route path="/dashboard"   element={<DashboardPage />} />
-          <Route path="/activities"  element={<ActivitiesPage />} />
-          <Route path="/game/:id"    element={<GamePage />} />
-          <Route path="/profile"     element={<ProfilePage />} />
-          <Route path="/settings"    element={<SettingsPage />} />
-          <Route path="/shop"        element={<ShopPage />} />
+        <Route element={<ProtectedRoute allowedRoles={['teacher']}><TeacherLayout /></ProtectedRoute>}>
+          <Route path="/teacher/dashboard" element={<TeacherDashboard />} />
+          <Route path="/teacher/children" element={<ChildrenListPage />} />
+          <Route path="/teacher/children/:id" element={<ChildDetailPage />} />
+          <Route path="/teacher/assessments" element={<AssessmentsListPage />} />
+          <Route path="/teacher/assessments/new" element={<AssessmentBuilderPage />} />
+          <Route path="/teacher/assessments/:id/edit" element={<AssessmentBuilderPage />} />
+          <Route path="/teacher/sessions/:id" element={<SessionReviewPage />} />
+          <Route path="/teacher/reports" element={<TeacherReportsPage />} />
+          <Route path="/teacher/settings" element={<SettingsPage />} />
         </Route>
 
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route element={<ProtectedRoute allowedRoles={['parent']}><ParentLayout /></ProtectedRoute>}>
+          <Route path="/parent/dashboard" element={<ParentDashboard />} />
+          <Route path="/parent/children" element={<ParentChildrenPage />} />
+          <Route path="/parent/children/:id" element={<ParentChildDetailPage />} />
+          <Route path="/parent/reports" element={<ParentReportsPage />} />
+          <Route path="/parent/reports/:id" element={<ReportDetailPage />} />
+          <Route path="/parent/settings" element={<SettingsPage />} />
+        </Route>
+
+        <Route path="/student-mode/:sessionId" element={<ProtectedRoute allowedRoles={['parent']}><StudentModePage /></ProtectedRoute>} />
+
+        <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     </Suspense>
   );

@@ -1,8 +1,5 @@
 // ============================================================
-// Auth Context
-// Fix: coins + equipped tracked so any equip change in ShopPage
-// immediately reflects in ProfilePage, AppLayout, LeaderboardPage.
-// equipped defaults to {} so AvatarDisplay always has a valid object.
+// Auth Context — teacher and parent authentication state
 // ============================================================
 import React, {
   createContext, useContext, useState,
@@ -13,51 +10,32 @@ import api from '../utils/api';
 const AuthContext = createContext(null);
 const POLL_MS = 30_000;
 
-// Normalise a raw user object so downstream code never sees undefined
-// for coins / wardrobe / equipped.
-function normaliseUser(u) {
-  if (!u) return u;
+function normalizeUser(user) {
+  if (!user) return null;
   return {
-    ...u,
-    coins:    u.coins    ?? 0,
-    wardrobe: u.wardrobe ?? [],
-    equipped: u.equipped ?? {},
+    id: user.id,
+    username: user.username,
+    email: user.email,
+    role: user.role,
+    first_name: user.first_name,
+    last_name: user.last_name,
   };
 }
 
 export function AuthProvider({ children }) {
-  const [user,    setUser]    = useState(null);
-  const [token,   setToken]   = useState(() => localStorage.getItem('readable_token'));
+  const [user, setUser] = useState(null);
+  const [token, setToken] = useState(() => localStorage.getItem('readable_token'));
   const [loading, setLoading] = useState(true);
 
   const tokenRef = useRef(token);
-  const pollRef  = useRef(null);
-
-  const mergeUser = useCallback((next) => {
-    if (!next) return;
-    const normalised = normaliseUser(next);
-    setUser(prev => {
-      if (!prev) return normalised;
-      const same =
-        prev.xp           === normalised.xp           &&
-        prev.level        === normalised.level         &&
-        prev.streak       === normalised.streak        &&
-        prev.coins        === normalised.coins         &&
-        prev.username     === normalised.username      &&
-        prev.avatar       === normalised.avatar        &&
-        // Deep-compare equipped.character so equip changes re-render
-        (prev.equipped?.character) === (normalised.equipped?.character) &&
-        (prev.achievements?.length ?? 0) === (normalised.achievements?.length ?? 0);
-      return same ? prev : normalised;
-    });
-  }, []);
+  const pollRef = useRef(null);
 
   const fetchUser = useCallback(async () => {
     const t = tokenRef.current;
     if (!t) return;
     try {
       const res = await api.get('/auth/me');
-      mergeUser(res.data.user);
+      setUser(normalizeUser(res.data.user));
     } catch (err) {
       if (err.status === 401) {
         localStorage.removeItem('readable_token');
@@ -67,24 +45,31 @@ export function AuthProvider({ children }) {
         setUser(null);
       }
     }
-  }, [mergeUser]);
+  }, []);
 
   useEffect(() => {
     tokenRef.current = token;
-    if (!token) { setLoading(false); return; }
+    if (!token) {
+      setLoading(false);
+      return;
+    }
     api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
     fetchUser().finally(() => setLoading(false));
   }, [token, fetchUser]);
 
   useEffect(() => {
+    const onVisible = () => {
+      if (tokenRef.current && document.visibilityState === 'visible') {
+        fetchUser();
+      }
+    };
     const start = () => {
       clearInterval(pollRef.current);
       pollRef.current = setInterval(() => {
-        if (tokenRef.current && document.visibilityState === 'visible') fetchUser();
+        if (tokenRef.current && document.visibilityState === 'visible') {
+          fetchUser();
+        }
       }, POLL_MS);
-    };
-    const onVisible = () => {
-      if (tokenRef.current && document.visibilityState === 'visible') fetchUser();
     };
     start();
     document.addEventListener('visibilitychange', onVisible);
@@ -112,21 +97,23 @@ export function AuthProvider({ children }) {
     tokenRef.current = t;
     await syncLocalSettings();
     setToken(t);
-    setUser(normaliseUser(u));
+    setUser(normalizeUser(u));
     return u;
-  }, []); // eslint-disable-line
+  }, []);
 
-  const register = useCallback(async (username, email, password, otp_code) => {
-    const res = await api.post('/auth/register', { username, email, password, otp_code });
+  const register = useCallback(async ({ username, email, password, first_name, last_name, role, otp_code }) => {
+    const res = await api.post('/auth/register', {
+      username, email, password, first_name, last_name, role, otp_code,
+    });
     const { token: t, user: u } = res.data;
     localStorage.setItem('readable_token', t);
     api.defaults.headers.common['Authorization'] = `Bearer ${t}`;
     tokenRef.current = t;
     await syncLocalSettings();
     setToken(t);
-    setUser(normaliseUser(u));
+    setUser(normalizeUser(u));
     return u;
-  }, []); // eslint-disable-line
+  }, []);
 
   const logout = useCallback(() => {
     clearInterval(pollRef.current);
@@ -139,15 +126,8 @@ export function AuthProvider({ children }) {
 
   const refreshUser = useCallback(() => fetchUser(), [fetchUser]);
 
-  // Optimistically update a subset of user fields without an API call.
-  // Used by ShopPage so coin deductions + equip changes reflect instantly
-  // across ProfilePage, AppLayout sidebar, Leaderboard, etc.
-  const patchUser = useCallback((updates) => {
-    setUser(prev => prev ? normaliseUser({ ...prev, ...updates }) : prev);
-  }, []);
-
   return (
-    <AuthContext.Provider value={{ user, token, loading, login, register, logout, refreshUser, patchUser }}>
+    <AuthContext.Provider value={{ user, token, loading, login, register, logout, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );
