@@ -385,7 +385,15 @@ export function RegisterPage() {
   const navigate     = useNavigate();
 
   const [step,     setStep]     = useState('form');
-  const [form,     setForm]     = useState({ username: '', email: '', password: '', confirm: '' });
+  const [form,     setForm]     = useState({
+    username: '',
+    email: '',
+    password: '',
+    confirm: '',
+    first_name: '',
+    last_name: '',
+    role: 'parent',
+  });
   const [errors,   setErrors]   = useState({});
   const [loading,  setLoading]  = useState(false);
   const [otp,      setOtp]      = useState('');
@@ -403,6 +411,8 @@ export function RegisterPage() {
     if (!form.email.includes('@'))       e.email    = 'Please enter a valid email address.';
     if (form.password.length < 6)        e.password = 'Password must be at least 6 characters.';
     if (form.password !== form.confirm)  e.confirm  = 'Passwords do not match.';
+    if (!form.first_name.trim())         e.first_name = 'First name is required.';
+    if (!form.last_name.trim())          e.last_name = 'Last name is required.';
     return e;
   };
 
@@ -439,8 +449,16 @@ export function RegisterPage() {
     if (otp.length < 6) { setOtpErr('Please enter all 6 digits.'); return; }
     setOtpErr(''); setLoading(true);
     try {
-      await register(form.username.trim(), form.email.trim(), form.password, otp);
-      navigate('/dashboard', { replace: true });
+      await register({
+        username: form.username.trim(),
+        email: form.email.trim(),
+        password: form.password,
+        first_name: form.first_name.trim(),
+        last_name: form.last_name.trim(),
+        role: form.role,
+        otp_code: otp,
+      });
+      navigate('/teacher/dashboard', { replace: true });
     } catch (err) {
       const msg = err.message || '';
       if (/invalid|expired|code/i.test(msg))   setOtpErr(msg || 'Invalid or expired code.');
@@ -461,6 +479,23 @@ export function RegisterPage() {
             </p>
           </div>
           <form onSubmit={submitForm}>
+            <div className="mb-4">
+              <label className="block text-sm font-bold mb-1.5 text-gray-700 dark:text-gray-300">I am a:</label>
+              <select
+                name="role"
+                value={form.role}
+                onChange={handle}
+                className="w-full px-4 py-3 rounded-2xl border-2 border-gray-200 dark:border-gray-600
+                           focus:border-sky bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white
+                           text-sm font-medium outline-none transition-all">
+                <option value="parent">Parent</option>
+                <option value="teacher">Teacher</option>
+              </select>
+            </div>
+            <Input label="First Name" name="first_name" value={form.first_name} onChange={handle}
+              placeholder="John" icon={User} required error={errors.first_name} />
+            <Input label="Last Name" name="last_name" value={form.last_name} onChange={handle}
+              placeholder="Doe" icon={User} required error={errors.last_name} />
             <Input label="Username" name="username" value={form.username} onChange={handle}
               placeholder="SuperReader" icon={User} required error={errors.username} />
             <Input label="Email" type="email" name="email" value={form.email} onChange={handle}
@@ -531,5 +566,6 @@ export function RegisterPage() {
     </AuthLayout>
   );
 }
+
 
 export default LoginPage;
