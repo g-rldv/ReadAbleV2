@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { api } from '../../utils/api';
+import api from '../../utils/api';
 import { SkillBreakdownChart, ProgressionChart, ComparisonChart, DifficultyHeatmap } from '../../components/analytics/ChartComponents';
 import { AlertCircle, TrendingUp, Users, Target, Award } from 'lucide-react';
 

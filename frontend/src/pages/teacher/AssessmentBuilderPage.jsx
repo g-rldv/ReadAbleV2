@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { api } from '../../utils/api';
+import api from '../../utils/api';
 import { Plus, Trash2, Edit2, Save, X } from 'lucide-react';
 
 const DIFFICULTY_LEVELS = [
