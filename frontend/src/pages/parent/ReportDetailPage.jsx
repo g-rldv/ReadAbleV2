@@ -295,18 +295,3 @@ export default function ReportDetailPage() {
     </div>
   );
 }
-            <div>
-          </div>
-        )}
-
-        {/* Metadata */}
-        <div className="mt-8 pt-6 border-t border-slate-200">
-          <p className="text-xs text-slate-500">
-            Report sent on {formatDate(report.sent_at)}
-            {report.read_at && ` • Read on ${formatDate(report.read_at)}`}
-          </p>
-        </div>
-      </div>
-    </div>
-  );
-}
