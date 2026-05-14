@@ -870,6 +870,7 @@ app.use('/api/sessions',    require('./routes/sessions'));
 app.use('/api/reports',     require('./routes/reports'));
 app.use('/api/settings',    require('./routes/settings'));
 app.use('/api/analytics',   require('./routes/analytics'));
+app.use('/api/pre-assessments', require('./routes/pre-assessments'));
 
 app.use((err, req, res, next) => {
   console.error('[Error]', err.stack);

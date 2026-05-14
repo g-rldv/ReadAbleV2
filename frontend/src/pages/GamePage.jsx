@@ -134,6 +134,14 @@ export default function GamePage() {
   const [submitError, setSubmitError] = useState('');
   const resultRef = useRef(null);
 
+  // ASD Student Mode scaling
+  const isStudentMode = settings.student_mode;
+  const sizeScale = isStudentMode ? 1.4 : 1.0;
+  const headerFontSize = `${28 * sizeScale}px`;
+  const bodyFontSize = `${16 * sizeScale}px`;
+  const buttonFontSize = `${18 * sizeScale}px`;
+  const badgeFontSize = `${13 * sizeScale}px`;
+
   // Always keep auth header in sync
   useEffect(() => {
     const t = token || localStorage.getItem('readable_token');
@@ -190,7 +198,8 @@ export default function GamePage() {
 
       setResult(data);
 
-      if (data.isCorrect) launchConfetti();
+      // Disable confetti in student mode for sensory sensitivity
+      if (data.isCorrect && !isStudentMode) launchConfetti();
       if (data.feedback) speak(data.feedback);
 
       if (data.newAchievements?.length > 0 && notifyAchievement) {
@@ -221,7 +230,7 @@ export default function GamePage() {
   if (loading) return (
     <div className="flex flex-col items-center justify-center h-48 gap-3">
       <div className="w-8 h-8 border-4 border-sky border-t-transparent rounded-full animate-spin"/>
-      <p className="font-display text-base text-sky">Loading…</p>
+      <p className="font-display text-base text-sky" style={{ fontSize: bodyFontSize }}>Loading…</p>
     </div>
   );
 
@@ -230,13 +239,13 @@ export default function GamePage() {
     return (
       <div className="max-w-2xl mx-auto text-center py-20">
         <p className="text-4xl mb-3">🎮</p>
-        <h2 className="font-display text-xl text-gray-700 dark:text-gray-200 mb-2">
+        <h2 className="font-display text-xl text-gray-700 dark:text-gray-200 mb-2" style={{ fontSize: headerFontSize }}>
           Game type not supported
         </h2>
-        <p className="text-sm text-gray-400 mb-5">
+        <p className="text-sm text-gray-400 mb-5" style={{ fontSize: bodyFontSize }}>
           Activity type <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded">{activity.type}</code> is not recognised.
         </p>
-        <Link to="/activities" className="btn-game bg-sky text-white inline-flex items-center gap-2">
+        <Link to="/activities" className="btn-game bg-sky text-white inline-flex items-center gap-2" style={{ fontSize: buttonFontSize }}>
           <Home size={16}/> Back to Activities
         </Link>
       </div>
@@ -244,48 +253,55 @@ export default function GamePage() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto animate-fade-in px-1">
+    <div className={`max-w-2xl mx-auto ${!isStudentMode ? 'animate-fade-in' : ''} px-1`}>
 
       {/* Header */}
-      <div className="flex items-start gap-2 mb-4">
+      <div className={`flex items-start gap-2 mb-4 ${isStudentMode ? 'mb-8' : ''}`}>
         <Link to="/activities"
-          className="p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex-shrink-0 mt-0.5">
-          <ArrowLeft size={20} className="text-gray-600 dark:text-gray-400"/>
+          className={`p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex-shrink-0 mt-0.5 ${isStudentMode ? 'p-4' : ''}`}>
+          <ArrowLeft size={isStudentMode ? 32 : 20} className="text-gray-600 dark:text-gray-400"/>
         </Link>
         <div className="flex-1 min-w-0">
-          <h1 className="font-display text-2xl text-gray-800 dark:text-gray-100 leading-tight">
+          <h1 className="font-display text-gray-800 dark:text-gray-100 leading-tight" style={{ fontSize: headerFontSize }}>
             {activity?.title}
           </h1>
-          <p className="text-sm text-gray-500 mt-0.5 line-clamp-2">{activity?.description}</p>
-          <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-            <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold capitalize ${DIFF_STYLE[activity?.difficulty]}`}>
-              {activity?.difficulty}
-            </span>
-            <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-sky/15 text-sky dark:bg-sky/25">
-              +{activity?.xp_reward} XP
-            </span>
-            {userProg && (
-              <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${
-                userProg.score >= 80 ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
-                : 'bg-gray-100 text-gray-500 dark:bg-gray-800'}`}>
-                Best: {userProg.score}%
-              </span>
-            )}
-            <button onClick={() => speak(activity?.content?.instruction || activity?.title)}
-              className="p-1.5 rounded-lg bg-sky/10 text-sky hover:bg-sky/20 transition-colors ml-auto"
-              title="Read aloud">
-              <Volume2 size={15}/>
-            </button>
-          </div>
+          {!isStudentMode && (
+            <>
+              <p className="text-sm text-gray-500 mt-0.5 line-clamp-2" style={{ fontSize: bodyFontSize }}>
+                {activity?.description}
+              </p>
+              <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold capitalize ${DIFF_STYLE[activity?.difficulty]}`} style={{ fontSize: badgeFontSize }}>
+                  {activity?.difficulty}
+                </span>
+                <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-sky/15 text-sky dark:bg-sky/25" style={{ fontSize: badgeFontSize }}>
+                  +{activity?.xp_reward} XP
+                </span>
+                {userProg && (
+                  <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${
+                    userProg.score >= 80 ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
+                    : 'bg-gray-100 text-gray-500 dark:bg-gray-800'}`} style={{ fontSize: badgeFontSize }}>
+                    Best: {userProg.score}%
+                  </span>
+                )}
+              </div>
+            </>
+          )}
+          <button onClick={() => speak(activity?.content?.instruction || activity?.title)}
+            className={`p-1.5 rounded-lg bg-sky/10 text-sky hover:bg-sky/20 transition-colors ${!isStudentMode ? 'ml-auto' : ''} ${isStudentMode ? 'mt-4 p-3' : ''}`}
+            title="Read aloud">
+            <Volume2 size={isStudentMode ? 28 : 15}/>
+          </button>
         </div>
       </div>
 
       {/* Submit error */}
       {submitError && (
         <div className="mb-4 p-3 rounded-2xl bg-rose-50 dark:bg-rose-900/20 text-rose-600
-                        dark:text-rose-400 text-sm font-semibold border border-rose-200 dark:border-rose-800 flex items-center justify-between gap-2">
+                        dark:text-rose-400 font-semibold border border-rose-200 dark:border-rose-800 flex items-center justify-between gap-2"
+          style={{ fontSize: bodyFontSize, ...(isStudentMode && { padding: '16px', minHeight: '60px' }) }}>
           <span>{submitError}</span>
-          <button onClick={() => setSubmitError('')} className="text-rose-400 hover:text-rose-600 flex-shrink-0">✕</button>
+          <button onClick={() => setSubmitError('')} className="text-rose-400 hover:text-rose-600 flex-shrink-0 text-2xl">✕</button>
         </div>
       )}
 
@@ -293,6 +309,7 @@ export default function GamePage() {
       {showInstructions && activity && (
         <GameInstructions
           type={activity.type}
+          studentMode={isStudentMode}
           onStart={() => {
             setShowInstructions(false);
             setGameReady(true);
@@ -308,13 +325,21 @@ export default function GamePage() {
  
       {/* Game — only renders after instructions are dismissed */}
       {GameComponent && !result && gameReady && (
-        <div className="rounded-3xl p-6 shadow-card border border-gray-100 dark:border-gray-700 animate-pop"
-          style={{ background:'var(--bg-card-grad)' }}>
+        <div className="rounded-3xl p-6 shadow-card border border-gray-100 dark:border-gray-700"
+          style={{
+            background: 'var(--bg-card-grad)',
+            ...(isStudentMode && {
+              padding: '24px',
+              animation: 'none',
+              marginBottom: '32px'
+            })
+          }}>
           <GameComponent
             key={gameKey}
             activity={activity}
             onSubmit={handleSubmit}
             submitting={submitting}
+            studentMode={isStudentMode}
           />
         </div>
       )}
@@ -322,55 +347,81 @@ export default function GamePage() {
       {/* Result */}
       {result && (
         <div ref={resultRef}
-          className="rounded-3xl p-4 md:p-6 shadow-xl border-2 animate-pop"
-          style={{ background:'var(--bg-card-grad)',
-            borderColor: result.isCorrect ? '#6BCB77' : result.score >= 50 ? '#FFD93D' : '#FF6B6B' }}>
+          className="rounded-3xl p-4 md:p-6 shadow-xl border-2"
+          style={{
+            background: 'var(--bg-card-grad)',
+            borderColor: result.isCorrect ? '#6BCB77' : result.score >= 50 ? '#FFD93D' : '#FF6B6B',
+            ...(isStudentMode && {
+              padding: '32px',
+              marginBottom: '32px'
+            })
+          }}>
 
-          <div className="text-center mb-4">
-            <div className="font-display text-4xl md:text-5xl mb-1" style={{
-              color: result.isCorrect ? '#6BCB77' : result.score >= 50 ? '#F0C000' : '#FF6B6B'
+          <div className={`text-center ${isStudentMode ? 'mb-8' : 'mb-4'}`}>
+            <div style={{
+              fontSize: isStudentMode ? '64px' : '40px',
+              marginBottom: isStudentMode ? '16px' : '8px',
+              color: result.isCorrect ? '#6BCB77' : result.score >= 50 ? '#F0C000' : '#FF6B6B',
+              fontFamily: '"Fredoka One", cursive',
+              fontWeight: 'bold'
             }}>{result.score}%</div>
-            <p className="text-base font-bold text-gray-700 dark:text-gray-200 leading-snug">
+            <p className="font-bold text-gray-700 dark:text-gray-200 leading-snug" style={{ fontSize: bodyFontSize }}>
               {result.feedback}
             </p>
           </div>
 
-          <div className="flex flex-wrap justify-center gap-2 mb-3">
-            {(result.xpAwarded ?? 0) > 0 && (
-              <span className="inline-flex items-center gap-2 bg-sky/15 text-sky px-4 py-1.5 rounded-full font-bold text-sm">
-                ✨ +{result.xpAwarded} XP earned!
-              </span>
-            )}
-            {(result.coinsAwarded ?? 0) > 0 && (
-              <span className="inline-flex items-center gap-2 bg-amber-400/15 text-amber-700 dark:text-amber-400 px-4 py-1.5 rounded-full font-bold text-sm">
-                <CoinIcon size={14}/> +{result.coinsAwarded} coins!
-              </span>
-            )}
-          </div>
+          {!isStudentMode && (
+            <>
+              <div className={`flex flex-wrap justify-center gap-2 ${isStudentMode ? 'mb-6' : 'mb-3'}`}>
+                {(result.xpAwarded ?? 0) > 0 && (
+                  <span className="inline-flex items-center gap-2 bg-sky/15 text-sky px-4 py-1.5 rounded-full font-bold text-sm">
+                    ✨ +{result.xpAwarded} XP earned!
+                  </span>
+                )}
+                {(result.coinsAwarded ?? 0) > 0 && (
+                  <span className="inline-flex items-center gap-2 bg-amber-400/15 text-amber-700 dark:text-amber-400 px-4 py-1.5 rounded-full font-bold text-sm">
+                    <CoinIcon size={14}/> +{result.coinsAwarded} coins!
+                  </span>
+                )}
+              </div>
 
-          {result.newAchievements?.length > 0 && (
-            <div className="mb-3 space-y-1.5">
-              {result.newAchievements.map(ach => (
-                <div key={ach.key}
-                  className="flex items-center justify-center gap-2 bg-amber-50 dark:bg-amber-900/20
-                             border border-amber-200 dark:border-amber-800 px-4 py-2 rounded-2xl">
-                  <span className="text-lg">{ach.icon}</span>
-                  <span className="font-bold text-sm text-amber-700 dark:text-amber-300">{ach.title} unlocked!</span>
+              {result.newAchievements?.length > 0 && (
+                <div className="mb-3 space-y-1.5">
+                  {result.newAchievements.map(ach => (
+                    <div key={ach.key}
+                      className="flex items-center justify-center gap-2 bg-amber-50 dark:bg-amber-900/20
+                                 border border-amber-200 dark:border-amber-800 px-4 py-2 rounded-2xl">
+                      <span className="text-lg">{ach.icon}</span>
+                      <span className="font-bold text-sm text-amber-700 dark:text-amber-300">{ach.title} unlocked!</span>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+              )}
+
+              <AnswerSummary details={result.details} type={activity?.type}/>
+            </>
           )}
 
-          <AnswerSummary details={result.details} type={activity?.type}/>
-
-          <div className="flex gap-3 justify-center flex-wrap mt-5">
+          <div className={`flex gap-3 justify-center flex-wrap`} style={{ marginTop: isStudentMode ? '32px' : '20px' }}>
             <button onClick={handleReset}
-              className="btn-game bg-sky text-white flex items-center gap-2 text-sm">
-              <RotateCcw size={15}/> Try Again
+              className="bg-sky text-white font-bold rounded-lg hover:bg-sky-600 transition-colors focus:outline-none focus:ring-4 focus:ring-sky-300 dark:focus:ring-sky-600 flex items-center gap-2"
+              style={{
+                fontSize: buttonFontSize,
+                padding: isStudentMode ? '16px 32px' : '8px 16px',
+                minHeight: isStudentMode ? '56px' : 'auto'
+              }}>
+              <RotateCcw size={isStudentMode ? 24 : 15}/>
+              {isStudentMode ? 'Try Again' : ''}
             </button>
             <Link to="/activities"
-              className="btn-game bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 flex items-center gap-2 text-sm">
-              <Home size={15}/> More Games
+              className="bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 font-bold rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors focus:outline-none focus:ring-4 focus:ring-gray-300 dark:focus:ring-gray-600 flex items-center gap-2"
+              style={{
+                fontSize: buttonFontSize,
+                padding: isStudentMode ? '16px 32px' : '8px 16px',
+                minHeight: isStudentMode ? '56px' : 'auto'
+              }}>
+              <Home size={isStudentMode ? 24 : 15}/>
+              {isStudentMode ? 'Choose Another' : ''}
             </Link>
           </div>
         </div>

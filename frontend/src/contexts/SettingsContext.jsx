@@ -27,6 +27,7 @@ export const DEFAULTS = {
   bg_music_enabled: false,
   bg_music_theme:   'calm',
   bg_music_volume:  0.7,
+  student_mode:     false,   // ASD-optimized student mode
 };
 
 function readLocal() {
@@ -266,8 +267,33 @@ export function SettingsProvider({ children }) {
 
   const stopSpeaking = useCallback(() => window.speechSynthesis?.cancel(), []);
 
+  // ── Setters for individual settings (convenience) ──────────
+  const setTextSize = useCallback((val) => updateSettings({ text_size: val }), [updateSettings]);
+  const setTheme = useCallback((val) => updateSettings({ theme: val }), [updateSettings]);
+  const setTtsEnabled = useCallback((val) => updateSettings({ tts_enabled: val }), [updateSettings]);
+  const setTtsVoice = useCallback((val) => updateSettings({ tts_voice: val }), [updateSettings]);
+  const setBgMusicEnabled = useCallback((val) => updateSettings({ bg_music_enabled: val }), [updateSettings]);
+  const setBgMusicTheme = useCallback((val) => updateSettings({ bg_music_theme: val }), [updateSettings]);
+  const setBgMusicVolume = useCallback((val) => updateSettings({ bg_music_volume: val }), [updateSettings]);
+  const setStudentMode = useCallback((val) => updateSettings({ student_mode: val }), [updateSettings]);
+
   return (
-    <SettingsContext.Provider value={{ settings, updateSettings, speak, stopSpeaking, voices }}>
+    <SettingsContext.Provider value={{
+      settings,
+      updateSettings,
+      speak,
+      stopSpeaking,
+      voices,
+      // Convenience setters
+      setTextSize,
+      setTheme,
+      setTtsEnabled,
+      setTtsVoice,
+      setBgMusicEnabled,
+      setBgMusicTheme,
+      setBgMusicVolume,
+      setStudentMode,
+    }}>
       {children}
     </SettingsContext.Provider>
   );

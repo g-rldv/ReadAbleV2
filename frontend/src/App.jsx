@@ -12,6 +12,7 @@ const LoginPage = lazy(() => import('./pages/LoginPage').then((m) => ({ default:
 const RegisterPage = lazy(() => import('./pages/LoginPage').then((m) => ({ default: m.RegisterPage })));
 const TeacherLayout = lazy(() => import('./components/layout/TeacherLayout'));
 const ParentLayout = lazy(() => import('./components/layout/ParentLayout'));
+const StudentModeLayout = lazy(() => import('./components/layout/StudentModeLayout'));
 const TeacherDashboard = lazy(() => import('./pages/teacher/TeacherDashboard'));
 const TeacherAnalyticsDashboard = lazy(() => import('./pages/teacher/TeacherAnalyticsDashboard'));
 const ChildrenListPage = lazy(() => import('./pages/teacher/ChildrenListPage'));
@@ -26,6 +27,8 @@ const ParentChildDetailPage = lazy(() => import('./pages/parent/ParentChildDetai
 const ParentReportsPage = lazy(() => import('./pages/parent/ParentReportsPage'));
 const ReportDetailPage = lazy(() => import('./pages/parent/ReportDetailPage'));
 const StudentModePage = lazy(() => import('./pages/StudentModePage'));
+const PreAssessmentPage = lazy(() => import('./pages/PreAssessmentPage'));
+const GamePage = lazy(() => import('./pages/GamePage'));
 const SettingsPage = lazy(() => import('./pages/SettingsPage'));
 
 function Spinner({ message = 'Loading…' }) {
@@ -65,6 +68,7 @@ function AppRoutes() {
 
         <Route element={<ProtectedRoute allowedRoles={['teacher']}><TeacherLayout /></ProtectedRoute>}>
           <Route path="/teacher/dashboard" element={<TeacherDashboard />} />
+          <Route path="/teacher/analytics" element={<TeacherAnalyticsDashboard />} />
           <Route path="/teacher/children" element={<ChildrenListPage />} />
           <Route path="/teacher/children/:id" element={<ChildDetailPage />} />
           <Route path="/teacher/assessments" element={<AssessmentsListPage />} />
@@ -84,7 +88,12 @@ function AppRoutes() {
           <Route path="/parent/settings" element={<SettingsPage />} />
         </Route>
 
-        <Route path="/student-mode/:sessionId" element={<ProtectedRoute allowedRoles={['parent']}><StudentModePage /></ProtectedRoute>} />
+        {/* Student Mode Layout - ASD-optimized interface for student assessments */}
+        <Route element={<ProtectedRoute allowedRoles={['parent']}><StudentModeLayout /></ProtectedRoute>}>
+          <Route path="/student-mode" element={<StudentModePage />} />
+          <Route path="/pre-assessment" element={<PreAssessmentPage />} />
+          <Route path="/assessment/:id" element={<GamePage />} />
+        </Route>
 
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
