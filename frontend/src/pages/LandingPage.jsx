@@ -5,7 +5,7 @@
 // 3. App-icon rounded style on logo in Quick Settings modal
 // ============================================================
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useSettings } from '../contexts/SettingsContext';
 import {
@@ -442,8 +442,9 @@ function SignInModal({ onClose, onSwitchToRegister }) {
   const submit = async (e) => {
     e.preventDefault(); setError(''); setLoading(true);
     try {
-      await login(form.email, form.password);
-      navigate('/dashboard', { replace:true });
+      const user = await login(form.email, form.password);
+      const destination = user?.role === 'teacher' ? '/teacher/dashboard' : '/parent/dashboard';
+      navigate(destination, { replace:true });
     } catch (err) {
       const raw = err.response?.data?.error || err.message || '';
       if (/invalid|password|credentials/i.test(raw)) setError('Incorrect email or password.');
@@ -541,7 +542,7 @@ function RegisterLoadingOverlay() {
 }
 
 // ── Register Modal — X button aligned with heading ─────────
-function RegisterModal({ onClose, onSwitchToLogin }) {
+function RegisterModal({ onClose, onSwitchToLogin, initialRole = 'parent' }) {
   const { register } = useAuth();
   const navigate = useNavigate();
  
@@ -553,7 +554,7 @@ function RegisterModal({ onClose, onSwitchToLogin }) {
     confirm: '',
     first_name: '',
     last_name: '',
-    role: 'parent',
+    role: initialRole,
   });
   const [errors,   setErrors]   = useState({});
   const [loading,  setLoading]  = useState(false);
@@ -612,7 +613,8 @@ function RegisterModal({ onClose, onSwitchToLogin }) {
         role: form.role,
         otp_code: otp,
       });
-      navigate('/dashboard', { replace: true });
+      const destination = form.role === 'teacher' ? '/teacher/dashboard' : '/parent/dashboard';
+      navigate(destination, { replace: true });
     } catch (err) {
       const raw = err.message || '';
       if (/invalid|expired|code/i.test(raw))   setOtpErr(raw || 'Invalid or expired code.');
@@ -642,6 +644,20 @@ function RegisterModal({ onClose, onSwitchToLogin }) {
                 </button>
               </div>
               <p className="text-xs text-gray-500 mb-4">Free account — takes 30 seconds</p>
+              <div className="mb-4 grid grid-cols-2 gap-2">
+                <button type="button" onClick={() => setForm(f => ({ ...f, role: 'parent' }))}
+                  className={`rounded-2xl py-2 text-sm font-semibold transition ${form.role === 'parent'
+                    ? 'bg-sky text-white'
+                    : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600'}`}>
+                  Parent
+                </button>
+                <button type="button" onClick={() => setForm(f => ({ ...f, role: 'teacher' }))}
+                  className={`rounded-2xl py-2 text-sm font-semibold transition ${form.role === 'teacher'
+                    ? 'bg-emerald-600 text-white'
+                    : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600'}`}>
+                  Teacher
+                </button>
+              </div>
               <form onSubmit={submitForm}>
                 <AuthInput label="Username" name="username" value={form.username} onChange={handle}
                   placeholder="SuperReader" icon={User} error={errors.username}/>
@@ -930,230 +946,71 @@ export default function LandingPage() {
 
   const [showLogin,    setShowLogin]    = useState(false);
   const [showRegister, setShowRegister] = useState(false);
-  const [showSettings, setShowSettings] = useState(false);
+  const [registerRole, setRegisterRole] = useState('parent');
 
   useEffect(() => {
-    if (user) navigate('/dashboard', { replace:true });
+    if (user) {
+      const destination = user.role === 'teacher' ? '/teacher/dashboard' : '/parent/dashboard';
+      navigate(destination, { replace:true });
+    }
   }, [user, navigate]);
 
   if (user) return null;
 
-  const current   = TRIAL_ITEMS[trialStep];
-  const isPerfect = trialDone && trialScore === TRIAL_ITEMS.length;
-
-  const handlePick = (opt) => {
-    if (selected !== null) return;
-    setSelected(opt);
-    const correct = opt === current.answer;
-
-    setStepResults(r => {
-      const next = [...r];
-      next[trialStep] = correct ? 'correct' : 'wrong';
-      return next;
-    });
-
-    if (correct) {
-      playItemSound(current.answer, speak); // plays "Elephant" sound or TTS
-      setTrialScore(s => s + 1);
-    } else {
-      speak(`The answer was ${current.answer}. Keep trying!`);
-    }
-
-    setShowFeedback(true);
-    setTimeout(() => {
-      setShowFeedback(false);
-      setSelected(null);
-      if (trialStep + 1 < TRIAL_ITEMS.length) {
-        setTrialStep(s=>s+1);
-      } else {
-        setTrialDone(true);
-        if (trialScore + (correct ? 1 : 0) === TRIAL_ITEMS.length) {
-          setTimeout(spawnWinStars, 100);
-        }
-      }
-    }, 900);
-  };
-
   return (
-    <div className="min-h-screen" style={{ background:'var(--bg-primary)', overflowX:'hidden' }}>
-
-      {/* ── Nav ─────────────────────────────────────────── */}
-      <nav className="flex items-center justify-between px-4 py-3 max-w-6xl mx-auto w-full">
-        <SmartLogo height={28} />
-        <div className="flex items-center gap-1.5 sm:gap-2">
-          <button onClick={()=>setShowSettings(true)}
-            className="p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors" title="Quick settings">
-            <Settings size={18} className="text-gray-500 dark:text-gray-400"/>
-          </button>
-          <button onClick={()=>{ setShowLogin(true); }}
-            className="flex items-center justify-center gap-1.5 rounded-2xl font-bold border-2 border-sky text-sky hover:bg-sky/10 transition-colors w-9 h-9 sm:w-auto sm:h-auto sm:px-4 sm:py-2 sm:text-sm"
-            title="Sign In">
-            <LogIn size={16} className="flex-shrink-0"/>
-            <span className="hidden sm:inline">Sign In</span>
-          </button>
-          <button onClick={()=>{ setShowRegister(true); }}
-            className="flex items-center justify-center gap-1.5 rounded-2xl font-bold bg-sky text-white hover:bg-sky-dark transition-colors shadow-md w-9 h-9 sm:w-auto sm:h-auto sm:px-4 sm:py-2 sm:text-sm"
-            title="Join Free">
-            <UserPlus size={16} className="flex-shrink-0"/>
-            <span className="hidden sm:inline">Join Free</span>
-          </button>
-        </div>
-      </nav>
-
-      {/* ── Hero ────────────────────────────────────────── */}
-      <section className="max-w-6xl mx-auto px-4 md:px-6 pt-8 md:pt-12 pb-8 grid lg:grid-cols-2 gap-8 lg:gap-12 items-center">
-        <div className="animate-slide-up w-full min-w-0">
-          <div className="inline-flex items-center gap-2 bg-sunny/20 text-yellow-700 dark:text-yellow-300 px-4 py-1.5 rounded-full text-sm font-bold mb-5">
-            <Zap size={14} className="fill-current"/> Made for everyone
-          </div>
-          <h1 className="font-display text-4xl md:text-5xl lg:text-6xl text-gray-900 dark:text-white leading-tight mb-4">
-            Reading made<br/>
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-coral to-sky">fun &amp; easy</span>
+    <div className="min-h-screen bg-[var(--bg-primary)] flex items-center justify-center px-4 py-10">
+      <div className="w-full max-w-xl text-center space-y-10">
+        <SmartLogo height={40} />
+        <div className="space-y-4">
+          <h1 className="font-display text-4xl sm:text-5xl text-gray-900 dark:text-white">
+            ReadAble
           </h1>
-          <p className="text-base text-gray-600 dark:text-gray-300 mb-6 font-medium">
-            Interactive word games and reading activities designed for all learners.
-            Track progress, earn rewards, and grow your reading skills every day!
+          <p className="text-base text-gray-600 dark:text-gray-300">
+            Sign in or register as a parent or teacher to access the ReadAble portal.
           </p>
-          <div className="flex flex-col sm:flex-row flex-wrap gap-3">
-            <button onClick={()=>setShowRegister(true)}
-              className="btn-game bg-coral text-white relative flex items-center justify-center w-full sm:w-auto sm:min-w-[200px]">
-              <span>Start for Free</span>
-              <ArrowRight size={18} className="absolute right-5"/>
-            </button>
-            <button onClick={()=>setShowLogin(true)}
-              className="btn-game bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border-2 border-gray-200 dark:border-gray-600">
-              I have an account
-            </button>
-          </div>
-          <div className="flex flex-wrap gap-2 mt-6">
-            {FEATURE_PILLS.map(({Icon,label})=>(
-              <span key={label} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white dark:bg-gray-800 shadow-sm text-xs md:text-sm font-semibold text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600">
-                <Icon size={13} className="text-sky flex-shrink-0"/>{label}
-              </span>
-            ))}
-          </div>
         </div>
 
-        {/* ── Trial game card ──────────────────────────── */}
-        <div className="animate-pop w-full min-w-0">
-          <div className="rounded-3xl p-4 md:p-6 shadow-xl border-2 border-sky/20 overflow-hidden w-full"
-            style={{ background:'var(--bg-card-grad)' }}>
-            <div className="flex items-center justify-between mb-4 gap-2">
-              <h3 className="font-display text-lg sm:text-xl text-gray-800 dark:text-gray-200 flex items-center gap-1.5 min-w-0">
-                <Gamepad2 size={18} className="text-sky flex-shrink-0"/>
-                <span className="truncate">Try a Quick Game!</span>
-              </h3>
-              <span className="text-xs font-bold bg-sky/10 text-sky px-2.5 py-1 rounded-full whitespace-nowrap flex-shrink-0">No sign-up</span>
-            </div>
-
-            {!trialDone ? (
-              <>
-                <div className="flex gap-2 mb-6">
-                  {TRIAL_ITEMS.map((_, i) => {
-                    const result    = stepResults[i];
-                    const isCurrent = i === trialStep;
-                    let bg = 'bg-gray-200 dark:bg-gray-700';
-                    if      (result === 'correct') bg = 'bg-emerald-400';
-                    else if (result === 'wrong')   bg = 'bg-rose-500';
-                    else if (isCurrent)            bg = 'bg-sky animate-pulse';
-                    return <div key={i} className={`flex-1 h-2.5 rounded-full transition-all duration-400 ${bg}`}/>;
-                  })}
-                </div>
-
-              <p className="text-center text-sm font-semibold text-gray-500 mb-3">Can you guess the picture? Tap the right answer!</p>
-              <div className="flex justify-center mb-6">
-                <img
-                  src={current.image}
-                  alt="What is this?"
-                  className="animate-float"
-                  style={{ width: 180, height: 180, objectFit: 'cover', borderRadius: 20, boxShadow: '0 8px 24px rgba(0,0,0,0.18)' }}
-                />
-              </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  {current.options.map(opt => {
-                    const isSel  = selected === opt;
-                    const isCorr = opt === current.answer;
-                    let cls = 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 border-2 border-transparent hover:bg-sky/10 hover:text-sky hover:border-sky/40';
-                    if (showFeedback) {
-                      if (isSel && isCorr) cls = 'bg-emerald-500 text-white border-2 border-emerald-400 scale-105 shadow-lg shadow-emerald-500/30';
-                      else if (isSel && !isCorr) cls = 'bg-rose-600 text-white border-2 border-rose-400 shake shadow-lg shadow-rose-600/30';
-                      else if (!isSel && isCorr && selected !== null) cls = 'bg-emerald-400/20 text-emerald-600 dark:text-emerald-300 border-2 border-emerald-400/60';
-                      else cls = 'bg-gray-100 dark:bg-gray-700 text-gray-400 border-2 border-transparent opacity-50';
-                    }
-                    return (
-                      <button key={opt} onClick={()=>handlePick(opt)}
-                        className={`py-4 rounded-2xl font-bold text-sm transition-all duration-200 ${cls}`}>
-                        {opt}
-                      </button>
-                    );
-                  })}
-                </div>
-              </>
-            ) : (
-              <div className="text-center py-4 animate-result-reveal">
-                <div className="relative w-20 h-20 mx-auto mb-4">
-                  <div className={`absolute inset-0 rounded-full animate-glow-ring ${isPerfect?'bg-amber-400/40':trialScore>=2?'bg-yellow-400/30':'bg-emerald-400/30'}`}/>
-                  <div className={`relative w-20 h-20 rounded-full flex items-center justify-center animate-icon-spin shadow-lg
-                    ${isPerfect?'bg-gradient-to-br from-amber-300 to-amber-500':trialScore>=2?'bg-gradient-to-br from-yellow-300 to-yellow-500':'bg-gradient-to-br from-emerald-400 to-emerald-600'}`}>
-                    {isPerfect?<Trophy size={36} className="text-white drop-shadow"/>
-                      :trialScore>=2?<Star size={36} className="text-white fill-white drop-shadow"/>
-                      :<Check size={36} className="text-white drop-shadow" strokeWidth={3}/>}
-                  </div>
-                </div>
-                <div className="flex items-center justify-center gap-2 mb-3">
-                  {stepResults.map((r, i) => (
-                    <div key={i} className={`w-3 h-3 rounded-full ${r==='correct'?'bg-emerald-400':r==='wrong'?'bg-rose-500':'bg-gray-300'}`}/>
-                  ))}
-                </div>
-                <div className="animate-score-sweep">
-                  {isPerfect && <p className="text-xs font-bold uppercase tracking-[0.2em] text-amber-500 mb-1">✦ Perfect Score ✦</p>}
-                  <h4 className="font-display text-3xl mb-1 text-gray-800 dark:text-gray-100">
-                    {isPerfect?'Amazing!':trialScore>=2?'Well done!':`${trialScore}/${TRIAL_ITEMS.length} Correct`}
-                  </h4>
-                  <p className="text-gray-500 dark:text-gray-400 text-sm leading-relaxed max-w-xs mx-auto">
-                    {isPerfect?'You nailed every question! Sign up to track your progress.':'Sign up to access more games and see how you improve!'}
-                  </p>
-                </div>
-                <button onClick={()=>setShowRegister(true)}
-                  className={`mt-5 btn-game inline-flex items-center gap-2 mx-auto text-white ${isPerfect?'animate-shimmer':'bg-coral'}`}>
-                  {isPerfect?'Claim Your Score!':'Save My Progress'}
-                  <ArrowRight size={17}/>
-                </button>
-              </div>
-            )}
-          </div>
+        <div className="grid gap-3 sm:grid-cols-3">
+          <button onClick={() => setShowLogin(true)}
+            className="rounded-3xl border border-sky text-sky bg-white py-3 px-4 font-semibold hover:bg-sky/10 transition">
+            Sign In
+          </button>
+          <button onClick={() => { setRegisterRole('parent'); setShowRegister(true); }}
+            className="rounded-3xl bg-coral text-white py-3 px-4 font-semibold hover:bg-coral/90 transition">
+            Register as Parent
+          </button>
+          <button onClick={() => { setRegisterRole('teacher'); setShowRegister(true); }}
+            className="rounded-3xl bg-emerald-600 text-white py-3 px-4 font-semibold hover:bg-emerald-500 transition">
+            Register as Teacher
+          </button>
         </div>
-      </section>
 
-      {/* ── Features ────────────────────────────────────── */}
-      <section className="max-w-6xl mx-auto px-4 md:px-6 py-10 md:py-16">
-        <h2 className="font-display text-3xl md:text-4xl text-center mb-8 md:mb-12 text-gray-800 dark:text-gray-200">
-          Why learners love ReadAble
-        </h2>
-        <div className="grid md:grid-cols-3 gap-6">
-          {FEATURES.map(({Icon,title,desc})=>(
-              <div key={title} className="rounded-3xl p-6 dark:border-gray-700 transition-all duration-200 hover:-translate-y-1"
-                style={{
-                  background: 'var(--bg-card)',
-                  border: '2px solid var(--border-color)',
-                  boxShadow: '0 4px 16px rgba(0,0,0,0.08), 0 1px 4px rgba(0,0,0,0.06)',
-                }}>
-                <div className="w-12 h-12 rounded-2xl flex items-center justify-center mb-4"
-                  style={{ background: 'rgba(96,184,245,0.15)', border: '2px solid rgba(96,184,245,0.3)' }}>
-                  <Icon size={24} className="text-sky"/>
-                </div>
-                <h3 className="font-display text-xl mb-2 text-gray-800 dark:text-gray-200">{title}</h3>
-                <p className="text-gray-600 dark:text-gray-400 text-sm leading-relaxed">{desc}</p>
-              </div>
-          ))}
-        </div>
-      </section>
+        <p className="text-sm text-gray-500 dark:text-gray-400">
+          Choose your role first. Once registered, use Sign In to access your dashboard.
+        </p>
+      </div>
 
-      {/* ── Modals ──────────────────────────────────────── */}
-      {showLogin    && <SignInModal    onClose={()=>setShowLogin(false)}    onSwitchToRegister={()=>{ setShowLogin(false); setShowRegister(true); }}/>}
-      {showRegister && <RegisterModal onClose={()=>setShowRegister(false)} onSwitchToLogin={()=>{ setShowRegister(false); setShowLogin(true); }}/>}
-      {showSettings && <SettingsModal onClose={()=>setShowSettings(false)} />}
+      {showLogin && (
+        <SignInModal
+          onClose={() => setShowLogin(false)}
+          onSwitchToRegister={() => {
+            setShowLogin(false);
+            setRegisterRole('parent');
+            setShowRegister(true);
+          }}
+        />
+      )}
+
+      {showRegister && (
+        <RegisterModal
+          initialRole={registerRole}
+          onClose={() => setShowRegister(false)}
+          onSwitchToLogin={() => {
+            setShowRegister(false);
+            setShowLogin(true);
+          }}
+        />
+      )}
     </div>
   );
 }
