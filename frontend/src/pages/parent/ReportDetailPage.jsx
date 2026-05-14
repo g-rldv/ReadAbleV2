@@ -295,7 +295,7 @@ export default function ReportDetailPage() {
     </div>
   );
 }
-            </div>
+            <div>
           </div>
         )}
 
