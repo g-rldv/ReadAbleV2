@@ -45,16 +45,27 @@ router.get('/', async (req, res) => {
 
 router.post('/', requireRole('teacher'), async (req, res) => {
   try {
-    const { title, description, story_theme, difficulty } = req.body;
-    if (!title || !description || !story_theme || !difficulty) {
-      return res.status(400).json({ error: 'Title, description, story theme, and difficulty are required' });
+    const { title, description, story_theme, difficulty, difficulty_level, autism_focus_areas, recommended_age_min, recommended_age_max, break_interval } = req.body;
+    if (!title || !description || !story_theme) {
+      return res.status(400).json({ error: 'Title, description, and story theme are required' });
     }
     const result = await pool.query(
       `INSERT INTO assessments
-         (title, description, story_theme, difficulty, teacher_id, is_published, created_at, updated_at)
-       VALUES ($1,$2,$3,$4,$5,FALSE,NOW(),NOW())
+         (title, description, story_theme, difficulty, difficulty_level, autism_focus_areas, recommended_age_min, recommended_age_max, break_interval, teacher_id, is_published, created_at, updated_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,FALSE,NOW(),NOW())
        RETURNING *`,
-      [title.trim(), description.trim(), story_theme.trim(), difficulty.trim(), req.user.id]
+      [
+        title.trim(),
+        description.trim(),
+        story_theme.trim(),
+        difficulty?.trim() || 'easy',
+        difficulty_level || 1,
+        JSON.stringify(autism_focus_areas || []),
+        recommended_age_min || null,
+        recommended_age_max || null,
+        break_interval || 10,
+        req.user.id
+      ]
     );
     res.status(201).json({ assessment: result.rows[0] });
   } catch (err) {
@@ -107,7 +118,7 @@ router.get('/:id', async (req, res) => {
 router.put('/:id', requireRole('teacher'), async (req, res) => {
   try {
     const { id } = req.params;
-    const { title, description, story_theme, difficulty } = req.body;
+    const { title, description, story_theme, difficulty, difficulty_level, autism_focus_areas, recommended_age_min, recommended_age_max, break_interval } = req.body;
     const assessment = await getAssessmentById(id);
     if (!assessment || assessment.teacher_id !== req.user.id) {
       return res.status(404).json({ error: 'Assessment not found' });
@@ -115,9 +126,21 @@ router.put('/:id', requireRole('teacher'), async (req, res) => {
     const result = await pool.query(
       `UPDATE assessments SET
          title=$1, description=$2, story_theme=$3,
-         difficulty=$4, updated_at=NOW()
-       WHERE id=$5 RETURNING *`,
-      [title || assessment.title, description || assessment.description, story_theme || assessment.story_theme, difficulty || assessment.difficulty, id]
+         difficulty=$4, difficulty_level=$5, autism_focus_areas=$6,
+         recommended_age_min=$7, recommended_age_max=$8, break_interval=$9, updated_at=NOW()
+       WHERE id=$10 RETURNING *`,
+      [
+        title || assessment.title,
+        description || assessment.description,
+        story_theme || assessment.story_theme,
+        difficulty || assessment.difficulty,
+        difficulty_level !== undefined ? difficulty_level : assessment.difficulty_level,
+        autism_focus_areas ? JSON.stringify(autism_focus_areas) : assessment.autism_focus_areas,
+        recommended_age_min !== undefined ? recommended_age_min : assessment.recommended_age_min,
+        recommended_age_max !== undefined ? recommended_age_max : assessment.recommended_age_max,
+        break_interval || assessment.break_interval,
+        id
+      ]
     );
     res.json({ assessment: result.rows[0] });
   } catch (err) {
@@ -243,7 +266,7 @@ router.post('/:id/questions', requireRole('teacher'), async (req, res) => {
     if (!assessment || assessment.teacher_id !== req.user.id) {
       return res.status(404).json({ error: 'Assessment not found' });
     }
-    const { question_text, question_type, options, correct_answer, points, order_index, image_url } = req.body;
+    const { question_text, question_type, options, correct_answer, points, order_index, image_url, question_category, difficulty_score, time_estimate } = req.body;
     if (!question_text || !question_type) {
       return res.status(400).json({ error: 'Question text and type are required' });
     }
@@ -261,12 +284,15 @@ router.post('/:id/questions', requireRole('teacher'), async (req, res) => {
     }
     const result = await pool.query(
       `INSERT INTO assessment_questions
-         (assessment_id, question_text, question_type, options, correct_answer, points, order_index, image_url, created_at)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,NOW()) RETURNING *`,
+         (assessment_id, question_text, question_type, question_category, difficulty_score, time_estimate, options, correct_answer, points, order_index, image_url, created_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,NOW()) RETURNING *`,
       [
         id,
         question_text,
         question_type,
+        question_category || 'literal',
+        difficulty_score || 5,
+        time_estimate || 60,
         normalizedOptions ? JSON.stringify(normalizedOptions) : null,
         normalizedAnswer ? JSON.stringify(normalizedAnswer) : null,
         points || 1,
@@ -288,7 +314,7 @@ router.put('/:id/questions/:qId', requireRole('teacher'), async (req, res) => {
     if (!assessment || assessment.teacher_id !== req.user.id) {
       return res.status(404).json({ error: 'Assessment not found' });
     }
-    const { question_text, question_type, options, correct_answer, points, order_index, image_url } = req.body;
+    const { question_text, question_type, options, correct_answer, points, order_index, image_url, question_category, difficulty_score, time_estimate } = req.body;
     if (question_type && !VALID_QUESTION_TYPES.includes(question_type)) {
       return res.status(400).json({ error: 'Invalid question type' });
     }
@@ -312,15 +338,21 @@ router.put('/:id/questions/:qId', requireRole('teacher'), async (req, res) => {
       `UPDATE assessment_questions SET
          question_text = COALESCE($1, question_text),
          question_type = COALESCE($2, question_type),
-         options = $3,
-         correct_answer = $4,
-         points = COALESCE($5, points),
-         order_index = COALESCE($6, order_index),
-         image_url = COALESCE($7, image_url)
-       WHERE id=$8 AND assessment_id=$9 RETURNING *`,
+         question_category = COALESCE($3, question_category),
+         difficulty_score = COALESCE($4, difficulty_score),
+         time_estimate = COALESCE($5, time_estimate),
+         options = $6,
+         correct_answer = $7,
+         points = COALESCE($8, points),
+         order_index = COALESCE($9, order_index),
+         image_url = COALESCE($10, image_url)
+       WHERE id=$11 AND assessment_id=$12 RETURNING *`,
       [
         question_text,
         type,
+        question_category,
+        difficulty_score,
+        time_estimate,
         normalizedOptions ? JSON.stringify(normalizedOptions) : null,
         normalizedAnswer ? JSON.stringify(normalizedAnswer) : null,
         points,

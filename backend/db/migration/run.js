@@ -48,15 +48,20 @@ CREATE TABLE IF NOT EXISTS children (
 
 -- ── Assessments Table ───────────────────────────────────────
 CREATE TABLE IF NOT EXISTS assessments (
-  id           SERIAL PRIMARY KEY,
-  teacher_id   INTEGER REFERENCES users(id) ON DELETE SET NULL,
-  title        VARCHAR(255) NOT NULL,
-  difficulty   VARCHAR(50),
-  story_theme  VARCHAR(255),
-  description  TEXT,
-  updated_at   TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  created_at   TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  is_published BOOLEAN DEFAULT FALSE
+  id                   SERIAL PRIMARY KEY,
+  teacher_id           INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  title                VARCHAR(255) NOT NULL,
+  difficulty           VARCHAR(50),
+  difficulty_level     INTEGER DEFAULT 1,
+  story_theme          VARCHAR(255),
+  description          TEXT,
+  autism_focus_areas   JSONB DEFAULT '[]',
+  recommended_age_min  INTEGER,
+  recommended_age_max  INTEGER,
+  break_interval       INTEGER DEFAULT 10,
+  updated_at           TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  created_at           TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  is_published         BOOLEAN DEFAULT FALSE
 );
 
 -- ── Assessment Pages Table ──────────────────────────────────
@@ -73,16 +78,19 @@ CREATE TABLE IF NOT EXISTS assessment_pages (
 
 -- ── Assessment Questions Table ──────────────────────────────
 CREATE TABLE IF NOT EXISTS assessment_questions (
-  id             SERIAL PRIMARY KEY,
-  assessment_id  INTEGER REFERENCES assessments(id) ON DELETE CASCADE,
-  order_index    INTEGER DEFAULT 0,
-  question_text  TEXT,
-  question_type  VARCHAR(50),
-  image_url      VARCHAR(255),
-  points         INTEGER DEFAULT 0,
-  correct_answer JSONB,
-  created_at     TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  options        JSONB DEFAULT '[]'
+  id                SERIAL PRIMARY KEY,
+  assessment_id     INTEGER REFERENCES assessments(id) ON DELETE CASCADE,
+  order_index       INTEGER DEFAULT 0,
+  question_text     TEXT,
+  question_type     VARCHAR(50),
+  question_category VARCHAR(50),
+  difficulty_score  INTEGER DEFAULT 5,
+  time_estimate     INTEGER DEFAULT 60,
+  image_url         VARCHAR(255),
+  points            INTEGER DEFAULT 0,
+  correct_answer    JSONB,
+  created_at        TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  options           JSONB DEFAULT '[]'
 );
 
 -- ── Assessment Sessions Table ──────────────────────────────
@@ -119,15 +127,18 @@ CREATE TABLE IF NOT EXISTS reports (
 
 -- ── Session Answers Table ──────────────────────────────────
 CREATE TABLE IF NOT EXISTS session_answers (
-  id                 SERIAL PRIMARY KEY,
-  child_id           INTEGER REFERENCES children(id) ON DELETE SET NULL,
-  question_id        INTEGER REFERENCES assessment_questions(id) ON DELETE SET NULL,
-  is_correct         BOOLEAN DEFAULT FALSE,
-  points_earned      INTEGER DEFAULT 0,
-  time_spent_seconds INTEGER DEFAULT 0,
-  answered_at        TIMESTAMP WITH TIME ZONE,
-  session_id         INTEGER REFERENCES assessment_sessions(id) ON DELETE CASCADE,
-  given_answer       JSONB
+  id                        SERIAL PRIMARY KEY,
+  child_id                  INTEGER REFERENCES children(id) ON DELETE SET NULL,
+  question_id               INTEGER REFERENCES assessment_questions(id) ON DELETE SET NULL,
+  is_correct                BOOLEAN DEFAULT FALSE,
+  points_earned             INTEGER DEFAULT 0,
+  time_spent_seconds        INTEGER DEFAULT 0,
+  time_spent_milliseconds   INTEGER DEFAULT 0,
+  answered_at               TIMESTAMP WITH TIME ZONE,
+  session_id                INTEGER REFERENCES assessment_sessions(id) ON DELETE CASCADE,
+  given_answer              JSONB,
+  attempt_number            INTEGER DEFAULT 1,
+  hint_used                 BOOLEAN DEFAULT FALSE
 );
 
 -- ── Settings Table ───────────────────────────────────────────

@@ -75,6 +75,12 @@ export default function TeacherDashboard() {
         <h2 className="text-lg font-semibold mb-4">Quick Actions</h2>
         <div className="flex gap-4 flex-wrap">
           <Link
+            to="/teacher/analytics"
+            className="inline-block px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 font-medium"
+          >
+            📊 View Analytics
+          </Link>
+          <Link
             to="/teacher/children"
             className="inline-block px-4 py-2 bg-sky text-white rounded hover:bg-sky/80 font-medium"
           >
@@ -87,7 +93,7 @@ export default function TeacherDashboard() {
             View Assessments
           </Link>
           <Link
-            to="/teacher/assessments/new"
+            to="/teacher/assessment-builder"
             className="inline-block px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 font-medium"
           >
             Create Assessment

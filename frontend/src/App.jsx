@@ -13,6 +13,7 @@ const RegisterPage = lazy(() => import('./pages/LoginPage').then((m) => ({ defau
 const TeacherLayout = lazy(() => import('./components/layout/TeacherLayout'));
 const ParentLayout = lazy(() => import('./components/layout/ParentLayout'));
 const TeacherDashboard = lazy(() => import('./pages/teacher/TeacherDashboard'));
+const TeacherAnalyticsDashboard = lazy(() => import('./pages/teacher/TeacherAnalyticsDashboard'));
 const ChildrenListPage = lazy(() => import('./pages/teacher/ChildrenListPage'));
 const ChildDetailPage = lazy(() => import('./pages/teacher/ChildDetailPage'));
 const AssessmentsListPage = lazy(() => import('./pages/teacher/AssessmentsListPage'));
