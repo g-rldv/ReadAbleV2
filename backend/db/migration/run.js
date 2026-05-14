@@ -157,7 +157,34 @@ CREATE TABLE IF NOT EXISTS settings (
   updated_at      TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- ── OTP Tokens Table ────────────────────────────────────────
+-- ── Pre Assessment Results Table ──────────────────────────
+CREATE TABLE IF NOT EXISTS pre_assessment_results (
+  id                SERIAL PRIMARY KEY,
+  child_id          INTEGER REFERENCES children(id) ON DELETE CASCADE,
+  score             INTEGER NOT NULL,
+  recommended_level INTEGER NOT NULL,
+  completed_at      TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- ── Classrooms Table ────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS classrooms (
+  id         SERIAL PRIMARY KEY,
+  teacher_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  name       VARCHAR(255) NOT NULL,
+  code       VARCHAR(10) UNIQUE NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- ── Class Memberships Table ──────────────────────────────────
+CREATE TABLE IF NOT EXISTS class_memberships (
+  id           SERIAL PRIMARY KEY,
+  classroom_id INTEGER REFERENCES classrooms(id) ON DELETE CASCADE,
+  user_id      INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  status       VARCHAR(20) DEFAULT 'pending',
+  requested_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  approved_at  TIMESTAMP WITH TIME ZONE,
+  UNIQUE(classroom_id, user_id)
+);
 CREATE TABLE IF NOT EXISTS otp_tokens (
   id         SERIAL PRIMARY KEY,
   used       BOOLEAN DEFAULT FALSE,

@@ -871,6 +871,7 @@ app.use('/api/reports',     require('./routes/reports'));
 app.use('/api/settings',    require('./routes/settings'));
 app.use('/api/analytics',   require('./routes/analytics'));
 app.use('/api/pre-assessments', require('./routes/pre-assessments'));
+app.use('/api/classrooms',  require('./routes/classrooms'));
 
 app.use((err, req, res, next) => {
   console.error('[Error]', err.stack);

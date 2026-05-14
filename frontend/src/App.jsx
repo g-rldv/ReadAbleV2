@@ -21,11 +21,14 @@ const AssessmentsListPage = lazy(() => import('./pages/teacher/AssessmentsListPa
 const AssessmentBuilderPage = lazy(() => import('./pages/teacher/AssessmentBuilderPage'));
 const SessionReviewPage = lazy(() => import('./pages/teacher/SessionReviewPage'));
 const TeacherReportsPage = lazy(() => import('./pages/teacher/TeacherReportsPage'));
+const ClassroomsListPage = lazy(() => import('./pages/teacher/ClassroomsListPage'));
+const ClassroomDetailPage = lazy(() => import('./pages/teacher/ClassroomDetailPage'));
 const ParentDashboard = lazy(() => import('./pages/parent/ParentDashboard'));
 const ParentChildrenPage = lazy(() => import('./pages/parent/ParentChildrenPage'));
 const ParentChildDetailPage = lazy(() => import('./pages/parent/ParentChildDetailPage'));
 const ParentReportsPage = lazy(() => import('./pages/parent/ParentReportsPage'));
 const ReportDetailPage = lazy(() => import('./pages/parent/ReportDetailPage'));
+const JoinClassroomPage = lazy(() => import('./pages/parent/JoinClassroomPage'));
 const StudentModePage = lazy(() => import('./pages/StudentModePage'));
 const PreAssessmentPage = lazy(() => import('./pages/PreAssessmentPage'));
 const GamePage = lazy(() => import('./pages/GamePage'));
@@ -48,9 +51,9 @@ function ErrorBoundary({ children }) {
 function ProtectedRoute({ allowedRoles, children }) {
   const { user, loading } = useAuth();
   if (loading) return <Spinner message="Loading ReadAble…" />;
-  if (!user) return <Navigate to="/login" replace />;
+  if (!user) return <Navigate to="/" replace />;
   if (allowedRoles && !allowedRoles.includes(user.role)) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/" replace />;
   }
   return children;
 }
@@ -76,6 +79,8 @@ function AppRoutes() {
           <Route path="/teacher/assessments/:id/edit" element={<AssessmentBuilderPage />} />
           <Route path="/teacher/sessions/:id" element={<SessionReviewPage />} />
           <Route path="/teacher/reports" element={<TeacherReportsPage />} />
+          <Route path="/teacher/classrooms" element={<ClassroomsListPage />} />
+          <Route path="/teacher/classrooms/:id" element={<ClassroomDetailPage />} />
           <Route path="/teacher/settings" element={<SettingsPage />} />
         </Route>
 
@@ -85,6 +90,7 @@ function AppRoutes() {
           <Route path="/parent/children/:id" element={<ParentChildDetailPage />} />
           <Route path="/parent/reports" element={<ParentReportsPage />} />
           <Route path="/parent/reports/:id" element={<ReportDetailPage />} />
+          <Route path="/parent/join-classroom" element={<JoinClassroomPage />} />
           <Route path="/parent/settings" element={<SettingsPage />} />
         </Route>
 
