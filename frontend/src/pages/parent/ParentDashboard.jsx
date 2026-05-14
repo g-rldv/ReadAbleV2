@@ -1,1 +1,122 @@
-import { useState, useEffect } from 'react';\nimport { Link } from 'react-router-dom';\nimport api from '../../utils/api';\n\nexport default function ParentDashboard() {\n  const [stats, setStats] = useState({\n    childrenCount: 0,\n    pendingReports: 0,\n    activeSessions: 0,\n  });\n  const [children, setChildren] = useState([]);\n  const [loading, setLoading] = useState(true);\n\n  useEffect(() => {\n    const fetchDashboardData = async () => {\n      try {\n        const [childrenRes, reportsRes] = await Promise.all([\n          api.get('/parent/children'),\n          api.get('/reports'),\n        ]);\n\n        const childrenList = childrenRes.data.children || [];\n        const reports = reportsRes.data.reports || [];\n        const unreadReports = reports.filter(r => !r.is_read).length;\n\n        setChildren(childrenList);\n        setStats({\n          childrenCount: childrenList.length,\n          pendingReports: unreadReports,\n          activeSessions: 0,\n        });\n      } catch (err) {\n        console.error('Failed to fetch dashboard data:', err);\n      } finally {\n        setLoading(false);\n      }\n    };\n\n    fetchDashboardData();\n  }, []);\n\n  if (loading) {\n    return (\n      <div className=\"flex items-center justify-center py-12\">\n        <div className=\"text-slate-600\">Loading dashboard...</div>\n      </div>\n    );\n  }\n\n  return (\n    <div>\n      <h1 className=\"text-3xl font-bold mb-2\">Welcome to ReadAble</h1>\n      <p className=\"text-slate-600 mb-6\">Monitor your child's reading assessments and launch student sessions.</p>\n\n      {/* Summary Stats */}\n      <div className=\"grid grid-cols-1 md:grid-cols-3 gap-4 mb-8\">\n        <div className=\"bg-white rounded-lg border border-slate-200 p-6 shadow-sm\">\n          <div className=\"text-slate-600 text-sm font-medium\">Your Children</div>\n          <div className=\"text-4xl font-bold text-sky mt-2\">{stats.childrenCount}</div>\n          <p className=\"text-slate-500 text-xs mt-2\">Registered students</p>\n        </div>\n        <div className=\"bg-white rounded-lg border border-slate-200 p-6 shadow-sm\">\n          <div className=\"text-slate-600 text-sm font-medium\">Pending Reports</div>\n          <div className=\"text-4xl font-bold text-orange-500 mt-2\">{stats.pendingReports}</div>\n          <p className=\"text-slate-500 text-xs mt-2\">New reports to read</p>\n        </div>\n        <div className=\"bg-white rounded-lg border border-slate-200 p-6 shadow-sm\">\n          <div className=\"text-slate-600 text-sm font-medium\">Active Sessions</div>\n          <div className=\"text-4xl font-bold text-green-500 mt-2\">{stats.activeSessions}</div>\n          <p className=\"text-slate-500 text-xs mt-2\">In progress</p>\n        </div>\n      </div>\n\n      {/* Quick Actions */}\n      <div className=\"bg-white rounded-lg border border-slate-200 p-6 shadow-sm mb-8\">\n        <h2 className=\"text-lg font-semibold mb-4\">Quick Actions</h2>\n        <div className=\"flex gap-4\">\n          <Link\n            to=\"/parent/children\"\n            className=\"inline-block px-4 py-2 bg-sky text-white rounded hover:bg-sky/80 font-medium\"\n          >\n            View Children\n          </Link>\n          <Link\n            to=\"/parent/reports\"\n            className=\"inline-block px-4 py-2 bg-slate-200 text-slate-800 rounded hover:bg-slate-300 font-medium\"\n          >\n            View Reports\n          </Link>\n        </div>\n      </div>\n\n      {/* Children Overview */}\n      {children.length > 0 && (\n        <div className=\"bg-white rounded-lg border border-slate-200 p-6 shadow-sm\">\n          <h2 className=\"text-lg font-semibold mb-4\">Your Children</h2>\n          <div className=\"space-y-3\">\n            {children.map((child) => (\n              <Link\n                key={child.id}\n                to={`/parent/children/${child.id}`}\n                className=\"flex items-center justify-between p-3 border border-slate-200 rounded hover:bg-sky/5 transition-colors\"\n              >\n                <div>\n                  <div className=\"font-medium text-slate-900\">\n                    {child.first_name} {child.last_name}\n                  </div>\n                  {child.teacher_first_name && (\n                    <div className=\"text-sm text-slate-600\">\n                      Teacher: {child.teacher_first_name} {child.teacher_last_name}\n                    </div>\n                  )}\n                </div>\n                <div className=\"text-slate-600 hover:text-sky\">→</div>\n              </Link>\n            ))}\n          </div>\n        </div>\n      )}\n    </div>\n  );\n}
+import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
+import api from '../../utils/api';
+
+export default function ParentDashboard() {
+  const [stats, setStats] = useState({
+    childrenCount: 0,
+    pendingReports: 0,
+    activeSessions: 0,
+  });
+  const [children, setChildren] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        const [childrenRes, reportsRes] = await Promise.all([
+          api.get('/parent/children'),
+          api.get('/reports'),
+        ]);
+
+        const childrenList = childrenRes.data.children || [];
+        const reports = reportsRes.data.reports || [];
+        const unreadReports = reports.filter(r => !r.is_read).length;
+
+        setChildren(childrenList);
+        setStats({
+          childrenCount: childrenList.length,
+          pendingReports: unreadReports,
+          activeSessions: 0,
+        });
+      } catch (err) {
+        console.error('Failed to fetch dashboard data:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDashboardData();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="text-slate-600">Loading dashboard...</div>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <h1 className="text-3xl font-bold mb-2">Welcome to ReadAble</h1>
+      <p className="text-slate-600 mb-6">Monitor your child's reading assessments and launch student sessions.</p>
+
+      {/* Summary Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+        <div className="bg-white rounded-lg border border-slate-200 p-6 shadow-sm">
+          <div className="text-slate-600 text-sm font-medium">Your Children</div>
+          <div className="text-4xl font-bold text-sky mt-2">{stats.childrenCount}</div>
+          <p className="text-slate-500 text-xs mt-2">Registered students</p>
+        </div>
+        <div className="bg-white rounded-lg border border-slate-200 p-6 shadow-sm">
+          <div className="text-slate-600 text-sm font-medium">Pending Reports</div>
+          <div className="text-4xl font-bold text-orange-500 mt-2">{stats.pendingReports}</div>
+          <p className="text-slate-500 text-xs mt-2">New reports to read</p>
+        </div>
+        <div className="bg-white rounded-lg border border-slate-200 p-6 shadow-sm">
+          <div className="text-slate-600 text-sm font-medium">Active Sessions</div>
+          <div className="text-4xl font-bold text-green-500 mt-2">{stats.activeSessions}</div>
+          <p className="text-slate-500 text-xs mt-2">In progress</p>
+        </div>
+      </div>
+
+      {/* Quick Actions */}
+      <div className="bg-white rounded-lg border border-slate-200 p-6 shadow-sm mb-8">
+        <h2 className="text-lg font-semibold mb-4">Quick Actions</h2>
+        <div className="flex gap-4">
+          <Link
+            to="/parent/children"
+            className="inline-block px-4 py-2 bg-sky text-white rounded hover:bg-sky/80 font-medium"
+          >
+            View Children
+          </Link>
+          <Link
+            to="/parent/reports"
+            className="inline-block px-4 py-2 bg-slate-200 text-slate-800 rounded hover:bg-slate-300 font-medium"
+          >
+            View Reports
+          </Link>
+        </div>
+      </div>
+
+      {/* Children Overview */}
+      {children.length > 0 && (
+        <div className="bg-white rounded-lg border border-slate-200 p-6 shadow-sm">
+          <h2 className="text-lg font-semibold mb-4">Your Children</h2>
+          <div className="space-y-3">
+            {children.map((child) => (
+              <Link
+                key={child.id}
+                to={`/parent/children/${child.id}`}
+                className="flex items-center justify-between p-3 border border-slate-200 rounded hover:bg-sky/5 transition-colors"
+              >
+                <div>
+                  <div className="font-medium text-slate-900">
+                    {child.first_name} {child.last_name}
+                  </div>
+                  {child.teacher_first_name && (
+                    <div className="text-sm text-slate-600">
+                      Teacher: {child.teacher_first_name} {child.teacher_last_name}
+                    </div>
+                  )}
+                </div>
+                <div className="text-slate-600 hover:text-sky">→</div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
