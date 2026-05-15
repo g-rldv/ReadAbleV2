@@ -169,7 +169,7 @@ export default function StudentModePage() {
         {/* Back to Dashboard */}
         <div className="flex justify-center">
           <button
-            onClick={() => navigate('/dashboard')}
+            onClick={() => navigate('/parent/dashboard')}
             className="px-6 py-3 text-slate-700 dark:text-slate-300 border-2 border-slate-300 dark:border-slate-600 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
             style={{ fontSize: `${16 * textScale}px` }}>
             ← Back to Dashboard

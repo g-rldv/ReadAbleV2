@@ -326,8 +326,11 @@ export function LoginPage() {
     e.preventDefault();
     setError(''); setLoading(true);
     try {
-      await login(form.email, form.password);
-      navigate('/dashboard', { replace: true });
+      const user = await login(form.email, form.password);
+      const destination = user?.role === 'teacher'
+        ? '/teacher/dashboard'
+        : '/parent/dashboard';
+      navigate(destination, { replace: true });
     } catch (err) {
       const msg = err.message || '';
       if (/invalid|password|credentials/i.test(msg)) setError('Incorrect email or password. Please try again.');
@@ -458,7 +461,10 @@ export function RegisterPage() {
         role: form.role,
         otp_code: otp,
       });
-      navigate('/teacher/dashboard', { replace: true });
+      const destination = form.role === 'teacher'
+        ? '/teacher/dashboard'
+        : '/parent/dashboard';
+      navigate(destination, { replace: true });
     } catch (err) {
       const msg = err.message || '';
       if (/invalid|expired|code/i.test(msg))   setOtpErr(msg || 'Invalid or expired code.');
