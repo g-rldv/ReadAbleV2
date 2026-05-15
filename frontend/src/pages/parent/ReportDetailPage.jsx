@@ -181,7 +181,7 @@ export default function ReportDetailPage() {
             {/* Score Display */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="flex items-center justify-center">
-                <div style={{ backgroundColor: proficiency.bgColor }} className="w-48 h-48 rounded-full flex flex-col items-center justify-center border-4" style={{ borderColor: proficiency.color }}>
+                <div style={{ backgroundColor: proficiency.bgColor, borderColor: proficiency.color }} className="w-48 h-48 rounded-full flex flex-col items-center justify-center border-4">
                   <div style={{ color: proficiency.textColor }} className="text-6xl font-bold">{overallScore}%</div>
                   <div style={{ color: proficiency.textColor }} className="text-xl font-semibold mt-2">{proficiency.label}</div>
                 </div>
