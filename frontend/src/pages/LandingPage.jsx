@@ -937,6 +937,12 @@ export default function LandingPage() {
   const { speak } = useSettings();
   const navigate  = useNavigate();
 
+  useEffect(() => {
+    const html = document.documentElement;
+    html.classList.remove('dark', 'high-contrast');
+    html.setAttribute('data-theme', 'cotton');
+  }, []);
+
   const [trialStep,    setTrialStep]    = useState(0);
   const [trialScore,   setTrialScore]   = useState(0);
   const [selected,     setSelected]     = useState(null);
@@ -961,14 +967,9 @@ export default function LandingPage() {
     <div className="min-h-screen bg-[var(--bg-primary)] flex items-center justify-center px-4 py-10">
       <div className="w-full max-w-xl text-center space-y-10">
         <SmartLogo height={40} />
-        <div className="space-y-4">
-          <h1 className="font-display text-4xl sm:text-5xl text-gray-900 dark:text-white">
-            ReadAble
-          </h1>
-          <p className="text-base text-gray-600 dark:text-gray-300">
-            Sign in or register as a parent or teacher to access the ReadAble portal.
-          </p>
-        </div>
+        <p className="text-base text-gray-600">
+          Sign in or register as a parent or teacher to access the ReadAble portal.
+        </p>
 
         <div className="grid gap-3 sm:grid-cols-3">
           <button onClick={() => setShowLogin(true)}

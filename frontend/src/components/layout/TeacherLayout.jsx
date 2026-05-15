@@ -7,7 +7,7 @@ export default function TeacherLayout() {
 
   const handleLogout = () => {
     logout();
-    navigate('/login');
+    navigate('/', { replace: true });
   };
 
   return (
