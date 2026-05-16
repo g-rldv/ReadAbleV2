@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node index.js",
     "dev": "nodemon index.js",
-    "migrate": "node db/migrations/run.js",
+    "migrate": "node db/migration/run.js",
     "seed": "node db/seeds/run.js",
     "setup": "npm run migrate && npm run seed"
   },

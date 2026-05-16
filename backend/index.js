@@ -5,6 +5,8 @@ const cors      = require('cors');
 const helmet    = require('helmet');
 const rateLimit = require('express-rate-limit');
 const { Pool }  = require('pg');
+const routePool = require('./db');
+const { ensureRuntimeSchema } = require('./db/runtimeSchema');
 
 const app  = express();
 const PORT = process.env.PORT || 5000;
@@ -883,6 +885,9 @@ app.use((req, res) => res.status(404).json({ error: 'Route not found' }));
   try {
     const client = await pool.connect();
     client.release();
+
+    await ensureRuntimeSchema(routePool);
+
     console.log('[DB] PostgreSQL connected successfully');
     app.listen(PORT, () => {
       console.log(`🚀 ReadAble API on port ${PORT}`);
