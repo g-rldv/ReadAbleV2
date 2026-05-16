@@ -7,138 +7,25 @@ const pool = require('../db');
 
 const router = express.Router();
 
-// ── Teacher: Get classroom info ───────────────────────────
-router.get('/:id', requireAuth, requireRole('teacher'), async (req, res) => {
-  const { id } = req.params;
-  try {
-    const classroom = await pool.query('SELECT * FROM classrooms WHERE id = $1 AND teacher_id = $2', [id, req.user.id]);
-    if (classroom.rows.length === 0) return res.status(404).json({ error: 'Classroom not found' });
-    res.json({ classroom: classroom.rows[0] });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Failed to fetch classroom' });
-  }
-});
+// ── Helper: generate a unique 6-char code ─────────────────────
+async function generateUniqueCode() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no confusing 0/O/1/I
+  let code, exists;
+  do {
+    code = Array.from({ length: 6 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+    const res = await pool.query('SELECT 1 FROM classrooms WHERE code = $1', [code]);
+    exists = res.rowCount > 0;
+  } while (exists);
+  return code;
+}
 
-// ── Teacher: Get my classrooms ──────────────────────────────
-router.get('/', requireAuth, requireRole('teacher'), async (req, res) => {
-  try {
-    const classrooms = await pool.query(
-      `SELECT c.*, COUNT(cm.id) as member_count
-       FROM classrooms c
-       LEFT JOIN class_memberships cm ON c.id = cm.classroom_id AND cm.status = 'approved'
-       WHERE c.teacher_id = $1
-       GROUP BY c.id
-       ORDER BY c.created_at DESC`,
-      [req.user.id]
-    );
-    res.json({ classrooms: classrooms.rows });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Failed to fetch classrooms' });
-  }
-});
-
-// ── Teacher: Create classroom ───────────────────────────────
-router.post('/', requireAuth, requireRole('teacher'), async (req, res) => {
-  const { name } = req.body;
-  if (!name?.trim()) return res.status(400).json({ error: 'Classroom name required' });
-
-  try {
-    // Generate unique code
-    let code;
-    do {
-      code = Math.random().toString(36).substring(2, 8).toUpperCase();
-    } while (await pool.query('SELECT 1 FROM classrooms WHERE code = $1', [code]).rowCount > 0);
-
-    const classroom = await pool.query(
-      'INSERT INTO classrooms (teacher_id, name, code) VALUES ($1, $2, $3) RETURNING *',
-      [req.user.id, name.trim(), code]
-    );
-    res.json({ classroom: classroom.rows[0] });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Failed to create classroom' });
-  }
-});
-
-// ── Teacher: Get classroom members ──────────────────────────
-router.get('/:id/members', requireAuth, requireRole('teacher'), async (req, res) => {
-  const { id } = req.params;
-  try {
-    const classroom = await pool.query('SELECT * FROM classrooms WHERE id = $1 AND teacher_id = $2', [id, req.user.id]);
-    if (classroom.rows.length === 0) return res.status(404).json({ error: 'Classroom not found' });
-
-    const members = await pool.query(
-      `SELECT cm.*, u.username, u.first_name, u.last_name, u.email
-       FROM class_memberships cm
-       JOIN users u ON cm.user_id = u.id
-       WHERE cm.classroom_id = $1
-       ORDER BY cm.requested_at DESC`,
-      [id]
-    );
-    res.json({ members: members.rows });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Failed to fetch members' });
-  }
-});
-
-// ── Teacher: Approve/reject member ──────────────────────────
-router.post('/:id/members/:userId/:action', requireAuth, requireRole('teacher'), async (req, res) => {
-  const { id, userId, action } = req.params;
-  if (!['approve', 'reject'].includes(action)) return res.status(400).json({ error: 'Invalid action' });
-
-  try {
-    const classroom = await pool.query('SELECT * FROM classrooms WHERE id = $1 AND teacher_id = $2', [id, req.user.id]);
-    if (classroom.rows.length === 0) return res.status(404).json({ error: 'Classroom not found' });
-
-    const status = action === 'approve' ? 'approved' : 'rejected';
-    const approved_at = action === 'approve' ? new Date() : null;
-
-    await pool.query(
-      'UPDATE class_memberships SET status = $1, approved_at = $2 WHERE classroom_id = $3 AND user_id = $4',
-      [status, approved_at, id, userId]
-    );
-    res.json({ success: true });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Failed to update membership' });
-  }
-});
-
-// ── Parent: Join classroom by code ──────────────────────────
-router.post('/join', requireAuth, requireRole('parent'), async (req, res) => {
-  const { code } = req.body;
-  if (!code?.trim()) return res.status(400).json({ error: 'Classroom code required' });
-
-  try {
-    const classroom = await pool.query('SELECT * FROM classrooms WHERE code = $1', [code.trim().toUpperCase()]);
-    if (classroom.rows.length === 0) return res.status(404).json({ error: 'Classroom not found' });
-
-    // Check if already member
-    const existing = await pool.query(
-      'SELECT * FROM class_memberships WHERE classroom_id = $1 AND user_id = $2',
-      [classroom.rows[0].id, req.user.id]
-    );
-    if (existing.rows.length > 0) return res.status(400).json({ error: 'Already requested or member' });
-
-    await pool.query(
-      'INSERT INTO class_memberships (classroom_id, user_id) VALUES ($1, $2)',
-      [classroom.rows[0].id, req.user.id]
-    );
-    res.json({ classroom: classroom.rows[0] });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Failed to join classroom' });
-  }
-});
-
-// ── Parent: Get my classrooms ───────────────────────────────
+// ── Parent: Get MY classrooms  (MUST be before /:id) ─────────
 router.get('/my', requireAuth, requireRole('parent'), async (req, res) => {
   try {
     const classrooms = await pool.query(
-      `SELECT c.*, cm.status, cm.requested_at, cm.approved_at, u.first_name as teacher_first, u.last_name as teacher_last
+      `SELECT c.id, c.name, c.code, c.created_at,
+              cm.status, cm.requested_at, cm.approved_at,
+              u.first_name AS teacher_first, u.last_name AS teacher_last
        FROM class_memberships cm
        JOIN classrooms c ON cm.classroom_id = c.id
        JOIN users u ON c.teacher_id = u.id
@@ -148,8 +35,188 @@ router.get('/my', requireAuth, requireRole('parent'), async (req, res) => {
     );
     res.json({ classrooms: classrooms.rows });
   } catch (err) {
-    console.error(err);
+    console.error('[Classrooms/My]', err.message);
     res.status(500).json({ error: 'Failed to fetch classrooms' });
+  }
+});
+
+// ── Parent: Join classroom by code (MUST be before /:id) ─────
+router.post('/join', requireAuth, requireRole('parent'), async (req, res) => {
+  const { code } = req.body;
+  if (!code?.trim()) return res.status(400).json({ error: 'Classroom code is required' });
+
+  try {
+    const classroomRes = await pool.query(
+      'SELECT * FROM classrooms WHERE code = $1',
+      [code.trim().toUpperCase()]
+    );
+    if (classroomRes.rows.length === 0) {
+      return res.status(404).json({ error: 'Classroom not found. Please check the code and try again.' });
+    }
+    const classroom = classroomRes.rows[0];
+
+    const existing = await pool.query(
+      'SELECT status FROM class_memberships WHERE classroom_id = $1 AND user_id = $2',
+      [classroom.id, req.user.id]
+    );
+    if (existing.rows.length > 0) {
+      const status = existing.rows[0].status;
+      if (status === 'approved') return res.status(400).json({ error: 'You are already a member of this classroom.' });
+      if (status === 'pending')  return res.status(400).json({ error: 'Your request is already pending approval.' });
+      if (status === 'rejected') return res.status(400).json({ error: 'Your request was rejected. Contact the teacher.' });
+    }
+
+    await pool.query(
+      'INSERT INTO class_memberships (classroom_id, user_id, status, requested_at) VALUES ($1, $2, $3, NOW())',
+      [classroom.id, req.user.id, 'pending']
+    );
+    res.json({ success: true, classroom });
+  } catch (err) {
+    console.error('[Classrooms/Join]', err.message);
+    res.status(500).json({ error: 'Failed to join classroom' });
+  }
+});
+
+// ── Teacher: List MY classrooms ──────────────────────────────
+router.get('/', requireAuth, requireRole('teacher'), async (req, res) => {
+  try {
+    const classrooms = await pool.query(
+      `SELECT c.*,
+              COUNT(cm.id) FILTER (WHERE cm.status = 'approved') AS member_count,
+              COUNT(cm.id) FILTER (WHERE cm.status = 'pending')  AS pending_count
+       FROM classrooms c
+       LEFT JOIN class_memberships cm ON c.id = cm.classroom_id
+       WHERE c.teacher_id = $1
+       GROUP BY c.id
+       ORDER BY c.created_at DESC`,
+      [req.user.id]
+    );
+    res.json({ classrooms: classrooms.rows });
+  } catch (err) {
+    console.error('[Classrooms/List]', err.message);
+    res.status(500).json({ error: 'Failed to fetch classrooms' });
+  }
+});
+
+// ── Teacher: Create classroom ────────────────────────────────
+router.post('/', requireAuth, requireRole('teacher'), async (req, res) => {
+  const { name } = req.body;
+  if (!name?.trim()) return res.status(400).json({ error: 'Classroom name is required' });
+
+  try {
+    const code = await generateUniqueCode();
+    const result = await pool.query(
+      'INSERT INTO classrooms (teacher_id, name, code, created_at) VALUES ($1, $2, $3, NOW()) RETURNING *',
+      [req.user.id, name.trim(), code]
+    );
+    res.status(201).json({ classroom: result.rows[0] });
+  } catch (err) {
+    console.error('[Classrooms/Create]', err.message);
+    res.status(500).json({ error: 'Failed to create classroom' });
+  }
+});
+
+// ── Teacher: Get single classroom ───────────────────────────
+router.get('/:id', requireAuth, requireRole('teacher'), async (req, res) => {
+  const { id } = req.params;
+  try {
+    const result = await pool.query(
+      'SELECT * FROM classrooms WHERE id = $1 AND teacher_id = $2',
+      [id, req.user.id]
+    );
+    if (result.rows.length === 0) return res.status(404).json({ error: 'Classroom not found' });
+    res.json({ classroom: result.rows[0] });
+  } catch (err) {
+    console.error('[Classrooms/Get]', err.message);
+    res.status(500).json({ error: 'Failed to fetch classroom' });
+  }
+});
+
+// ── Teacher: Get classroom members ──────────────────────────
+router.get('/:id/members', requireAuth, requireRole('teacher'), async (req, res) => {
+  const { id } = req.params;
+  try {
+    const classroom = await pool.query(
+      'SELECT id FROM classrooms WHERE id = $1 AND teacher_id = $2',
+      [id, req.user.id]
+    );
+    if (classroom.rows.length === 0) return res.status(404).json({ error: 'Classroom not found' });
+
+    const members = await pool.query(
+      `SELECT cm.id, cm.user_id, cm.status, cm.requested_at, cm.approved_at,
+              u.first_name, u.last_name, u.email
+       FROM class_memberships cm
+       JOIN users u ON cm.user_id = u.id
+       WHERE cm.classroom_id = $1
+       ORDER BY
+         CASE cm.status WHEN 'pending' THEN 0 WHEN 'approved' THEN 1 ELSE 2 END,
+         cm.requested_at DESC`,
+      [id]
+    );
+    res.json({ members: members.rows });
+  } catch (err) {
+    console.error('[Classrooms/Members]', err.message);
+    res.status(500).json({ error: 'Failed to fetch members' });
+  }
+});
+
+// ── Teacher: Approve or reject a member ─────────────────────
+router.post('/:id/members/:userId/:action', requireAuth, requireRole('teacher'), async (req, res) => {
+  const { id, userId, action } = req.params;
+  if (!['approve', 'reject'].includes(action)) {
+    return res.status(400).json({ error: 'Action must be approve or reject' });
+  }
+
+  try {
+    const classroom = await pool.query(
+      'SELECT id FROM classrooms WHERE id = $1 AND teacher_id = $2',
+      [id, req.user.id]
+    );
+    if (classroom.rows.length === 0) return res.status(404).json({ error: 'Classroom not found' });
+
+    const membership = await pool.query(
+      'SELECT id FROM class_memberships WHERE classroom_id = $1 AND user_id = $2',
+      [id, userId]
+    );
+    if (membership.rows.length === 0) return res.status(404).json({ error: 'Membership not found' });
+
+    const status = action === 'approve' ? 'approved' : 'rejected';
+    const approved_at = action === 'approve' ? new Date() : null;
+
+    await pool.query(
+      'UPDATE class_memberships SET status = $1, approved_at = $2 WHERE classroom_id = $3 AND user_id = $4',
+      [status, approved_at, id, userId]
+    );
+
+    // If approved, link the parent's children to this teacher
+    if (action === 'approve') {
+      await pool.query(
+        `UPDATE children SET teacher_id = $1
+         WHERE parent_id = $2 AND (teacher_id IS NULL OR teacher_id = $1)`,
+        [req.user.id, userId]
+      );
+    }
+
+    res.json({ success: true, status });
+  } catch (err) {
+    console.error('[Classrooms/Action]', err.message);
+    res.status(500).json({ error: 'Failed to update membership' });
+  }
+});
+
+// ── Teacher: Delete classroom ────────────────────────────────
+router.delete('/:id', requireAuth, requireRole('teacher'), async (req, res) => {
+  const { id } = req.params;
+  try {
+    const result = await pool.query(
+      'DELETE FROM classrooms WHERE id = $1 AND teacher_id = $2 RETURNING id',
+      [id, req.user.id]
+    );
+    if (result.rows.length === 0) return res.status(404).json({ error: 'Classroom not found' });
+    res.json({ success: true });
+  } catch (err) {
+    console.error('[Classrooms/Delete]', err.message);
+    res.status(500).json({ error: 'Failed to delete classroom' });
   }
 });
 
