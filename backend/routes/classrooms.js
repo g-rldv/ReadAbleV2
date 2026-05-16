@@ -160,6 +160,39 @@ router.get('/:id/members', requireAuth, requireRole('teacher'), async (req, res)
   }
 });
 
+// ── Teacher: Get classroom students by approved parent membership ─────
+router.get('/:id/children', requireAuth, requireRole('teacher'), async (req, res) => {
+  const { id } = req.params;
+  try {
+    const classroom = await pool.query(
+      'SELECT id FROM classrooms WHERE id = $1 AND teacher_id = $2',
+      [id, req.user.id]
+    );
+    if (classroom.rows.length === 0) return res.status(404).json({ error: 'Classroom not found' });
+
+    const children = await pool.query(
+      `SELECT c.*, u.first_name AS parent_first_name, u.last_name AS parent_last_name
+       FROM children c
+       JOIN class_memberships cm ON cm.user_id = c.parent_id
+       WHERE cm.classroom_id = $1
+         AND cm.status = 'approved'
+         AND c.teacher_id = $2
+       ORDER BY c.first_name, c.last_name`,
+      [id, req.user.id]
+    );
+
+    const formatted = children.rows.map((child) => ({
+      ...child,
+      parent_name: child.parent_first_name ? `${child.parent_first_name} ${child.parent_last_name}` : null,
+    }));
+
+    res.json({ children: formatted });
+  } catch (err) {
+    console.error('[Classrooms/Children]', err.message);
+    res.status(500).json({ error: 'Failed to fetch classroom students' });
+  }
+});
+
 // ── Teacher: Approve or reject a member ─────────────────────
 router.post('/:id/members/:userId/:action', requireAuth, requireRole('teacher'), async (req, res) => {
   const { id, userId, action } = req.params;

@@ -14,9 +14,29 @@ export default function TeacherReportsPage() {
   const [selectedClassroom, setSelectedClassroom] = useState(null);
   const [selectedChild, setSelectedChild] = useState(null);
   const [expandedClassrooms, setExpandedClassrooms] = useState({});
+  const [classroomStudents, setClassroomStudents] = useState({});
+  const [loadingClassroomStudents, setLoadingClassroomStudents] = useState({});
   const [loading, setLoading] = useState(true);
   const [reportsLoading, setReportsLoading] = useState(false);
   const [error, setError] = useState(null);
+
+  const fetchClassroomChildren = async (classroomId) => {
+    if (classroomStudents[classroomId] != null) return;
+    setLoadingClassroomStudents((prev) => ({ ...prev, [classroomId]: true }));
+    try {
+      const res = await api.get(`/classrooms/${classroomId}/children`);
+      setClassroomStudents((prev) => ({ ...prev, [classroomId]: res.data.children || [] }));
+    } catch (err) {
+      console.error('[TeacherReports/FetchClassroomChildren]', err);
+      setClassroomStudents((prev) => ({ ...prev, [classroomId]: [] }));
+    } finally {
+      setLoadingClassroomStudents((prev) => {
+        const next = { ...prev };
+        delete next[classroomId];
+        return next;
+      });
+    }
+  };
 
   useEffect(() => {
     const fetchInitial = async () => {
@@ -32,10 +52,10 @@ export default function TeacherReportsPage() {
         setReports(reportsRes.data.reports || []);
         setSessions(sessionsRes.data.sessions || []);
 
-        // Auto-expand first classroom
         const cls = classroomsRes.data.classrooms || [];
         if (cls.length > 0) {
           setExpandedClassrooms({ [cls[0].id]: true });
+          fetchClassroomChildren(cls[0].id);
         }
       } catch (err) {
         console.error('[TeacherReports]', err);
@@ -48,10 +68,14 @@ export default function TeacherReportsPage() {
   }, []);
 
   const toggleClassroom = (id) => {
+    const isOpening = !expandedClassrooms[id];
     setExpandedClassrooms((prev) => ({ ...prev, [id]: !prev[id] }));
     if (selectedClassroom?.id !== id) {
       setSelectedClassroom(classrooms.find((c) => c.id === id) || null);
       setSelectedChild(null);
+    }
+    if (isOpening) {
+      fetchClassroomChildren(id);
     }
   };
 
@@ -64,8 +88,11 @@ export default function TeacherReportsPage() {
 
   // Children who belong to a classroom (via teacher_id assigned when parent approved)
   const getChildrenForClassroom = (classroom) => {
-    return children.filter((c) => c.teacher_id === classroom.teacher_id || true)
-      .filter((c) => c.teacher_id != null); // all teacher's children for now
+    const assignedChildren = classroomStudents[classroom.id];
+    if (assignedChildren !== undefined) {
+      return assignedChildren;
+    }
+    return [];
   };
 
   // Reports for a specific child
@@ -119,7 +146,7 @@ export default function TeacherReportsPage() {
               </div>
               <div className="divide-y divide-slate-100">
                 {classrooms.map((classroom) => {
-                  const classroomChildren = allChildren; // teacher sees all their children
+                  const classroomChildren = getChildrenForClassroom(classroom);
                   const isExpanded = expandedClassrooms[classroom.id];
 
                   return (
