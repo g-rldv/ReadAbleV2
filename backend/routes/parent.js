@@ -30,10 +30,22 @@ router.post('/children', async (req, res) => {
       return res.status(400).json({ error: 'Child first name is required' });
     }
 
+    const teacherRes = await pool.query(
+      `SELECT c.teacher_id
+       FROM class_memberships cm
+       JOIN classrooms c ON cm.classroom_id = c.id
+       WHERE cm.user_id = $1
+         AND cm.status = 'approved'
+       ORDER BY cm.approved_at DESC
+       LIMIT 1`,
+      [req.user.id]
+    );
+    const teacher_id = teacherRes.rows[0]?.teacher_id || null;
+
     const result = await pool.query(
       `INSERT INTO children (parent_id, teacher_id, first_name, last_name, date_of_birth, age, gender, avatar, asd_notes, created_at)
-       VALUES ($1, NULL, $2, $3, $4, $5, $6, $7, $8, NOW()) RETURNING *`,
-      [req.user.id, first_name.trim(), (last_name || '').trim(), date_of_birth || null, age || null, gender || null, avatar || null, asd_notes || null]
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW()) RETURNING *`,
+      [req.user.id, teacher_id, first_name.trim(), (last_name || '').trim(), date_of_birth || null, age || null, gender || null, avatar || null, asd_notes || null]
     );
     res.status(201).json({ child: result.rows[0] });
   } catch (err) {

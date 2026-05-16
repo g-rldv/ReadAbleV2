@@ -176,7 +176,7 @@ router.get('/:id/children', requireAuth, requireRole('teacher'), async (req, res
        JOIN class_memberships cm ON cm.user_id = c.parent_id
        WHERE cm.classroom_id = $1
          AND cm.status = 'approved'
-         AND c.teacher_id = $2
+         AND (c.teacher_id = $2 OR c.teacher_id IS NULL)
        ORDER BY c.first_name, c.last_name`,
       [id, req.user.id]
     );
