@@ -3,7 +3,6 @@ import { useAuth } from '../../contexts/AuthContext';
 
 const NAV_LINKS = [
   { to: '/teacher/dashboard',   label: 'Home'        },
-  { to: '/teacher/children',    label: 'Students'    },
   { to: '/teacher/assessments', label: 'Assessments' },
   { to: '/teacher/classrooms',  label: 'Classrooms'  },
   { to: '/teacher/reports',     label: 'Reports'     },

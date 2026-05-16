@@ -30,7 +30,6 @@ export default function AssessmentBuilderPage() {
   const { id } = useParams();
   const navigate = useNavigate();
 
-  // Form state
   const [assessment, setAssessment] = useState({
     title: '',
     description: '',
@@ -48,9 +47,9 @@ export default function AssessmentBuilderPage() {
   const [showPageForm, setShowPageForm] = useState(false);
   const [showQuestionForm, setShowQuestionForm] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
   const [error, setError] = useState('');
 
-  // Load existing assessment if editing
   useEffect(() => {
     if (id) {
       loadAssessment();
@@ -60,7 +59,7 @@ export default function AssessmentBuilderPage() {
   const loadAssessment = async () => {
     try {
       setLoading(true);
-      const response = await api.get(`/api/assessments/${id}`);
+      const response = await api.get(`/assessments/${id}`);
       const { assessment: data, pages: pagesData, questions: questionsData } = response.data;
       setAssessment({
         ...data,
@@ -92,15 +91,19 @@ export default function AssessmentBuilderPage() {
   const saveAssessment = async () => {
     try {
       setLoading(true);
-      if (id) {
-        await api.put(`/api/assessments/${id}`, assessment);
-      } else {
-        const response = await api.post('/api/assessments', assessment);
-        navigate(`/teacher/assessment-builder/${response.data.assessment.id}`);
-      }
       setError('');
+      if (id) {
+        await api.put(`/assessments/${id}`, assessment);
+        setSaveSuccess(true);
+        setTimeout(() => setSaveSuccess(false), 2000);
+      } else {
+        const response = await api.post('/assessments', assessment);
+        const newId = response.data.assessment.id;
+        // Navigate to the correct edit route
+        navigate(`/teacher/assessments/${newId}/edit`);
+      }
     } catch (err) {
-      setError('Failed to save assessment');
+      setError(err.response?.data?.error || 'Failed to save assessment');
       console.error(err);
     } finally {
       setLoading(false);
@@ -110,23 +113,24 @@ export default function AssessmentBuilderPage() {
   const savePage = async (pageData) => {
     try {
       if (editingPage?.id) {
-        await api.put(`/api/assessments/${id}/pages/${editingPage.id}`, pageData);
+        await api.put(`/assessments/${id}/pages/${editingPage.id}`, pageData);
         setPages(pages.map(p => p.id === editingPage.id ? { ...p, ...pageData } : p));
       } else {
-        const response = await api.post(`/api/assessments/${id}/pages`, pageData);
+        const response = await api.post(`/assessments/${id}/pages`, pageData);
         setPages([...pages, response.data.page]);
       }
       setEditingPage(null);
       setShowPageForm(false);
     } catch (err) {
       console.error('Failed to save page:', err);
+      setError(err.response?.data?.error || 'Failed to save page');
     }
   };
 
   const deletePage = async (pageId) => {
     if (!window.confirm('Delete this page?')) return;
     try {
-      await api.delete(`/api/assessments/${id}/pages/${pageId}`);
+      await api.delete(`/assessments/${id}/pages/${pageId}`);
       setPages(pages.filter(p => p.id !== pageId));
     } catch (err) {
       console.error('Failed to delete page:', err);
@@ -136,39 +140,64 @@ export default function AssessmentBuilderPage() {
   const saveQuestion = async (questionData) => {
     try {
       if (editingQuestion?.id) {
-        await api.put(`/api/assessments/${id}/questions/${editingQuestion.id}`, questionData);
+        await api.put(`/assessments/${id}/questions/${editingQuestion.id}`, questionData);
         setQuestions(questions.map(q => q.id === editingQuestion.id ? { ...q, ...questionData } : q));
       } else {
-        const response = await api.post(`/api/assessments/${id}/questions`, questionData);
+        const response = await api.post(`/assessments/${id}/questions`, questionData);
         setQuestions([...questions, response.data.question]);
       }
       setEditingQuestion(null);
       setShowQuestionForm(false);
     } catch (err) {
       console.error('Failed to save question:', err);
+      setError(err.response?.data?.error || 'Failed to save question');
     }
   };
 
   const deleteQuestion = async (questionId) => {
     if (!window.confirm('Delete this question?')) return;
     try {
-      await api.delete(`/api/assessments/${id}/questions/${questionId}`);
+      await api.delete(`/assessments/${id}/questions/${questionId}`);
       setQuestions(questions.filter(q => q.id !== questionId));
     } catch (err) {
       console.error('Failed to delete question:', err);
     }
   };
 
+  const togglePublish = async () => {
+    try {
+      const response = await api.put(`/assessments/${id}/publish`);
+      setAssessment(prev => ({ ...prev, is_published: response.data.assessment.is_published }));
+    } catch (err) {
+      setError('Failed to toggle publish status');
+    }
+  };
+
   return (
     <div className="p-6 max-w-4xl mx-auto">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">Assessment Builder</h1>
-        <p className="text-slate-600">Design custom reading comprehension assessments for children with ASD</p>
+      <div className="mb-6 flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold mb-1">Assessment Builder</h1>
+          <p className="text-slate-600">Design custom reading comprehension assessments for children with ASD</p>
+        </div>
+        <button
+          onClick={() => navigate('/teacher/assessments')}
+          className="text-slate-500 hover:text-slate-700 text-sm font-medium"
+        >
+          ← Back to Assessments
+        </button>
       </div>
 
       {error && (
-        <div className="mb-4 p-3 bg-red-100 text-red-700 rounded">
-          {error}
+        <div className="mb-4 p-3 bg-red-100 text-red-700 rounded flex items-center justify-between">
+          <span>{error}</span>
+          <button onClick={() => setError('')} className="text-red-500 hover:text-red-700">✕</button>
+        </div>
+      )}
+
+      {saveSuccess && (
+        <div className="mb-4 p-3 bg-green-100 text-green-700 rounded">
+          ✓ Assessment saved successfully
         </div>
       )}
 
@@ -183,7 +212,7 @@ export default function AssessmentBuilderPage() {
               type="text"
               value={assessment.title}
               onChange={e => handleAssessmentChange('title', e.target.value)}
-              className="w-full px-3 py-2 border rounded-lg"
+              className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-sky"
               placeholder="e.g., The Hungry Caterpillar"
             />
           </div>
@@ -193,7 +222,7 @@ export default function AssessmentBuilderPage() {
             <textarea
               value={assessment.description}
               onChange={e => handleAssessmentChange('description', e.target.value)}
-              className="w-full px-3 py-2 border rounded-lg"
+              className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-sky"
               rows="3"
               placeholder="What is this assessment about?"
             />
@@ -205,7 +234,7 @@ export default function AssessmentBuilderPage() {
               type="text"
               value={assessment.story_theme}
               onChange={e => handleAssessmentChange('story_theme', e.target.value)}
-              className="w-full px-3 py-2 border rounded-lg"
+              className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-sky"
               placeholder="e.g., Animals, Space, Daily Routines"
             />
           </div>
@@ -217,7 +246,7 @@ export default function AssessmentBuilderPage() {
                 type="number"
                 value={assessment.recommended_age_min}
                 onChange={e => handleAssessmentChange('recommended_age_min', e.target.value)}
-                className="w-full px-3 py-2 border rounded-lg"
+                className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-sky"
                 placeholder="5"
               />
             </div>
@@ -227,7 +256,7 @@ export default function AssessmentBuilderPage() {
                 type="number"
                 value={assessment.recommended_age_max}
                 onChange={e => handleAssessmentChange('recommended_age_max', e.target.value)}
-                className="w-full px-3 py-2 border rounded-lg"
+                className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-sky"
                 placeholder="10"
               />
             </div>
@@ -264,7 +293,7 @@ export default function AssessmentBuilderPage() {
                 <label key={area.id} className="flex items-center p-3 border rounded-lg cursor-pointer hover:bg-purple-50">
                   <input
                     type="checkbox"
-                    checked={assessment.autism_focus_areas.includes(area.id)}
+                    checked={(assessment.autism_focus_areas || []).includes(area.id)}
                     onChange={() => toggleFocusArea(area.id)}
                     className="mr-3"
                   />
@@ -277,13 +306,33 @@ export default function AssessmentBuilderPage() {
             </div>
           </div>
 
-          <button
-            onClick={saveAssessment}
-            disabled={loading || !assessment.title || !assessment.description || !assessment.story_theme}
-            className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50"
-          >
-            {loading ? 'Saving...' : id ? 'Update Assessment' : 'Create Assessment'}
-          </button>
+          <div className="flex gap-3">
+            <button
+              onClick={saveAssessment}
+              disabled={loading || !assessment.title || !assessment.description || !assessment.story_theme}
+              className="flex-1 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 font-medium"
+            >
+              {loading ? 'Saving...' : id ? 'Save Changes' : 'Create Assessment'}
+            </button>
+            {id && (
+              <button
+                onClick={togglePublish}
+                className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${
+                  assessment.is_published
+                    ? 'bg-orange-100 text-orange-700 hover:bg-orange-200'
+                    : 'bg-green-100 text-green-700 hover:bg-green-200'
+                }`}
+              >
+                {assessment.is_published ? 'Unpublish' : 'Publish'}
+              </button>
+            )}
+          </div>
+
+          {id && (
+            <p className="text-xs text-slate-400 text-center">
+              Status: {assessment.is_published ? '✅ Published — visible to parents' : '⏸ Draft — not yet visible to parents'}
+            </p>
+          )}
         </div>
       </div>
 
@@ -316,13 +365,18 @@ export default function AssessmentBuilderPage() {
             )}
 
             <div className="space-y-2">
+              {pages.length === 0 && !showPageForm && (
+                <p className="text-slate-400 text-sm text-center py-4">No pages yet. Add pages to build the story.</p>
+              )}
               {pages.map(page => (
                 <div key={page.id} className="flex justify-between items-center p-3 bg-slate-50 rounded">
                   <div className="flex-1">
                     <div className="font-medium">Page {page.page_number}</div>
-                    <div className="text-sm text-slate-600">{page.page_text?.substring(0, 60)}...</div>
+                    <div className="text-sm text-slate-600 truncate max-w-md">
+                      {page.page_text?.substring(0, 80)}{page.page_text?.length > 80 ? '...' : ''}
+                    </div>
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 ml-3">
                     <button
                       onClick={() => {
                         setEditingPage(page);
@@ -371,15 +425,20 @@ export default function AssessmentBuilderPage() {
             )}
 
             <div className="space-y-2">
+              {questions.length === 0 && !showQuestionForm && (
+                <p className="text-slate-400 text-sm text-center py-4">No questions yet. Add questions for students to answer.</p>
+              )}
               {questions.map(question => (
                 <div key={question.id} className="flex justify-between items-center p-3 bg-slate-50 rounded">
                   <div className="flex-1">
-                    <div className="font-medium">{question.question_text?.substring(0, 60)}</div>
+                    <div className="font-medium truncate max-w-md">
+                      {question.question_text?.substring(0, 70)}{question.question_text?.length > 70 ? '...' : ''}
+                    </div>
                     <div className="text-sm text-slate-600">
-                      Type: {question.question_type} | Category: {question.question_category || 'literal'} | Points: {question.points}
+                      Type: {question.question_type} · Category: {question.question_category || 'literal'} · Points: {question.points}
                     </div>
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 ml-3">
                     <button
                       onClick={() => {
                         setEditingQuestion(question);
@@ -406,7 +465,6 @@ export default function AssessmentBuilderPage() {
   );
 }
 
-// Page Form Component
 function PageForm({ page, onSave, onCancel }) {
   const [data, setData] = useState(page || {
     page_number: 1,
@@ -417,7 +475,7 @@ function PageForm({ page, onSave, onCancel }) {
   });
 
   return (
-    <div className="bg-slate-50 p-4 rounded-lg mb-4">
+    <div className="bg-slate-50 p-4 rounded-lg mb-4 border border-slate-200">
       <div className="space-y-3">
         <div className="grid grid-cols-2 gap-3">
           <div>
@@ -441,21 +499,23 @@ function PageForm({ page, onSave, onCancel }) {
           </div>
         </div>
         <div>
-          <label className="block text-sm font-medium mb-1">Page Text</label>
+          <label className="block text-sm font-medium mb-1">Page Text *</label>
           <textarea
             value={data.page_text}
             onChange={e => setData({ ...data, page_text: e.target.value })}
             className="w-full px-2 py-1 border rounded text-sm"
             rows="3"
+            placeholder="The story text that students will read..."
           />
         </div>
         <div>
-          <label className="block text-sm font-medium mb-1">Image Description (for accessibility)</label>
+          <label className="block text-sm font-medium mb-1">Image Description (accessibility)</label>
           <input
             type="text"
             value={data.image_description || ''}
             onChange={e => setData({ ...data, image_description: e.target.value })}
             className="w-full px-2 py-1 border rounded text-sm"
+            placeholder="Describe the image for screen readers"
           />
         </div>
         <div>
@@ -470,7 +530,8 @@ function PageForm({ page, onSave, onCancel }) {
         <div className="flex gap-2">
           <button
             onClick={() => onSave(data)}
-            className="flex-1 bg-blue-600 text-white py-1 rounded text-sm hover:bg-blue-700 flex items-center justify-center gap-1"
+            disabled={!data.page_text}
+            className="flex-1 bg-blue-600 text-white py-1 rounded text-sm hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center gap-1"
           >
             <Save size={16} /> Save Page
           </button>
@@ -486,7 +547,6 @@ function PageForm({ page, onSave, onCancel }) {
   );
 }
 
-// Question Form Component
 function QuestionForm({ question, onSave, onCancel }) {
   const [data, setData] = useState(question || {
     question_text: '',
@@ -495,7 +555,7 @@ function QuestionForm({ question, onSave, onCancel }) {
     points: 1,
     difficulty_score: 5,
     time_estimate: 60,
-    options: [],
+    options: ['', '', ''],
     correct_answer: '',
     image_url: '',
   });
@@ -506,8 +566,17 @@ function QuestionForm({ question, onSave, onCancel }) {
     setData({ ...data, options: newOptions });
   };
 
+  const addOption = () => {
+    setData({ ...data, options: [...(data.options || []), ''] });
+  };
+
+  const removeOption = (index) => {
+    const newOptions = (data.options || []).filter((_, i) => i !== index);
+    setData({ ...data, options: newOptions });
+  };
+
   return (
-    <div className="bg-slate-50 p-4 rounded-lg mb-4">
+    <div className="bg-slate-50 p-4 rounded-lg mb-4 border border-slate-200">
       <div className="space-y-3">
         <div>
           <label className="block text-sm font-medium mb-1">Question Text *</label>
@@ -516,6 +585,7 @@ function QuestionForm({ question, onSave, onCancel }) {
             onChange={e => setData({ ...data, question_text: e.target.value })}
             className="w-full px-2 py-1 border rounded text-sm"
             rows="2"
+            placeholder="What is the question?"
           />
         </div>
 
@@ -551,8 +621,9 @@ function QuestionForm({ question, onSave, onCancel }) {
             <label className="block text-sm font-medium mb-1">Points</label>
             <input
               type="number"
+              min="1"
               value={data.points}
-              onChange={e => setData({ ...data, points: parseInt(e.target.value) })}
+              onChange={e => setData({ ...data, points: parseInt(e.target.value) || 1 })}
               className="w-full px-2 py-1 border rounded text-sm"
             />
           </div>
@@ -560,22 +631,23 @@ function QuestionForm({ question, onSave, onCancel }) {
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-sm font-medium mb-1">Difficulty Score (1-10)</label>
+            <label className="block text-sm font-medium mb-1">Difficulty (1-10)</label>
             <input
               type="number"
               min="1"
               max="10"
               value={data.difficulty_score}
-              onChange={e => setData({ ...data, difficulty_score: parseInt(e.target.value) })}
+              onChange={e => setData({ ...data, difficulty_score: parseInt(e.target.value) || 5 })}
               className="w-full px-2 py-1 border rounded text-sm"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">Time Estimate (seconds)</label>
+            <label className="block text-sm font-medium mb-1">Time Estimate (sec)</label>
             <input
               type="number"
+              min="10"
               value={data.time_estimate}
-              onChange={e => setData({ ...data, time_estimate: parseInt(e.target.value) })}
+              onChange={e => setData({ ...data, time_estimate: parseInt(e.target.value) || 60 })}
               className="w-full px-2 py-1 border rounded text-sm"
             />
           </div>
@@ -583,34 +655,46 @@ function QuestionForm({ question, onSave, onCancel }) {
 
         {['multiple_choice', 'picture_choice'].includes(data.question_type) && (
           <div>
-            <label className="block text-sm font-medium mb-1">Options</label>
+            <label className="block text-sm font-medium mb-1">Answer Options</label>
             {(data.options || []).map((option, idx) => (
-              <input
-                key={idx}
-                type="text"
-                value={option}
-                onChange={e => handleOptionChange(idx, e.target.value)}
-                className="w-full px-2 py-1 border rounded text-sm mb-1"
-                placeholder={`Option ${idx + 1}`}
-              />
+              <div key={idx} className="flex gap-1 mb-1">
+                <input
+                  type="text"
+                  value={option}
+                  onChange={e => handleOptionChange(idx, e.target.value)}
+                  className="flex-1 px-2 py-1 border rounded text-sm"
+                  placeholder={`Option ${idx + 1}`}
+                />
+                <button
+                  onClick={() => removeOption(idx)}
+                  className="p-1 text-red-500 hover:text-red-700"
+                  title="Remove option"
+                >
+                  <X size={14} />
+                </button>
+              </div>
             ))}
             <button
-              onClick={() => setData({ ...data, options: [...(data.options || []), ''] })}
-              className="text-blue-600 text-sm hover:underline"
+              onClick={addOption}
+              className="text-blue-600 text-sm hover:underline mt-1"
             >
-              + Add Option
+              + Add option
             </button>
           </div>
         )}
 
         <div>
-          <label className="block text-sm font-medium mb-1">Correct Answer *</label>
+          <label className="block text-sm font-medium mb-1">
+            Correct Answer *
+            {data.question_type === 'yes_no' && ' (Yes or No)'}
+            {['multiple_choice', 'picture_choice'].includes(data.question_type) && ' (must match an option exactly)'}
+          </label>
           <input
             type="text"
             value={data.correct_answer}
             onChange={e => setData({ ...data, correct_answer: e.target.value })}
             className="w-full px-2 py-1 border rounded text-sm"
-            placeholder="Enter correct answer"
+            placeholder={data.question_type === 'yes_no' ? 'Yes or No' : 'Enter the correct answer'}
           />
         </div>
 
@@ -621,13 +705,15 @@ function QuestionForm({ question, onSave, onCancel }) {
             value={data.image_url || ''}
             onChange={e => setData({ ...data, image_url: e.target.value })}
             className="w-full px-2 py-1 border rounded text-sm"
+            placeholder="https://..."
           />
         </div>
 
         <div className="flex gap-2">
           <button
             onClick={() => onSave(data)}
-            className="flex-1 bg-blue-600 text-white py-1 rounded text-sm hover:bg-blue-700 flex items-center justify-center gap-1"
+            disabled={!data.question_text || !data.correct_answer}
+            className="flex-1 bg-blue-600 text-white py-1 rounded text-sm hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center gap-1"
           >
             <Save size={16} /> Save Question
           </button>

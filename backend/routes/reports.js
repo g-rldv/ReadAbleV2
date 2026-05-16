@@ -8,26 +8,28 @@ router.get('/', async (req, res) => {
   try {
     if (req.user.role === 'teacher') {
       const result = await pool.query(
-        `SELECT r.*, c.first_name AS child_first_name, c.last_name AS child_last_name,
+        `SELECT r.*,
+                c.first_name AS child_first_name, c.last_name AS child_last_name,
                 u.first_name AS parent_first_name, u.last_name AS parent_last_name
          FROM reports r
          LEFT JOIN children c ON c.id = r.child_id
          LEFT JOIN users u ON u.id = r.parent_id
          WHERE r.teacher_id=$1
-         ORDER BY r.sent_at DESC`,
+         ORDER BY r.sent_at DESC NULLS LAST`,
         [req.user.id]
       );
       return res.json({ reports: result.rows });
     }
 
     const result = await pool.query(
-      `SELECT r.*, c.first_name AS child_first_name, c.last_name AS child_last_name,
+      `SELECT r.*,
+              c.first_name AS child_first_name, c.last_name AS child_last_name,
               t.first_name AS teacher_first_name, t.last_name AS teacher_last_name
        FROM reports r
        LEFT JOIN children c ON c.id = r.child_id
        LEFT JOIN users t ON t.id = r.teacher_id
        WHERE r.parent_id=$1
-       ORDER BY r.sent_at DESC`,
+       ORDER BY r.sent_at DESC NULLS LAST`,
       [req.user.id]
     );
     res.json({ reports: result.rows });
@@ -41,7 +43,8 @@ router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const result = await pool.query(
-      `SELECT r.*, c.first_name AS child_first_name, c.last_name AS child_last_name,
+      `SELECT r.*,
+              c.first_name AS child_first_name, c.last_name AS child_last_name,
               t.first_name AS teacher_first_name, t.last_name AS teacher_last_name,
               p.first_name AS parent_first_name, p.last_name AS parent_last_name
        FROM reports r
@@ -110,8 +113,7 @@ router.post('/', requireRole('teacher'), async (req, res) => {
     let report;
     if (existing.rows[0]) {
       const update = await pool.query(
-        `UPDATE reports SET
-           title=$1, summary=$2, recommendations=$3
+        `UPDATE reports SET title=$1, summary=$2, recommendations=$3
          WHERE id=$4 RETURNING *`,
         [title, summary || '', recommendations || '', existing.rows[0].id]
       );
@@ -139,7 +141,10 @@ router.put('/:id', requireRole('teacher'), async (req, res) => {
   try {
     const { id } = req.params;
     const { title, summary, recommendations } = req.body;
-    const reportResult = await pool.query('SELECT * FROM reports WHERE id=$1 AND teacher_id=$2', [id, req.user.id]);
+    const reportResult = await pool.query(
+      'SELECT * FROM reports WHERE id=$1 AND teacher_id=$2',
+      [id, req.user.id]
+    );
     if (!reportResult.rows[0]) {
       return res.status(404).json({ error: 'Report not found' });
     }
@@ -161,7 +166,10 @@ router.put('/:id', requireRole('teacher'), async (req, res) => {
 router.post('/:id/send', requireRole('teacher'), async (req, res) => {
   try {
     const { id } = req.params;
-    const reportResult = await pool.query('SELECT * FROM reports WHERE id=$1 AND teacher_id=$2', [id, req.user.id]);
+    const reportResult = await pool.query(
+      'SELECT * FROM reports WHERE id=$1 AND teacher_id=$2',
+      [id, req.user.id]
+    );
     if (!reportResult.rows[0]) {
       return res.status(404).json({ error: 'Report not found' });
     }
