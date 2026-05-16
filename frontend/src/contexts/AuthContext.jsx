@@ -101,7 +101,7 @@ export function AuthProvider({ children }) {
       setUser(normalizeUser(u));
       return u;
     } catch (err) {
-      const message = err?.response?.data?.error || err.message || 'Login failed. Please try again.';
+      const message = err?.response?.data?.error || err?.response?.statusText || err.message || 'Login failed. Please try again.';
       throw new Error(message);
     }
   }, []);
@@ -120,7 +120,7 @@ export function AuthProvider({ children }) {
       setUser(normalizeUser(u));
       return u;
     } catch (err) {
-      const message = err?.response?.data?.error || err.message || 'Registration failed. Please try again.';
+      const message = err?.response?.data?.error || err?.response?.statusText || err.message || 'Registration failed. Please try again.';
       throw new Error(message);
     }
   }, []);
