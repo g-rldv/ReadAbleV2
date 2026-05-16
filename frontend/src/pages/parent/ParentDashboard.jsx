@@ -6,7 +6,7 @@ export default function ParentDashboard() {
   const [stats, setStats] = useState({
     childrenCount: 0,
     pendingReports: 0,
-    activeSessions: 0,
+    enrolledClassrooms: 0,
   });
   const [children, setChildren] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -14,9 +14,10 @@ export default function ParentDashboard() {
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
-        const [childrenRes, reportsRes] = await Promise.all([
+        const [childrenRes, reportsRes, classroomsRes] = await Promise.all([
           api.get('/parent/children'),
           api.get('/reports'),
+          api.get('/classrooms/my'),
         ]);
 
         const childrenList = childrenRes.data.children || [];
@@ -24,10 +25,12 @@ export default function ParentDashboard() {
         const unreadReports = reports.filter(r => !r.is_read).length;
 
         setChildren(childrenList);
+        const classrooms = classroomsRes.data.classrooms || [];
+        const approvedCount = classrooms.filter(c => c.status === 'approved').length;
         setStats({
           childrenCount: childrenList.length,
           pendingReports: unreadReports,
-          activeSessions: 0,
+          enrolledClassrooms: approvedCount,
         });
       } catch (err) {
         console.error('Failed to fetch dashboard data:', err);
@@ -65,9 +68,9 @@ export default function ParentDashboard() {
           <p className="text-slate-500 text-xs mt-2">New reports to read</p>
         </div>
         <div className="bg-white rounded-lg border border-slate-200 p-6 shadow-sm">
-          <div className="text-slate-600 text-sm font-medium">Active Sessions</div>
-          <div className="text-4xl font-bold text-green-500 mt-2">{stats.activeSessions}</div>
-          <p className="text-slate-500 text-xs mt-2">In progress</p>
+          <div className="text-slate-600 text-sm font-medium">Enrolled Classrooms</div>
+          <div className="text-4xl font-bold text-green-500 mt-2">{stats.enrolledClassrooms || 0}</div>
+          <p className="text-slate-500 text-xs mt-2">Approved classrooms</p>
         </div>
       </div>
 
@@ -86,6 +89,12 @@ export default function ParentDashboard() {
             className="inline-block px-4 py-2 bg-slate-200 text-slate-800 rounded hover:bg-slate-300 font-medium"
           >
             View Reports
+          </Link>
+          <Link
+            to="/student-mode"
+            className="inline-block px-4 py-2 bg-emerald-500 text-white rounded hover:bg-emerald-600 font-medium"
+          >
+            Student Mode
           </Link>
         </div>
       </div>

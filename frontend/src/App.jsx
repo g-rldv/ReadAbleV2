@@ -29,6 +29,7 @@ const ParentChildDetailPage = lazy(() => import('./pages/parent/ParentChildDetai
 const ParentReportsPage = lazy(() => import('./pages/parent/ParentReportsPage'));
 const ReportDetailPage = lazy(() => import('./pages/parent/ReportDetailPage'));
 const JoinClassroomPage = lazy(() => import('./pages/parent/JoinClassroomPage'));
+const ParentClassroomPage = lazy(() => import('./pages/parent/ParentClassroomPage'));
 const StudentModePage = lazy(() => import('./pages/StudentModePage'));
 const PreAssessmentPage = lazy(() => import('./pages/PreAssessmentPage'));
 const GamePage = lazy(() => import('./pages/GamePage'));
@@ -91,6 +92,7 @@ function AppRoutes() {
           <Route path="/parent/reports" element={<ParentReportsPage />} />
           <Route path="/parent/reports/:id" element={<ReportDetailPage />} />
           <Route path="/parent/join-classroom" element={<JoinClassroomPage />} />
+          <Route path="/parent/classrooms/:id" element={<ParentClassroomPage />} />
           <Route path="/parent/settings" element={<SettingsPage />} />
         </Route>
 

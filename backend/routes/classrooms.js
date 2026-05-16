@@ -193,6 +193,38 @@ router.get('/:id/children', requireAuth, requireRole('teacher'), async (req, res
   }
 });
 
+// ── Parent: Get activities for an approved classroom (visible to approved members)
+router.get('/:id/activities', requireAuth, requireRole('parent'), async (req, res) => {
+  const { id } = req.params;
+  try {
+    // Verify membership and approval
+    const membership = await pool.query(
+      'SELECT status FROM class_memberships WHERE classroom_id = $1 AND user_id = $2',
+      [id, req.user.id]
+    );
+    if (membership.rows.length === 0 || membership.rows[0].status !== 'approved') {
+      return res.status(403).json({ error: 'You do not have access to this classroom' });
+    }
+
+    const classroomRes = await pool.query('SELECT teacher_id, name, code FROM classrooms WHERE id = $1', [id]);
+    if (classroomRes.rows.length === 0) return res.status(404).json({ error: 'Classroom not found' });
+    const teacherId = classroomRes.rows[0].teacher_id;
+
+    const assessments = await pool.query(
+      `SELECT id, title, description, story_theme, difficulty, is_published, created_at
+       FROM assessments
+       WHERE teacher_id = $1 AND is_published = TRUE
+       ORDER BY created_at DESC`,
+      [teacherId]
+    );
+
+    res.json({ classroom: classroomRes.rows[0], activities: assessments.rows });
+  } catch (err) {
+    console.error('[Classrooms/Activities]', err.message);
+    res.status(500).json({ error: 'Failed to fetch classroom activities' });
+  }
+});
+
 // ── Teacher: Approve or reject a member ─────────────────────
 router.post('/:id/members/:userId/:action', requireAuth, requireRole('teacher'), async (req, res) => {
   const { id, userId, action } = req.params;

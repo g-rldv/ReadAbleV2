@@ -2,6 +2,7 @@
 // JoinClassroomPage — Parent enters a code to join a classroom
 // ============================================================
 import React, { useState, useEffect, useRef } from 'react';
+import { Link } from 'react-router-dom';
 import api from '../../utils/api';
 import { Key, BookOpen, CheckCircle, AlertCircle, Clock, XCircle } from 'lucide-react';
 
@@ -171,9 +172,10 @@ export default function JoinClassroomPage() {
                       </p>
                     )}
                     {classroom.status === 'approved' && (
-                      <p className="text-xs text-green-600 mt-2">
-                        You have access to this classroom.
-                      </p>
+                      <div className="mt-2 flex items-center justify-between gap-2">
+                        <p className="text-xs text-green-600">You have access to this classroom.</p>
+                        <Link to={`/parent/classrooms/${classroom.id}`} className="text-xs text-sky font-semibold">View Activities</Link>
+                      </div>
                     )}
                   </div>
                 );

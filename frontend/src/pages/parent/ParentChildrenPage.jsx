@@ -6,6 +6,12 @@ export default function ParentChildrenPage() {
   const [children, setChildren] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [dob, setDob] = useState('');
+  const [gender, setGender] = useState('');
+  const [asdNotes, setAsdNotes] = useState('');
+  const [adding, setAdding] = useState(false);
 
   useEffect(() => {
     const fetchChildren = async () => {
@@ -22,6 +28,28 @@ export default function ParentChildrenPage() {
 
     fetchChildren();
   }, []);
+
+  const addChild = async (e) => {
+    e.preventDefault();
+    if (!firstName.trim()) return;
+    setAdding(true);
+    try {
+      const res = await api.post('/parent/children', {
+        first_name: firstName,
+        last_name: lastName,
+        date_of_birth: dob || null,
+        gender: gender || null,
+        asd_notes: asdNotes || null,
+      });
+      setChildren((prev) => [res.data.child, ...prev]);
+      setFirstName(''); setLastName(''); setDob(''); setGender(''); setAsdNotes('');
+    } catch (err) {
+      console.error('Failed to add child:', err);
+      setError(err.response?.data?.error || 'Failed to add child');
+    } finally {
+      setAdding(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -45,9 +73,25 @@ export default function ParentChildrenPage() {
       <p className="text-slate-600 mb-6">Browse your children and manage sessions for each of them.</p>
 
       {children.length === 0 ? (
-        <div className="bg-slate-100 rounded-lg border border-slate-200 p-8 text-center">
-          <p className="text-slate-600 mb-2">No children registered yet.</p>
-          <p className="text-slate-500 text-sm">Contact your teacher to add your children to the system.</p>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="bg-slate-100 rounded-lg border border-slate-200 p-6">
+            <p className="text-slate-600 mb-3">No children registered yet.</p>
+            <p className="text-slate-500 text-sm mb-4">Add your child here so teachers can link them to classrooms.</p>
+            <form onSubmit={addChild} className="space-y-3">
+              <input value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="First name" className="w-full px-3 py-2 rounded border" />
+              <input value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Last name" className="w-full px-3 py-2 rounded border" />
+              <div className="flex gap-2">
+                <input value={dob} onChange={(e) => setDob(e.target.value)} placeholder="YYYY-MM-DD" className="w-1/2 px-3 py-2 rounded border" />
+                <input value={gender} onChange={(e) => setGender(e.target.value)} placeholder="Gender" className="w-1/2 px-3 py-2 rounded border" />
+              </div>
+              <textarea value={asdNotes} onChange={(e) => setAsdNotes(e.target.value)} placeholder="Notes (e.g. ASD support needs)" className="w-full px-3 py-2 rounded border" />
+              <div>
+                <button type="submit" disabled={adding} className="px-4 py-2 bg-sky text-white rounded">
+                  {adding ? 'Adding…' : 'Add Child'}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
