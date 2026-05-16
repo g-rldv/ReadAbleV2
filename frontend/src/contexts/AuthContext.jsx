@@ -37,7 +37,7 @@ export function AuthProvider({ children }) {
       const res = await api.get('/auth/me');
       setUser(normalizeUser(res.data.user));
     } catch (err) {
-      if (err.status === 401) {
+      if (err?.response?.status === 401) {
         localStorage.removeItem('readable_token');
         delete api.defaults.headers.common['Authorization'];
         tokenRef.current = null;
@@ -90,29 +90,39 @@ export function AuthProvider({ children }) {
   };
 
   const login = useCallback(async (email, password) => {
-    const res = await api.post('/auth/login', { email, password });
-    const { token: t, user: u } = res.data;
-    localStorage.setItem('readable_token', t);
-    api.defaults.headers.common['Authorization'] = `Bearer ${t}`;
-    tokenRef.current = t;
-    await syncLocalSettings();
-    setToken(t);
-    setUser(normalizeUser(u));
-    return u;
+    try {
+      const res = await api.post('/auth/login', { email, password });
+      const { token: t, user: u } = res.data;
+      localStorage.setItem('readable_token', t);
+      api.defaults.headers.common['Authorization'] = `Bearer ${t}`;
+      tokenRef.current = t;
+      await syncLocalSettings();
+      setToken(t);
+      setUser(normalizeUser(u));
+      return u;
+    } catch (err) {
+      const message = err?.response?.data?.error || err.message || 'Login failed. Please try again.';
+      throw new Error(message);
+    }
   }, []);
 
   const register = useCallback(async ({ username, email, password, first_name, last_name, role, otp_code }) => {
-    const res = await api.post('/auth/register', {
-      username, email, password, first_name, last_name, role, otp_code,
-    });
-    const { token: t, user: u } = res.data;
-    localStorage.setItem('readable_token', t);
-    api.defaults.headers.common['Authorization'] = `Bearer ${t}`;
-    tokenRef.current = t;
-    await syncLocalSettings();
-    setToken(t);
-    setUser(normalizeUser(u));
-    return u;
+    try {
+      const res = await api.post('/auth/register', {
+        username, email, password, first_name, last_name, role, otp_code,
+      });
+      const { token: t, user: u } = res.data;
+      localStorage.setItem('readable_token', t);
+      api.defaults.headers.common['Authorization'] = `Bearer ${t}`;
+      tokenRef.current = t;
+      await syncLocalSettings();
+      setToken(t);
+      setUser(normalizeUser(u));
+      return u;
+    } catch (err) {
+      const message = err?.response?.data?.error || err.message || 'Registration failed. Please try again.';
+      throw new Error(message);
+    }
   }, []);
 
   const logout = useCallback(() => {
