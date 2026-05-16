@@ -26,9 +26,11 @@ export default function ClassroomDetailPage() {
   const navigate = useNavigate();
   const [classroom, setClassroom] = useState(null);
   const [members, setMembers] = useState([]);
+  const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [actionLoading, setActionLoading] = useState(null); // userId being actioned
+  const [flash, setFlash] = useState(null);
   const [copied, setCopied] = useState(false);
 
   useEffect(() => { fetchData(); }, [id]);
@@ -42,6 +44,13 @@ export default function ClassroomDetailPage() {
       ]);
       setClassroom(classRes.data.classroom);
       setMembers(membersRes.data.members || []);
+      // fetch students linked to this classroom
+      try {
+        const kids = await api.get(`/classrooms/${id}/children`);
+        setStudents(kids.data.children || []);
+      } catch (e) {
+        setStudents([]);
+      }
       setError('');
     } catch (err) {
       if (err.response?.status === 404) {
@@ -66,6 +75,20 @@ export default function ClassroomDetailPage() {
             : m
         )
       );
+      if (action === 'approve') {
+        // refresh students list — backend links parent's children to teacher on approve
+        try {
+          const kids = await api.get(`/classrooms/${id}/children`);
+          setStudents(kids.data.children || []);
+        } catch (e) {
+          // ignore
+        }
+        setFlash({ type: 'success', msg: 'Member approved and students linked.' });
+        setTimeout(() => setFlash(null), 3000);
+      } else {
+        setFlash({ type: 'info', msg: 'Membership updated.' });
+        setTimeout(() => setFlash(null), 2000);
+      }
     } catch (err) {
       alert(err.response?.data?.error || 'Action failed');
     } finally {
@@ -107,6 +130,11 @@ export default function ClassroomDetailPage() {
 
   return (
     <div>
+      {flash && (
+        <div className={`mb-4 p-3 rounded ${flash.type === 'success' ? 'bg-green-50 border border-green-200 text-green-700' : 'bg-sky-50 border border-sky-200 text-sky-700'}`}>
+          {flash.msg}
+        </div>
+      )}
       {/* ── Back ────────────────────────────────────────────── */}
       <button
         onClick={() => navigate('/teacher/classrooms')}
@@ -203,6 +231,29 @@ export default function ClassroomDetailPage() {
           </div>
         </section>
       )}
+
+          {/* ── Students linked to this classroom (parents' children) ───────────────── */}
+          <section className="mb-6">
+            <h2 className="text-base font-semibold text-slate-700 flex items-center gap-2 mb-3">
+              <Users size={16} />
+              Students in Classroom ({students.length})
+            </h2>
+            {students.length === 0 ? (
+              <div className="text-slate-500 text-sm">No students yet. Approving parents will link their children here.</div>
+            ) : (
+              <div className="space-y-2">
+                {students.map((s) => (
+                  <div key={s.id} className="bg-white border border-slate-200 rounded-lg px-4 py-3 flex items-center justify-between">
+                    <div>
+                      <div className="font-semibold text-slate-900">{s.first_name} {s.last_name}</div>
+                      <div className="text-xs text-slate-500">Parent: {s.parent_name || '—'}</div>
+                    </div>
+                    <div className="text-xs text-slate-400">{new Date(s.created_at).toLocaleDateString()}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
 
       {/* ── Rejected ────────────────────────────────────────── */}
       {rejected.length > 0 && (

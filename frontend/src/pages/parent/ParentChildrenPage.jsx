@@ -12,6 +12,7 @@ export default function ParentChildrenPage() {
   const [gender, setGender] = useState('');
   const [asdNotes, setAsdNotes] = useState('');
   const [adding, setAdding] = useState(false);
+  const [flash, setFlash] = useState(null); // {type:'success'|'error', msg}
 
   useEffect(() => {
     const fetchChildren = async () => {
@@ -45,7 +46,9 @@ export default function ParentChildrenPage() {
       setFirstName(''); setLastName(''); setDob(''); setGender(''); setAsdNotes('');
     } catch (err) {
       console.error('Failed to add child:', err);
-      setError(err.response?.data?.error || 'Failed to add child');
+      const msg = err.response?.data?.error || 'Failed to add child';
+      setError(msg);
+      setFlash({ type: 'error', msg });
     } finally {
       setAdding(false);
     }
@@ -70,6 +73,11 @@ export default function ParentChildrenPage() {
   return (
     <div>
       <h1 className="text-3xl font-bold mb-2">Your Children</h1>
+      {flash && (
+        <div className={`mb-4 p-3 rounded ${flash.type === 'success' ? 'bg-green-50 border border-green-200 text-green-700' : 'bg-red-50 border border-red-200 text-red-700'}`}>
+          {flash.msg}
+        </div>
+      )}
       <p className="text-slate-600 mb-6">Browse your children and manage sessions for each of them.</p>
 
       {children.length === 0 ? (
