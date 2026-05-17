@@ -150,10 +150,10 @@ body {
 .font-body    { font-family: 'Nunito', sans-serif; }
 
 /* Text size classes applied to <html> */
-html.text-small  { font-size: 14px; }
-html.text-medium { font-size: 16px; }
-html.text-large  { font-size: 18px; }
-html.text-xlarge { font-size: 21px; }
+html.text-small  { font-size: 14.72px; --readable-font-scale: 0.92; }
+html.text-medium { font-size: 16px; --readable-font-scale: 1; }
+html.text-large  { font-size: 17.92px; --readable-font-scale: 1.12; }
+html.text-xlarge { font-size: 20px; --readable-font-scale: 1.25; }
 
 /* ── Tailwind color helpers ───────────────────────────────── */
 @layer utilities {

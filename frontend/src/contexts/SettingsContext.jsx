@@ -174,8 +174,24 @@ export function SettingsProvider({ children }) {
     html.classList.remove('dark', 'high-contrast');
     if (DARK_THEMES.has(merged.theme))      html.classList.add('dark');
     if (merged.theme === 'high-contrast')   html.classList.add('dark', 'high-contrast');
-    html.classList.remove('text-small','text-medium','text-large','text-xlarge');
+    html.classList.remove('text-small', 'text-medium', 'text-large', 'text-xlarge');
     html.classList.add(`text-${merged.text_size}`);
+
+    const FONT_SCALE = {
+      small: 0.92,
+      medium: 1,
+      large: 1.12,
+      xlarge: 1.25,
+    };
+
+    const scale = FONT_SCALE[merged.text_size] || 1;
+
+    html.style.setProperty('--readable-font-scale', String(scale));
+    html.style.fontSize = `${16 * scale}px`;
+
+    // This makes inline pixel font sizes scale too, so it affects the whole system.
+    document.body.style.zoom = String(scale);
+    document.body.style.transformOrigin = 'top left';
   }, []);
 
   // ── Apply saved settings on first paint (before server responds) ─
