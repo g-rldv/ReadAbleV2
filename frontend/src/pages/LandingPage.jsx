@@ -439,7 +439,10 @@ function RegisterModal({ onClose, onSwitchToSignIn, initialRole = 'parent' }) {
                     background: form.role === r ? (r === 'teacher' ? C.teacher.accent : C.parent.accent) : 'transparent',
                     color: form.role === r ? '#FFFFFF' : C.textSecondary,
                   }}>
-                  {r === 'teacher' ? '📚 Teacher' : '🏠 Parent'}
+                  <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                  {r === 'teacher' ? <GraduationCap size={15} /> : <Home size={15} />}
+                  {r === 'teacher' ? 'Teacher' : 'Parent'}
+                </span>
                 </button>
               ))}
             </div>
@@ -476,7 +479,7 @@ function RegisterModal({ onClose, onSwitchToSignIn, initialRole = 'parent' }) {
             <form onSubmit={submitOTP}>
               <OTPInput value={otp} onChange={v => { setOtp(v); setOtpErr(''); }} />
               {otpErr && <p style={{ fontSize: 11, color: '#C04040', textAlign: 'center', marginTop: -8, marginBottom: 10 }}>{otpErr}</p>}
-              <SoftButton type="submit" disabled={otp.length < 6} color={roleColor} style={{ width: '100%' }}>Start Learning! 🎉</SoftButton>
+              <SoftButton type="submit" disabled={otp.length < 6} color={roleColor} style={{ width: '100%' }}>Start Learning!</SoftButton>
             </form>
             <div style={{ textAlign: 'center', marginTop: 12 }}>
               {resendCd > 0 ? <span style={{ fontSize: 12, color: C.textMuted }}>Resend in {resendCd}s</span>
@@ -781,7 +784,7 @@ function Hero({ onTeacher, onParent, onSignIn }) {
 }
 
 // ── Audience card ──────────────────────────────────────────────
-function AudienceCard({ emoji, title, subtitle, description, points, cta, scheme, onCta, isStudent }) {
+function AudienceCard({ Icon, title, subtitle, description, points, cta, scheme, onCta, isStudent }) {
   const [hov, setHov] = useState(false);
   return (
     <div onMouseEnter={() => setHov(true)} onMouseLeave={() => setHov(false)}
@@ -796,8 +799,8 @@ function AudienceCard({ emoji, title, subtitle, description, points, cta, scheme
 
       {/* Card header band */}
       <div style={{ background: scheme.pageBg, borderBottom: `1px solid ${scheme.border}`, padding: '20px 22px 16px' }}>
-        <div style={{ width: 52, height: 52, borderRadius: 16, background: scheme.iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 26, marginBottom: 10 }}>
-          {emoji}
+        <div style={{ width: 52, height: 52, borderRadius: 16, background: scheme.iconBg, display: 'flex',      alignItems: 'center', justifyContent: 'center', marginBottom: 10 }}>
+          <Icon size={26} style={{ color: scheme.accent }} />
         </div>
         <p style={{ fontSize: 19, fontWeight: 800, color: scheme.textDark, margin: '0 0 2px', fontFamily: '"Fredoka One", cursive' }}>{title}</p>
         <p style={{ fontSize: 12, fontWeight: 700, color: scheme.accent, margin: 0, letterSpacing: '0.03em', textTransform: 'uppercase' }}>{subtitle}</p>
@@ -822,7 +825,9 @@ function AudienceCard({ emoji, title, subtitle, description, points, cta, scheme
         <div style={{ marginTop: 'auto', paddingTop: 6 }}>
           {isStudent ? (
             <div style={{ padding: '9px 14px', borderRadius: 12, background: scheme.pageBg, border: `1px solid ${scheme.border}`, fontSize: 12, color: scheme.textDark, fontWeight: 600, textAlign: 'center' }}>
-              👆 Ask a parent or teacher to get started
+              <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                <Users size={14} /> Ask a parent or teacher to get started
+              </span>
             </div>
           ) : (
             <SoftButton onClick={onCta} color={scheme.btnBg} style={{ width: '100%' }}>
@@ -838,25 +843,25 @@ function AudienceCard({ emoji, title, subtitle, description, points, cta, scheme
 // ── Page: Audience section ─────────────────────────────────────
 function AudienceSection({ onTeacher, onParent }) {
   const roles = [
-    {
-      emoji: '📚', title: 'For Teachers', subtitle: 'Build & Track',
-      description: 'Create tailored reading assessments for students with ASD. Monitor comprehension across your whole class with clear skill analytics.',
-      points: ['Build custom story assessments at 4 difficulty levels', 'Track literal, inference, vocabulary & emotion skills', 'Generate and send progress reports to parents', 'Manage classrooms with simple 6-character join codes'],
-      cta: 'Register as Teacher', scheme: C.teacher, onCta: onTeacher,
-    },
-    {
-      emoji: '🏠', title: 'For Parents', subtitle: 'Support & Celebrate',
-      description: 'Stay connected with your child\'s classroom, start reading sessions at home, and receive warm progress updates from their teacher.',
-      points: ['Join your child\'s classroom with a simple code', 'Start reading sessions in a calm student-friendly mode', 'Receive and read teacher progress reports', 'Watch your child grow at their own pace'],
-      cta: 'Register as Parent', scheme: C.parent, onCta: onParent,
-    },
-    {
-      emoji: '🌟', title: 'For Students', subtitle: 'Read & Explore',
-      description: 'Fun reading activities designed just for learners with ASD. Choose your own colour theme and have stories read aloud to you.',
-      points: ['Read engaging stories at the right level for you', 'Hear every word read aloud in a friendly voice', 'Earn stars and unlock achievements as you learn', 'Pick from 9 calming colour themes'],
-      cta: 'Start with Parent', scheme: C.student, isStudent: true,
-    },
-  ];
+  {
+    Icon: GraduationCap, title: 'For Teachers', subtitle: 'Build & Track',
+    description: 'Create tailored reading assessments for students with ASD. Monitor comprehension across your whole class with clear skill analytics.',
+    points: ['Build custom story assessments at 4 difficulty levels', 'Track literal, inference, vocabulary & emotion skills', 'Generate and send progress reports to parents', 'Manage classrooms with simple 6-character join codes'],
+    cta: 'Register as Teacher', scheme: C.teacher, onCta: onTeacher,
+  },
+  {
+    Icon: Home, title: 'For Parents', subtitle: 'Support & Celebrate',
+    description: 'Stay connected with your child\'s classroom, start reading sessions at home, and receive warm progress updates from their teacher.',
+    points: ['Join your child\'s classroom with a simple code', 'Start reading sessions in a calm student-friendly mode', 'Receive and read teacher progress reports', 'Watch your child grow at their own pace'],
+    cta: 'Register as Parent', scheme: C.parent, onCta: onParent,
+  },
+  {
+    Icon: Star, title: 'For Students', subtitle: 'Read & Explore',
+    description: 'Fun reading activities designed just for learners with ASD. Choose your own colour theme and have stories read aloud to you.',
+    points: ['Read engaging stories at the right level for you', 'Hear every word read aloud in a friendly voice', 'Earn stars and unlock achievements as you learn', 'Pick from 9 calming colour themes'],
+    cta: 'Start with Parent', scheme: C.student, isStudent: true,
+  },
+];
 
   return (
     <section style={{ padding: '60px 24px', maxWidth: 1100, margin: '0 auto' }}>
@@ -908,11 +913,11 @@ function FeaturesSection() {
 // ── Page: How it works ─────────────────────────────────────────
 function HowItWorksSection() {
   const steps = [
-    { num: '1', scheme: C.teacher, icon: '📚', who: 'Teacher', action: 'Creates a classroom & assessment', detail: 'Build a reading assessment with ASD-optimised questions and publish it to your classroom.' },
-    { num: '2', scheme: C.parent, icon: '🏠', who: 'Parent', action: 'Joins classroom & starts a session', detail: 'Enter the classroom code, get approved, then launch a reading session with your child at home.' },
-    { num: '3', scheme: C.student, icon: '🌟', who: 'Student', action: 'Reads, answers, earns stars', detail: 'The student reads the story at their own pace with read-aloud support and answers questions.' },
-    { num: '4', scheme: C.teacher, icon: '📊', who: 'Teacher', action: 'Reviews and shares a report', detail: 'See detailed skill analytics and send a warm progress report directly to the parent.' },
-  ];
+  { num: '1', scheme: C.teacher, Icon: GraduationCap, who: 'Teacher', action: 'Creates a classroom & assessment', detail: 'Build a reading assessment with ASD-optimised questions and publish it to your classroom.' },
+  { num: '2', scheme: C.parent, Icon: Home, who: 'Parent', action: 'Joins classroom & starts a session', detail: 'Enter the classroom code, get approved, then launch a reading session with your child at home.' },
+  { num: '3', scheme: C.student, Icon: BookOpen, who: 'Student', action: 'Reads, answers, earns stars', detail: 'The student reads the story at their own pace with read-aloud support and answers questions.' },
+  { num: '4', scheme: C.teacher, Icon: BarChart2, who: 'Teacher', action: 'Reviews and shares a report', detail: 'See detailed skill analytics and send a warm progress report directly to the parent.' },
+];
 
   return (
     <section style={{ padding: '0 24px 64px', maxWidth: 1100, margin: '0 auto' }}>
@@ -923,7 +928,7 @@ function HowItWorksSection() {
           <div key={s.num} style={{ background: C.white, border: `1px solid ${C.border}`, borderRadius: 18, padding: '18px 20px', boxShadow: C.shadowSm }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
               <div style={{ width: 30, height: 30, borderRadius: 10, background: s.scheme.pageBg, border: `1px solid ${s.scheme.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, flexShrink: 0 }}>
-                {s.icon}
+                <s.Icon size={16} style={{ color: s.scheme.accent }} />
               </div>
               <div style={{ width: 22, height: 22, borderRadius: '50%', background: s.scheme.iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, color: s.scheme.accent, flexShrink: 0 }}>
                 {s.num}
@@ -977,10 +982,29 @@ function StudentPreviewStrip() {
             A tiny caterpillar crawls on a leaf. It eats and grows bigger every day…
           </p>
           <div style={{ display: 'flex', gap: 8 }}>
-            <div style={{ flex: 1, padding: '9px 0', borderRadius: 12, background: C.student.pageBg, border: `1.5px solid ${C.student.border}`, fontSize: 22, textAlign: 'center' }}>🦋</div>
-            <div style={{ flex: 1, padding: '9px 0', borderRadius: 12, background: C.student.pageBg, border: `1.5px solid ${C.student.border}`, fontSize: 22, textAlign: 'center' }}>🐛</div>
-            <div style={{ flex: 1, padding: '9px 0', borderRadius: 12, background: C.student.pageBg, border: `1.5px solid ${C.student.border}`, fontSize: 22, textAlign: 'center' }}>🌿</div>
-            <div style={{ flex: 1, padding: '9px 0', borderRadius: 12, background: C.student.pageBg, border: `1.5px solid ${C.student.border}`, fontSize: 22, textAlign: 'center' }}>🌸</div>
+            {[
+              { Icon: Sparkles, label: 'Butterfly' },
+              { Icon: Baby, label: 'Caterpillar' },
+              { Icon: Leaf, label: 'Leaf' },
+              { Icon: Heart, label: 'Flower' },
+            ].map(({ Icon, label }) => (
+              <div
+                key={label}
+                title={label}
+                style={{
+                  flex: 1,
+                  padding: '10px 0',
+                  borderRadius: 12,
+                  background: C.student.pageBg,
+                  border: `1.5px solid ${C.student.border}`,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Icon size={24} style={{ color: C.student.accent }} />
+              </div>
+            ))}
           </div>
           <p style={{ fontSize: 11, color: C.textMuted, textAlign: 'center', marginTop: 8 }}>What does the caterpillar become?</p>
         </div>
