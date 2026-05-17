@@ -653,7 +653,7 @@ function AudienceSection({ onTeacher, onParent }) {
     },
     {
       emoji: '🏠', title: 'For Parents', subtitle: 'Support & Celebrate',
-      description: 'Stay connected with your child's classroom, start reading sessions at home, and receive warm progress updates from their teacher.',
+      description: 'Stay connected with your child\'s classroom, start reading sessions at home, and receive warm progress updates from their teacher.',
       points: ['Join your child\'s classroom with a simple code', 'Start reading sessions in a calm student-friendly mode', 'Receive and read teacher progress reports', 'Watch your child grow at their own pace'],
       cta: 'Register as Parent', scheme: C.parent, onCta: onParent,
     },
