@@ -13,6 +13,7 @@ import {
   Mail, Lock, User, ArrowLeft, ShieldCheck, RefreshCw,
   Users, Sparkles, FileText, GraduationCap, Home, Baby,
   Palette, Music, Clock, Shield, Type,
+  Settings as SettingsIcon, Sun, Moon, Leaf,
 } from 'lucide-react';
 import api from '../utils/api';
 
@@ -62,18 +63,18 @@ const C = {
 };
 
 const THEME_OPTIONS = [
-  { key: 'cotton', label: 'Light', color: '#FFF8F2' },
-  { key: 'sky', label: 'Berry', color: '#FFF0F4' },
-  { key: 'mint', label: 'Meadow', color: '#F2FAF2' },
-  { key: 'sunshine', label: 'Sunrise', color: '#FFF8ED' },
-  { key: 'lavender', label: 'Purple', color: '#F6F2FF' },
-  { key: 'peach', label: 'Mango', color: '#FFF4EC' },
-  { key: 'bubblegum', label: 'Bubblegum', color: '#FFF0F8' },
-  { key: 'ocean', label: 'Aqua', color: '#EEF9FD' },
-  { key: 'night', label: 'Night', color: '#181430' },
+  { key: 'cotton', label: 'Light', Icon: Sun },
+  { key: 'sky', label: 'Berry', Icon: Heart },
+  { key: 'mint', label: 'Meadow', Icon: Leaf },
+  { key: 'sunshine', label: 'Sunrise', Icon: Sun },
+  { key: 'lavender', label: 'Purple', Icon: Sparkles },
+  { key: 'peach', label: 'Mango', Icon: Music },
+  { key: 'bubblegum', label: 'Bubblegum', Icon: Heart },
+  { key: 'ocean', label: 'Aqua', Icon: Volume2 },
+  { key: 'night', label: 'Night', Icon: Moon },
 ];
 
-const FONT_SIZE_OPTIONS = [
+const TEXT_OPTIONS = [
   { key: 'small', label: 'Small' },
   { key: 'medium', label: 'Medium' },
   { key: 'large', label: 'Large' },
@@ -540,24 +541,328 @@ function LoadingView({ color, tip }) {
   );
 }
 
+function SettingsModal({ onClose }) {
+  const {
+    settings,
+    setTheme,
+    setTextSize,
+    setBgMusicEnabled,
+    setTtsEnabled,
+  } = useSettings();
+
+  const [tab, setTab] = useState('theme');
+
+  const tabs = [
+    { key: 'theme', label: 'Theme', Icon: Palette },
+    { key: 'text', label: 'Text', Icon: Type },
+    { key: 'music', label: 'Music', Icon: Music },
+    { key: 'voice', label: 'Voice', Icon: Volume2 },
+  ];
+
+  return (
+    <Overlay onClose={onClose}>
+      <div style={{
+        width: '100%', maxWidth: 448, borderRadius: 18,
+        background: '#181334', border: '1px solid #4B3E72',
+        boxShadow: '0 18px 60px rgba(0,0,0,0.35)',
+        overflow: 'hidden', color: '#EDE8FF', animation: 'modalPop 0.22s ease-out',
+      }}>
+        <div style={{ height: 62, padding: '0 22px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #3D3260' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ width: 24, height: 24, borderRadius: 6, background: '#080613', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <BookOpen size={14} color="#9FE7FF" />
+            </div>
+            <span style={{ fontFamily: '"Fredoka One", cursive', fontSize: 27 }}>ReadAble</span>
+          </div>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#A9A0C8', cursor: 'pointer' }}>
+            <X size={20} />
+          </button>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', borderBottom: '1px solid #3D3260' }}>
+          {tabs.map(({ key, label, Icon }) => {
+            const active = tab === key;
+            return (
+              <button key={key} onClick={() => setTab(key)}
+                style={{
+                  height: 56, border: 'none', background: 'transparent',
+                  color: active ? '#65C7FF' : '#A9A0C8',
+                  borderBottom: active ? '2px solid #65C7FF' : '2px solid transparent',
+                  cursor: 'pointer', fontFamily: 'inherit', fontSize: 11, fontWeight: 800,
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4,
+                }}>
+                <Icon size={16} />
+                {label}
+              </button>
+            );
+          })}
+        </div>
+
+        <div style={{ padding: 22 }}>
+          {tab === 'theme' && (
+            <>
+              <p style={{ margin: '0 0 14px', color: '#A9A0C8', fontSize: 12, fontWeight: 900 }}>CHOOSE A THEME</p>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
+                {THEME_OPTIONS.map(({ key, label, Icon }) => {
+                  const active = settings.theme === key;
+                  return (
+                    <button key={key} onClick={() => setTheme(key)}
+                      style={{
+                        minHeight: 70, borderRadius: 14,
+                        border: `2px solid ${active ? '#58B9FF' : '#55476E'}`,
+                        background: active ? '#1F2D5B' : '#0E0B21',
+                        color: active ? '#7FD2FF' : '#C7B8F5',
+                        cursor: 'pointer', fontFamily: 'inherit', fontWeight: 800,
+                        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6,
+                      }}>
+                      <Icon size={18} />
+                      <span style={{ fontSize: 12 }}>{label}</span>
+                      {active && <Check size={13} />}
+                    </button>
+                  );
+                })}
+              </div>
+            </>
+          )}
+
+          {tab === 'text' && (
+            <>
+              <p style={{ margin: '0 0 14px', color: '#A9A0C8', fontSize: 12, fontWeight: 900 }}>FONT SIZE</p>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                {TEXT_OPTIONS.map(size => (
+                  <button key={size.key} onClick={() => setTextSize(size.key)}
+                    style={{
+                      padding: '15px 12px', borderRadius: 14,
+                      border: `2px solid ${settings.text_size === size.key ? '#58B9FF' : '#55476E'}`,
+                      background: settings.text_size === size.key ? '#1F2D5B' : '#0E0B21',
+                      color: '#C7B8F5', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 900,
+                    }}>
+                    {size.label}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+
+          {tab === 'music' && (
+            <SettingToggle
+              title="Background Music"
+              subtitle="Use the learner's device audio system."
+              enabled={settings.bg_music_enabled}
+              onClick={() => setBgMusicEnabled(!settings.bg_music_enabled)}
+              Icon={Music}
+            />
+          )}
+
+          {tab === 'voice' && (
+            <SettingToggle
+              title="TTS Feature"
+              subtitle="Use the learner's system text-to-speech voice."
+              enabled={settings.tts_enabled}
+              onClick={() => setTtsEnabled(!settings.tts_enabled)}
+              Icon={settings.tts_enabled ? Volume2 : VolumeX}
+            />
+          )}
+        </div>
+
+        <div style={{ padding: '14px 22px', textAlign: 'center', color: '#A9A0C8', fontSize: 12, borderTop: '1px solid #3D3260' }}>
+          Settings apply to the whole system
+        </div>
+      </div>
+    </Overlay>
+  );
+}
+
+function SettingsModal({ onClose }) {
+  const {
+    settings,
+    setTheme,
+    setTextSize,
+    setBgMusicEnabled,
+    setTtsEnabled,
+  } = useSettings();
+
+  const [tab, setTab] = useState('theme');
+
+  const tabs = [
+    { key: 'theme', label: 'Theme', Icon: Palette },
+    { key: 'text', label: 'Text', Icon: Type },
+    { key: 'music', label: 'Music', Icon: Music },
+    { key: 'voice', label: 'Voice', Icon: Volume2 },
+  ];
+
+  return (
+    <Overlay onClose={onClose}>
+      <div style={{
+        width: '100%', maxWidth: 448, borderRadius: 18,
+        background: '#181334', border: '1px solid #4B3E72',
+        boxShadow: '0 18px 60px rgba(0,0,0,0.35)',
+        overflow: 'hidden', color: '#EDE8FF', animation: 'modalPop 0.22s ease-out',
+      }}>
+        <div style={{ height: 62, padding: '0 22px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #3D3260' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ width: 24, height: 24, borderRadius: 6, background: '#080613', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <BookOpen size={14} color="#9FE7FF" />
+            </div>
+            <span style={{ fontFamily: '"Fredoka One", cursive', fontSize: 27 }}>ReadAble</span>
+          </div>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#A9A0C8', cursor: 'pointer' }}>
+            <X size={20} />
+          </button>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', borderBottom: '1px solid #3D3260' }}>
+          {tabs.map(({ key, label, Icon }) => {
+            const active = tab === key;
+            return (
+              <button key={key} onClick={() => setTab(key)}
+                style={{
+                  height: 56, border: 'none', background: 'transparent',
+                  color: active ? '#65C7FF' : '#A9A0C8',
+                  borderBottom: active ? '2px solid #65C7FF' : '2px solid transparent',
+                  cursor: 'pointer', fontFamily: 'inherit', fontSize: 11, fontWeight: 800,
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4,
+                }}>
+                <Icon size={16} />
+                {label}
+              </button>
+            );
+          })}
+        </div>
+
+        <div style={{ padding: 22 }}>
+          {tab === 'theme' && (
+            <>
+              <p style={{ margin: '0 0 14px', color: '#A9A0C8', fontSize: 12, fontWeight: 900 }}>CHOOSE A THEME</p>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
+                {THEME_OPTIONS.map(({ key, label, Icon }) => {
+                  const active = settings.theme === key;
+                  return (
+                    <button key={key} onClick={() => setTheme(key)}
+                      style={{
+                        minHeight: 70, borderRadius: 14,
+                        border: `2px solid ${active ? '#58B9FF' : '#55476E'}`,
+                        background: active ? '#1F2D5B' : '#0E0B21',
+                        color: active ? '#7FD2FF' : '#C7B8F5',
+                        cursor: 'pointer', fontFamily: 'inherit', fontWeight: 800,
+                        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6,
+                      }}>
+                      <Icon size={18} />
+                      <span style={{ fontSize: 12 }}>{label}</span>
+                      {active && <Check size={13} />}
+                    </button>
+                  );
+                })}
+              </div>
+            </>
+          )}
+
+          {tab === 'text' && (
+            <>
+              <p style={{ margin: '0 0 14px', color: '#A9A0C8', fontSize: 12, fontWeight: 900 }}>FONT SIZE</p>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                {TEXT_OPTIONS.map(size => (
+                  <button key={size.key} onClick={() => setTextSize(size.key)}
+                    style={{
+                      padding: '15px 12px', borderRadius: 14,
+                      border: `2px solid ${settings.text_size === size.key ? '#58B9FF' : '#55476E'}`,
+                      background: settings.text_size === size.key ? '#1F2D5B' : '#0E0B21',
+                      color: '#C7B8F5', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 900,
+                    }}>
+                    {size.label}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+
+          {tab === 'music' && (
+            <SettingToggle
+              title="Background Music"
+              subtitle="Use the learner's device audio system."
+              enabled={settings.bg_music_enabled}
+              onClick={() => setBgMusicEnabled(!settings.bg_music_enabled)}
+              Icon={Music}
+            />
+          )}
+
+          {tab === 'voice' && (
+            <SettingToggle
+              title="TTS Feature"
+              subtitle="Use the learner's system text-to-speech voice."
+              enabled={settings.tts_enabled}
+              onClick={() => setTtsEnabled(!settings.tts_enabled)}
+              Icon={settings.tts_enabled ? Volume2 : VolumeX}
+            />
+          )}
+        </div>
+
+        <div style={{ padding: '14px 22px', textAlign: 'center', color: '#A9A0C8', fontSize: 12, borderTop: '1px solid #3D3260' }}>
+          Settings apply to the whole system
+        </div>
+      </div>
+    </Overlay>
+  );
+}
+
+function SettingToggle({ title, subtitle, enabled, onClick, Icon }) {
+  return (
+    <button onClick={onClick}
+      style={{
+        width: '100%', minHeight: 92, borderRadius: 16,
+        border: `2px solid ${enabled ? '#58B9FF' : '#55476E'}`,
+        background: enabled ? '#1F2D5B' : '#0E0B21',
+        color: '#EDE8FF', cursor: 'pointer', fontFamily: 'inherit',
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, padding: 18,
+      }}>
+      <span style={{ display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left' }}>
+        <Icon size={22} color={enabled ? '#7FD2FF' : '#A9A0C8'} />
+        <span>
+          <strong style={{ display: 'block', fontSize: 15 }}>{title}</strong>
+          <span style={{ display: 'block', fontSize: 12, color: '#A9A0C8', marginTop: 3 }}>{subtitle}</span>
+        </span>
+      </span>
+      <span style={{ width: 48, height: 26, borderRadius: 20, background: enabled ? '#58B9FF' : '#55476E', padding: 3, display: 'flex', justifyContent: enabled ? 'flex-end' : 'flex-start' }}>
+        <span style={{ width: 20, height: 20, borderRadius: '50%', background: '#FFFFFF' }} />
+      </span>
+    </button>
+  );
+}
+
 // ── Page: Nav ──────────────────────────────────────────────────
-function Nav({ onSignIn }) {
-  const isDark = document.documentElement.getAttribute('data-theme') === 'night';
+function Nav({ onSignIn, onOpenSettings }) {
   return (
     <nav style={{
       position: 'sticky', top: 0, zIndex: 100,
-      background: C.white + 'F0', backdropFilter: 'blur(12px)',
-      borderBottom: `1px solid ${C.border}`,
+      background: 'var(--bg-card, #FFFFFF)F0', backdropFilter: 'blur(12px)',
+      borderBottom: '1px solid var(--border-color, #DDD8F2)',
       padding: '0 24px', height: 60,
       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
-        <div style={{ width: 34, height: 34, borderRadius: 10, background: '#5A50A0', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(90,80,160,0.3)' }}>
+        <div style={{ width: 34, height: 34, borderRadius: 10, background: 'var(--accent, #5A50A0)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <BookOpen size={18} color="#FFFFFF" />
         </div>
-        <span style={{ fontFamily: '"Fredoka One", cursive', fontSize: 22, color: C.textPrimary, letterSpacing: '-0.01em' }}>ReadAble</span>
+        <span style={{ fontFamily: '"Fredoka One", cursive', fontSize: 22, color: 'var(--text-primary, #28264A)' }}>ReadAble</span>
       </div>
-      <SoftButton onClick={onSignIn} outline color={C.primary} small>Sign In</SoftButton>
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <button
+          type="button"
+          onClick={onOpenSettings}
+          aria-label="Open settings"
+          style={{
+            width: 38, height: 38, borderRadius: 12,
+            border: '1px solid var(--border-color, #DDD8F2)',
+            background: 'var(--bg-primary, #F2F0FA)',
+            color: 'var(--text-muted, #6A6898)',
+            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}
+        >
+          <SettingsIcon size={18} />
+        </button>
+        <SoftButton onClick={onSignIn} outline color={C.primary} small>Sign In</SoftButton>
+      </div>
     </nav>
   );
 }
@@ -974,7 +1279,14 @@ export default function LandingPage() {
       <GlobalStyles />
       <div style={{ fontFamily: '"Nunito", sans-serif', background: C.page, minHeight: '100vh', color: C.textPrimary }}>
 
-        <Nav onSignIn={() => setModal('signin')} />
+        {modal === 'settings' && (
+          <SettingsModal onClose={() => setModal(null)} />
+        )}
+
+        <Nav
+          onSignIn={() => setModal('signin')}
+          onOpenSettings={() => setModal('settings')}
+        />
 
         <Hero
           onTeacher={() => setModal('teacher')}
