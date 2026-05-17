@@ -283,6 +283,47 @@ export function SettingsProvider({ children }) {
 
   const stopSpeaking = useCallback(() => window.speechSynthesis?.cancel(), []);
 
+  // Speak selected text automatically when TTS is enabled.
+useEffect(() => {
+  if (!settings.tts_enabled || !window.speechSynthesis) return;
+
+  let selectionTimer = null;
+  let lastSpokenText = '';
+
+  const speakSelection = () => {
+    clearTimeout(selectionTimer);
+
+    selectionTimer = setTimeout(() => {
+      const selectedText = window.getSelection?.()?.toString()?.trim();
+
+      if (!selectedText) return;
+      if (selectedText.length > 180) return;
+      if (selectedText === lastSpokenText) return;
+
+      lastSpokenText = selectedText;
+      speak(selectedText);
+    }, 250);
+  };
+
+  const clearLastSelection = () => {
+    const selectedText = window.getSelection?.()?.toString()?.trim();
+    if (!selectedText) lastSpokenText = '';
+  };
+
+  document.addEventListener('mouseup', speakSelection);
+  document.addEventListener('touchend', speakSelection);
+  document.addEventListener('keyup', speakSelection);
+  document.addEventListener('selectionchange', clearLastSelection);
+
+  return () => {
+    clearTimeout(selectionTimer);
+    document.removeEventListener('mouseup', speakSelection);
+    document.removeEventListener('touchend', speakSelection);
+    document.removeEventListener('keyup', speakSelection);
+    document.removeEventListener('selectionchange', clearLastSelection);
+  };
+}, [settings.tts_enabled, speak]);
+
   // ── Setters for individual settings (convenience) ──────────
   const setTextSize = useCallback((val) => updateSettings({ text_size: val }), [updateSettings]);
   const setTheme = useCallback((val) => updateSettings({ theme: val }), [updateSettings]);
