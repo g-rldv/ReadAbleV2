@@ -8,11 +8,11 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useSettings } from '../contexts/SettingsContext';
 import {
-  BookOpen, BarChart2, Volume2, Heart, Star,
+  BookOpen, BarChart2, Volume2, VolumeX, Heart, Star,
   ArrowRight, Check, X, Eye, EyeOff,
   Mail, Lock, User, ArrowLeft, ShieldCheck, RefreshCw,
   Users, Sparkles, FileText, GraduationCap, Home, Baby,
-  Palette, Music, Clock, Shield,
+  Palette, Music, Clock, Shield, Type,
 } from 'lucide-react';
 import api from '../utils/api';
 
@@ -60,6 +60,25 @@ const C = {
   primary:  '#5A50A0',
   primaryH: '#4A4090',
 };
+
+const THEME_OPTIONS = [
+  { key: 'cotton', label: 'Light', color: '#FFF8F2' },
+  { key: 'sky', label: 'Berry', color: '#FFF0F4' },
+  { key: 'mint', label: 'Meadow', color: '#F2FAF2' },
+  { key: 'sunshine', label: 'Sunrise', color: '#FFF8ED' },
+  { key: 'lavender', label: 'Purple', color: '#F6F2FF' },
+  { key: 'peach', label: 'Mango', color: '#FFF4EC' },
+  { key: 'bubblegum', label: 'Bubblegum', color: '#FFF0F8' },
+  { key: 'ocean', label: 'Aqua', color: '#EEF9FD' },
+  { key: 'night', label: 'Night', color: '#181430' },
+];
+
+const FONT_SIZE_OPTIONS = [
+  { key: 'small', label: 'Small' },
+  { key: 'medium', label: 'Medium' },
+  { key: 'large', label: 'Large' },
+  { key: 'xlarge', label: 'Extra Large' },
+];
 
 // ── Shared input component ─────────────────────────────────────
 function AuthInput({ label, type = 'text', value, onChange, placeholder, name, icon: Icon, error }) {
@@ -677,6 +696,78 @@ function AudienceSection({ onTeacher, onParent }) {
   );
 }
 
+function LandingSettingsPanel({ settings, setTheme, setTextSize, setBgMusicEnabled, setTtsEnabled }) {
+  return (
+    <section style={{ padding: '36px 24px 64px', maxWidth: 980, margin: '0 auto' }}>
+      <div style={{ background: C.white, border: `1px solid ${C.border}`, borderRadius: 22, padding: '28px', boxShadow: C.shadowSm }}>
+        <SectionLabel icon={<Palette size={13} />} text="Student comfort settings" />
+        <SectionTitle>Choose a softer reading space</SectionTitle>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: 12, marginTop: 24 }}>
+          {THEME_OPTIONS.map(theme => {
+            const active = settings.theme === theme.key;
+            return (
+              <button key={theme.key} type="button" onClick={() => setTheme(theme.key)}
+                style={{
+                  minHeight: 86, borderRadius: 16, border: `2px solid ${active ? C.primary : C.border}`,
+                  background: theme.key === 'night' ? '#211C42' : theme.color,
+                  color: theme.key === 'night' ? '#F0ECFF' : C.textPrimary,
+                  cursor: 'pointer', fontFamily: 'inherit', fontWeight: 800,
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 7,
+                }}>
+                <span style={{ width: 18, height: 18, borderRadius: '50%', background: active ? C.primary : 'transparent', border: `2px solid ${active ? C.primary : C.textMuted}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  {active && <Check size={12} color="#FFFFFF" />}
+                </span>
+                {theme.label}
+              </button>
+            );
+          })}
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16, marginTop: 20 }}>
+          <div style={{ padding: 16, borderRadius: 16, background: '#FAFAFE', border: `1px solid ${C.border}` }}>
+            <p style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '0 0 12px', fontSize: 13, fontWeight: 900, color: C.textPrimary }}>
+              <Type size={16} /> Font size
+            </p>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+              {FONT_SIZE_OPTIONS.map(size => (
+                <button key={size.key} type="button" onClick={() => setTextSize(size.key)}
+                  style={{
+                    padding: '9px 10px', borderRadius: 12, border: `1.5px solid ${settings.text_size === size.key ? C.primary : C.border}`,
+                    background: settings.text_size === size.key ? '#F0ECFF' : '#FFFFFF',
+                    color: settings.text_size === size.key ? C.primary : C.textSecondary,
+                    cursor: 'pointer', fontFamily: 'inherit', fontSize: 12, fontWeight: 800,
+                  }}>
+                  {size.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {[
+            { label: 'Background Music', enabled: settings.bg_music_enabled, onClick: () => setBgMusicEnabled(!settings.bg_music_enabled), Icon: Music },
+            { label: 'TTS Voice', enabled: settings.tts_enabled, onClick: () => setTtsEnabled(!settings.tts_enabled), Icon: settings.tts_enabled ? Volume2 : VolumeX },
+          ].map(({ label, enabled, onClick, Icon }) => (
+            <button key={label} type="button" onClick={onClick}
+              style={{
+                padding: 16, borderRadius: 16, border: `1.5px solid ${enabled ? C.primary : C.border}`,
+                background: enabled ? '#F0ECFF' : '#FAFAFE', cursor: 'pointer', fontFamily: 'inherit',
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
+              }}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, fontWeight: 900, color: C.textPrimary }}>
+                <Icon size={17} /> {label}
+              </span>
+              <span style={{ width: 46, height: 24, borderRadius: 20, background: enabled ? C.primary : '#DAD6EE', padding: 3, display: 'flex', justifyContent: enabled ? 'flex-end' : 'flex-start' }}>
+                <span style={{ width: 18, height: 18, borderRadius: '50%', background: '#FFFFFF' }} />
+              </span>
+            </button>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 // ── Page: ASD features ─────────────────────────────────────────
 function FeaturesSection() {
   const features = [
@@ -860,15 +951,15 @@ function GlobalStyles() {
 export default function LandingPage() {
   const { user }  = useAuth();
   const navigate  = useNavigate();
+  const {
+  settings,
+  setTheme,
+  setTextSize,
+  setBgMusicEnabled,
+  setTtsEnabled,
+} = useSettings();
 
   const [modal, setModal] = useState(null); // null | 'signin' | 'teacher' | 'parent'
-
-  // Force cotton theme on landing page for consistent soft look
-  useEffect(() => {
-    const html = document.documentElement;
-    html.classList.remove('dark', 'high-contrast');
-    html.setAttribute('data-theme', 'cotton');
-  }, []);
 
   useEffect(() => {
     if (user) {
@@ -889,6 +980,14 @@ export default function LandingPage() {
           onTeacher={() => setModal('teacher')}
           onParent={() => setModal('parent')}
           onSignIn={() => setModal('signin')}
+        />
+
+        <LandingSettingsPanel
+        settings={settings}
+        setTheme={setTheme}
+        setTextSize={setTextSize}
+        setBgMusicEnabled={setBgMusicEnabled}
+        setTtsEnabled={setTtsEnabled}
         />
 
         <AudienceSection
