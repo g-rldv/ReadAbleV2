@@ -1,45 +1,525 @@
+// ============================================================
+// AssessmentBuilderPage.jsx — Redesigned to match TeacherDashboard
+// Soft pastels · Lucide icons · No emojis · Nunito + Fredoka One
+// ============================================================
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../../utils/api';
-import { Plus, Trash2, Edit2, Save, X } from 'lucide-react';
+import {
+  Plus, Trash2, Edit2, Save, X, ArrowLeft,
+  BookOpen, ClipboardList, BarChart2, Brain,
+  Hash, Clock, Tag, CheckCircle2, Eye, EyeOff,
+  FileText, Image, Mic, ChevronDown, ChevronUp,
+  AlertCircle, CircleCheck,
+} from 'lucide-react';
 
+// ─── Design tokens ────────────────────────────────────────────
+const C = {
+  page:  '#F2F0FA',
+  white: '#FFFFFF',
+  border:'#DDD8F2',
+  shadowSm: '0 1px 8px rgba(80,60,160,0.07)',
+  shadowMd: '0 4px 24px rgba(80,60,160,0.10)',
+  teacher: {
+    pageBg:      '#EBF4EF',
+    border:      '#B8D8C4',
+    accent:      '#3A7A5C',
+    accentLight: '#CCEADB',
+    textDark:    '#1A4A38',
+    iconBg:      '#D0EDE0',
+  },
+  student: {
+    pageBg:      '#EBF0FF',
+    border:      '#B8C8F0',
+    accent:      '#4058C0',
+    accentLight: '#D0D8F8',
+    textDark:    '#1A2870',
+    iconBg:      '#D0D8F8',
+  },
+  parent: {
+    pageBg:      '#FDF0E8',
+    border:      '#F0C8A8',
+    accent:      '#C06038',
+    accentLight: '#FAE0C8',
+    textDark:    '#6A2810',
+    iconBg:      '#FAD8C0',
+  },
+  textPrimary:   '#28264A',
+  textSecondary: '#6A6898',
+  textMuted:     '#9A98C0',
+  primary:       '#5A50A0',
+};
+
+// ─── Static data ──────────────────────────────────────────────
 const DIFFICULTY_LEVELS = [
-  { id: 1, label: 'Level 1: Foundational', desc: 'Single words, pictures, ages 5-7' },
-  { id: 2, label: 'Level 2: Basic Sentences', desc: 'Simple sentences, 2-3 choices, ages 8-10' },
-  { id: 3, label: 'Level 3: Paragraphs', desc: 'Multi-sentence, main ideas, ages 11-13' },
+  { id: 1, label: 'Level 1: Foundational', desc: 'Single words, pictures, ages 5–7' },
+  { id: 2, label: 'Level 2: Basic Sentences', desc: 'Simple sentences, 2–3 choices, ages 8–10' },
+  { id: 3, label: 'Level 3: Paragraphs', desc: 'Multi-sentence, main ideas, ages 11–13' },
   { id: 4, label: 'Level 4: Complex Narratives', desc: 'Full stories, inference, ages 14+' },
 ];
 
 const AUTISM_FOCUS_AREAS = [
-  { id: 'literal', label: 'Literal Comprehension', icon: '📖' },
-  { id: 'inference', label: 'Inferential Thinking', icon: '🧠' },
-  { id: 'vocabulary', label: 'Vocabulary Recognition', icon: '📚' },
-  { id: 'sequence', label: 'Sequence Understanding', icon: '🔢' },
-  { id: 'emotion', label: 'Emotion/Social Skills', icon: '❤️' },
+  { id: 'literal',    label: 'Literal Comprehension',  icon: BookOpen  },
+  { id: 'inference',  label: 'Inferential Thinking',   icon: Brain     },
+  { id: 'vocabulary', label: 'Vocabulary Recognition', icon: FileText  },
+  { id: 'sequence',   label: 'Sequence Understanding', icon: Hash      },
+  { id: 'emotion',    label: 'Emotion / Social Skills',icon: CircleCheck },
 ];
 
 const QUESTION_CATEGORIES = [
-  { id: 'literal', label: 'Literal (fact-based)' },
+  { id: 'literal',   label: 'Literal (fact-based)' },
   { id: 'inference', label: 'Inferential (reasoning)' },
-  { id: 'vocabulary', label: 'Vocabulary' },
-  { id: 'sequence', label: 'Sequence/Order' },
-  { id: 'emotion', label: 'Emotion/Social' },
+  { id: 'vocabulary',label: 'Vocabulary' },
+  { id: 'sequence',  label: 'Sequence / Order' },
+  { id: 'emotion',   label: 'Emotion / Social' },
 ];
 
+// ─── Shared primitives ────────────────────────────────────────
+function SectionLabel({ icon, text }) {
+  return (
+    <div style={{
+      display: 'inline-flex', alignItems: 'center', gap: 6,
+      padding: '5px 12px', borderRadius: 20,
+      background: '#EDE8FF', border: '1px solid #C8C0F0', marginBottom: 10,
+    }}>
+      <span style={{ color: '#6050B0', display: 'flex' }}>{icon}</span>
+      <span style={{ fontSize: 11, fontWeight: 800, color: '#6050B0', textTransform: 'uppercase' }}>
+        {text}
+      </span>
+    </div>
+  );
+}
+
+function SectionTitle({ children, style = {} }) {
+  return (
+    <h2 style={{
+      fontFamily: '"Fredoka One", cursive',
+      fontSize: 'clamp(18px, 2.5vw, 22px)',
+      color: C.textPrimary, margin: '0 0 4px', lineHeight: 1.2, ...style,
+    }}>
+      {children}
+    </h2>
+  );
+}
+
+function FieldLabel({ children, required }) {
+  return (
+    <label style={{
+      display: 'block', fontSize: 12, fontWeight: 800,
+      color: C.textSecondary, marginBottom: 6,
+      fontFamily: 'Nunito, sans-serif', textTransform: 'uppercase', letterSpacing: '0.04em',
+    }}>
+      {children}{required && <span style={{ color: C.parent.accent, marginLeft: 3 }}>*</span>}
+    </label>
+  );
+}
+
+const inputBase = {
+  width: '100%', boxSizing: 'border-box',
+  padding: '9px 12px', borderRadius: 10,
+  border: `1.5px solid ${C.border}`,
+  background: C.white, fontFamily: 'Nunito, sans-serif',
+  fontSize: 13, color: C.textPrimary,
+  outline: 'none', transition: 'border-color 0.15s',
+};
+
+function StyledInput({ style: extra = {}, ...props }) {
+  const [focus, setFocus] = useState(false);
+  return (
+    <input
+      {...props}
+      style={{ ...inputBase, borderColor: focus ? C.teacher.accent : C.border, ...extra }}
+      onFocus={() => setFocus(true)}
+      onBlur={() => setFocus(false)}
+    />
+  );
+}
+
+function StyledTextarea({ style: extra = {}, ...props }) {
+  const [focus, setFocus] = useState(false);
+  return (
+    <textarea
+      {...props}
+      style={{ ...inputBase, resize: 'vertical', borderColor: focus ? C.teacher.accent : C.border, ...extra }}
+      onFocus={() => setFocus(true)}
+      onBlur={() => setFocus(false)}
+    />
+  );
+}
+
+function StyledSelect({ style: extra = {}, ...props }) {
+  const [focus, setFocus] = useState(false);
+  return (
+    <select
+      {...props}
+      style={{ ...inputBase, borderColor: focus ? C.teacher.accent : C.border, ...extra }}
+      onFocus={() => setFocus(true)}
+      onBlur={() => setFocus(false)}
+    />
+  );
+}
+
+function SoftButton({ children, onClick, color, outline, small, disabled, type = 'button', style: extra = {} }) {
+  const [hov, setHov] = useState(false);
+  const base = {
+    display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+    padding: small ? '7px 14px' : '10px 20px',
+    borderRadius: 11, fontSize: small ? 12 : 13, fontWeight: 700,
+    fontFamily: 'Nunito, sans-serif', cursor: disabled ? 'not-allowed' : 'pointer',
+    border: `2px solid ${color || C.primary}`, transition: 'all 0.15s',
+    opacity: disabled ? 0.5 : 1, ...extra,
+  };
+  const s = outline
+    ? { ...base, background: hov && !disabled ? `${color}12` : 'transparent', color: color || C.primary }
+    : { ...base, background: hov && !disabled ? `${color}DD` : (color || C.primary), color: '#FFFFFF' };
+
+  return (
+    <button type={type} onClick={onClick} disabled={disabled} style={s}
+      onMouseEnter={() => setHov(true)} onMouseLeave={() => setHov(false)}>
+      {children}
+    </button>
+  );
+}
+
+// ─── Card wrapper ─────────────────────────────────────────────
+function Card({ children, style: extra = {} }) {
+  return (
+    <div style={{
+      background: C.white, border: `1px solid ${C.border}`,
+      borderRadius: 20, padding: '24px 24px 20px',
+      boxShadow: C.shadowSm, ...extra,
+    }}>
+      {children}
+    </div>
+  );
+}
+
+// ─── Page form ────────────────────────────────────────────────
+function PageForm({ page, onSave, onCancel }) {
+  const [data, setData] = useState(page || {
+    page_number: 1, page_text: '', image_url: '',
+    image_description: '', audio_hint: '',
+  });
+
+  return (
+    <div style={{
+      background: C.teacher.pageBg,
+      border: `1.5px solid ${C.teacher.border}`,
+      borderRadius: 16, padding: '20px', marginBottom: 16,
+    }}>
+      <p style={{ fontFamily: '"Fredoka One", cursive', fontSize: 16, color: C.teacher.textDark, margin: '0 0 14px' }}>
+        {page ? 'Edit Page' : 'New Page'}
+      </p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 12 }}>
+          <div>
+            <FieldLabel>Page Number</FieldLabel>
+            <StyledInput type="number"
+              value={data.page_number}
+              onChange={e => setData({ ...data, page_number: parseInt(e.target.value) })} />
+          </div>
+          <div>
+            <FieldLabel>Image URL</FieldLabel>
+            <StyledInput type="text" value={data.image_url || ''}
+              onChange={e => setData({ ...data, image_url: e.target.value })}
+              placeholder="https://…" />
+          </div>
+        </div>
+        <div>
+          <FieldLabel required>Page Text</FieldLabel>
+          <StyledTextarea rows={3} value={data.page_text}
+            onChange={e => setData({ ...data, page_text: e.target.value })}
+            placeholder="The story text that students will read…" />
+        </div>
+        <div>
+          <FieldLabel>Image Description (accessibility)</FieldLabel>
+          <StyledInput type="text" value={data.image_description || ''}
+            onChange={e => setData({ ...data, image_description: e.target.value })}
+            placeholder="Describe the image for screen readers" />
+        </div>
+        <div>
+          <FieldLabel>Audio Hint (optional)</FieldLabel>
+          <StyledInput type="text" value={data.audio_hint || ''}
+            onChange={e => setData({ ...data, audio_hint: e.target.value })} />
+        </div>
+        <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
+          <SoftButton color={C.teacher.accent} onClick={() => onSave(data)} disabled={!data.page_text}>
+            <Save size={14} /> Save Page
+          </SoftButton>
+          <SoftButton color={C.textMuted} outline onClick={onCancel}>
+            <X size={14} /> Cancel
+          </SoftButton>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Question form ────────────────────────────────────────────
+function QuestionForm({ question, onSave, onCancel }) {
+  const [data, setData] = useState(question || {
+    question_text: '', question_type: 'multiple_choice',
+    question_category: 'literal', points: 1,
+    difficulty_score: 5, time_estimate: 60,
+    options: ['', '', ''], correct_answer: '', image_url: '',
+  });
+
+  const handleOptionChange = (index, value) => {
+    const newOptions = [...(data.options || [])];
+    newOptions[index] = value;
+    setData({ ...data, options: newOptions });
+  };
+  const addOption = () => setData({ ...data, options: [...(data.options || []), ''] });
+  const removeOption = (index) => setData({ ...data, options: (data.options || []).filter((_, i) => i !== index) });
+
+  return (
+    <div style={{
+      background: C.student.pageBg,
+      border: `1.5px solid ${C.student.border}`,
+      borderRadius: 16, padding: '20px', marginBottom: 16,
+    }}>
+      <p style={{ fontFamily: '"Fredoka One", cursive', fontSize: 16, color: C.student.textDark, margin: '0 0 14px' }}>
+        {question ? 'Edit Question' : 'New Question'}
+      </p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div>
+          <FieldLabel required>Question Text</FieldLabel>
+          <StyledTextarea rows={2} value={data.question_text}
+            onChange={e => setData({ ...data, question_text: e.target.value })}
+            placeholder="What is the question?" />
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px,1fr))', gap: 12 }}>
+          <div>
+            <FieldLabel>Type</FieldLabel>
+            <StyledSelect value={data.question_type}
+              onChange={e => setData({ ...data, question_type: e.target.value })}>
+              <option value="multiple_choice">Multiple Choice</option>
+              <option value="yes_no">Yes / No</option>
+              <option value="picture_choice">Picture Choice</option>
+              <option value="short_answer">Short Answer</option>
+            </StyledSelect>
+          </div>
+          <div>
+            <FieldLabel>Category</FieldLabel>
+            <StyledSelect value={data.question_category}
+              onChange={e => setData({ ...data, question_category: e.target.value })}>
+              {QUESTION_CATEGORIES.map(cat => (
+                <option key={cat.id} value={cat.id}>{cat.label}</option>
+              ))}
+            </StyledSelect>
+          </div>
+          <div>
+            <FieldLabel>Points</FieldLabel>
+            <StyledInput type="number" min="1" value={data.points}
+              onChange={e => setData({ ...data, points: parseInt(e.target.value) || 1 })} />
+          </div>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div>
+            <FieldLabel>Difficulty (1–10)</FieldLabel>
+            <StyledInput type="number" min="1" max="10" value={data.difficulty_score}
+              onChange={e => setData({ ...data, difficulty_score: parseInt(e.target.value) || 5 })} />
+          </div>
+          <div>
+            <FieldLabel>Time Estimate (sec)</FieldLabel>
+            <StyledInput type="number" min="10" value={data.time_estimate}
+              onChange={e => setData({ ...data, time_estimate: parseInt(e.target.value) || 60 })} />
+          </div>
+        </div>
+
+        {['multiple_choice', 'picture_choice'].includes(data.question_type) && (
+          <div>
+            <FieldLabel>Answer Options</FieldLabel>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {(data.options || []).map((option, idx) => (
+                <div key={idx} style={{ display: 'flex', gap: 6 }}>
+                  <StyledInput type="text" value={option}
+                    onChange={e => handleOptionChange(idx, e.target.value)}
+                    placeholder={`Option ${idx + 1}`} />
+                  <button onClick={() => removeOption(idx)} title="Remove option"
+                    style={{
+                      width: 34, height: 34, flexShrink: 0, borderRadius: 9,
+                      border: `1.5px solid #F8C8C8`, background: '#FEF0F0',
+                      color: '#C03030', cursor: 'pointer',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    }}>
+                    <X size={13} />
+                  </button>
+                </div>
+              ))}
+              <button onClick={addOption}
+                style={{
+                  alignSelf: 'flex-start', background: 'none', border: 'none',
+                  cursor: 'pointer', fontFamily: 'Nunito, sans-serif',
+                  fontSize: 12, fontWeight: 700, color: C.student.accent,
+                  display: 'flex', alignItems: 'center', gap: 4, padding: '4px 0',
+                }}>
+                <Plus size={13} /> Add option
+              </button>
+            </div>
+          </div>
+        )}
+
+        <div>
+          <FieldLabel required>
+            Correct Answer
+            {data.question_type === 'yes_no' && ' (Yes or No)'}
+            {['multiple_choice', 'picture_choice'].includes(data.question_type) && ' (must match an option exactly)'}
+          </FieldLabel>
+          <StyledInput type="text" value={data.correct_answer}
+            onChange={e => setData({ ...data, correct_answer: e.target.value })}
+            placeholder={data.question_type === 'yes_no' ? 'Yes or No' : 'Enter the correct answer'} />
+        </div>
+
+        <div>
+          <FieldLabel>Image URL (optional)</FieldLabel>
+          <StyledInput type="text" value={data.image_url || ''}
+            onChange={e => setData({ ...data, image_url: e.target.value })}
+            placeholder="https://…" />
+        </div>
+
+        <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
+          <SoftButton color={C.student.accent}
+            onClick={() => onSave(data)}
+            disabled={!data.question_text || !data.correct_answer}>
+            <Save size={14} /> Save Question
+          </SoftButton>
+          <SoftButton color={C.textMuted} outline onClick={onCancel}>
+            <X size={14} /> Cancel
+          </SoftButton>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Page row ─────────────────────────────────────────────────
+function PageRow({ page, onEdit, onDelete }) {
+  const [hov, setHov] = useState(false);
+  return (
+    <div
+      onMouseEnter={() => setHov(true)}
+      onMouseLeave={() => setHov(false)}
+      style={{
+        display: 'flex', alignItems: 'center', gap: 14,
+        padding: '14px 16px', borderRadius: 12,
+        background: hov ? C.teacher.pageBg : '#FAFAF8',
+        border: `1.5px solid ${hov ? C.teacher.border : C.border}`,
+        transition: 'all 0.15s',
+      }}
+    >
+      <div style={{
+        width: 36, height: 36, borderRadius: 10, flexShrink: 0,
+        background: C.teacher.iconBg,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        fontFamily: '"Fredoka One", cursive', fontSize: 14, color: C.teacher.accent,
+      }}>
+        {page.page_number}
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <p style={{ fontSize: 13, fontWeight: 800, color: C.textPrimary, margin: 0 }}>
+          Page {page.page_number}
+        </p>
+        <p style={{
+          fontSize: 12, color: C.textSecondary, margin: '2px 0 0',
+          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+        }}>
+          {page.page_text?.substring(0, 90)}{page.page_text?.length > 90 ? '…' : ''}
+        </p>
+      </div>
+      <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+        <button onClick={() => onEdit(page)} title="Edit"
+          style={{
+            width: 32, height: 32, borderRadius: 8,
+            border: `1.5px solid ${C.student.border}`, background: C.student.iconBg,
+            color: C.student.accent, cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+          <Edit2 size={14} />
+        </button>
+        <button onClick={() => onDelete(page.id)} title="Delete"
+          style={{
+            width: 32, height: 32, borderRadius: 8,
+            border: '1.5px solid #F8C8C8', background: '#FEF0F0',
+            color: '#C03030', cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+          <Trash2 size={14} />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Question row ─────────────────────────────────────────────
+function QuestionRow({ question, onEdit, onDelete }) {
+  const [hov, setHov] = useState(false);
+  return (
+    <div
+      onMouseEnter={() => setHov(true)}
+      onMouseLeave={() => setHov(false)}
+      style={{
+        display: 'flex', alignItems: 'center', gap: 14,
+        padding: '14px 16px', borderRadius: 12,
+        background: hov ? C.student.pageBg : '#FAFAF8',
+        border: `1.5px solid ${hov ? C.student.border : C.border}`,
+        transition: 'all 0.15s',
+      }}
+    >
+      <div style={{
+        width: 36, height: 36, borderRadius: 10, flexShrink: 0,
+        background: C.student.iconBg,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}>
+        <ClipboardList size={16} style={{ color: C.student.accent }} />
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <p style={{
+          fontSize: 13, fontWeight: 800, color: C.textPrimary, margin: 0,
+          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+        }}>
+          {question.question_text?.substring(0, 70)}{question.question_text?.length > 70 ? '…' : ''}
+        </p>
+        <p style={{ fontSize: 11, color: C.textSecondary, margin: '2px 0 0' }}>
+          {question.question_type} · {question.question_category || 'literal'} · {question.points} pt{question.points !== 1 ? 's' : ''}
+        </p>
+      </div>
+      <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+        <button onClick={() => onEdit(question)} title="Edit"
+          style={{
+            width: 32, height: 32, borderRadius: 8,
+            border: `1.5px solid ${C.student.border}`, background: C.student.iconBg,
+            color: C.student.accent, cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+          <Edit2 size={14} />
+        </button>
+        <button onClick={() => onDelete(question.id)} title="Delete"
+          style={{
+            width: 32, height: 32, borderRadius: 8,
+            border: '1.5px solid #F8C8C8', background: '#FEF0F0',
+            color: '#C03030', cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+          <Trash2 size={14} />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Main component ───────────────────────────────────────────
 export default function AssessmentBuilderPage() {
   const { id } = useParams();
   const navigate = useNavigate();
 
   const [assessment, setAssessment] = useState({
-    title: '',
-    description: '',
-    story_theme: '',
-    difficulty_level: 1,
-    autism_focus_areas: [],
-    recommended_age_min: '',
-    recommended_age_max: '',
+    title: '', description: '', story_theme: '',
+    difficulty_level: 1, autism_focus_areas: [],
+    recommended_age_min: '', recommended_age_max: '',
   });
-
   const [pages, setPages] = useState([]);
   const [questions, setQuestions] = useState([]);
   const [editingPage, setEditingPage] = useState(null);
@@ -50,61 +530,47 @@ export default function AssessmentBuilderPage() {
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [error, setError] = useState('');
 
-  useEffect(() => {
-    if (id) {
-      loadAssessment();
-    }
-  }, [id]);
+  useEffect(() => { if (id) loadAssessment(); }, [id]);
 
   const loadAssessment = async () => {
     try {
       setLoading(true);
       const response = await api.get(`/assessments/${id}`);
       const { assessment: data, pages: pagesData, questions: questionsData } = response.data;
-      setAssessment({
-        ...data,
-        autism_focus_areas: data.autism_focus_areas || [],
-      });
+      setAssessment({ ...data, autism_focus_areas: data.autism_focus_areas || [] });
       setPages(pagesData || []);
       setQuestions(questionsData || []);
     } catch (err) {
       setError('Failed to load assessment');
-      console.error(err);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleAssessmentChange = (field, value) => {
+  const handleAssessmentChange = (field, value) =>
     setAssessment(prev => ({ ...prev, [field]: value }));
-  };
 
-  const toggleFocusArea = (areaId) => {
+  const toggleFocusArea = (areaId) =>
     setAssessment(prev => ({
       ...prev,
       autism_focus_areas: prev.autism_focus_areas.includes(areaId)
         ? prev.autism_focus_areas.filter(a => a !== areaId)
-        : [...prev.autism_focus_areas, areaId]
+        : [...prev.autism_focus_areas, areaId],
     }));
-  };
 
   const saveAssessment = async () => {
     try {
-      setLoading(true);
-      setError('');
+      setLoading(true); setError('');
       if (id) {
         await api.put(`/assessments/${id}`, assessment);
         setSaveSuccess(true);
-        setTimeout(() => setSaveSuccess(false), 2000);
+        setTimeout(() => setSaveSuccess(false), 2500);
       } else {
         const response = await api.post('/assessments', assessment);
-        const newId = response.data.assessment.id;
-        // Navigate to the correct edit route
-        navigate(`/teacher/assessments/${newId}/edit`);
+        navigate(`/teacher/assessments/${response.data.assessment.id}/edit`);
       }
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to save assessment');
-      console.error(err);
     } finally {
       setLoading(false);
     }
@@ -119,10 +585,8 @@ export default function AssessmentBuilderPage() {
         const response = await api.post(`/assessments/${id}/pages`, pageData);
         setPages([...pages, response.data.page]);
       }
-      setEditingPage(null);
-      setShowPageForm(false);
+      setEditingPage(null); setShowPageForm(false);
     } catch (err) {
-      console.error('Failed to save page:', err);
       setError(err.response?.data?.error || 'Failed to save page');
     }
   };
@@ -132,9 +596,7 @@ export default function AssessmentBuilderPage() {
     try {
       await api.delete(`/assessments/${id}/pages/${pageId}`);
       setPages(pages.filter(p => p.id !== pageId));
-    } catch (err) {
-      console.error('Failed to delete page:', err);
-    }
+    } catch (err) { console.error(err); }
   };
 
   const saveQuestion = async (questionData) => {
@@ -146,10 +608,8 @@ export default function AssessmentBuilderPage() {
         const response = await api.post(`/assessments/${id}/questions`, questionData);
         setQuestions([...questions, response.data.question]);
       }
-      setEditingQuestion(null);
-      setShowQuestionForm(false);
+      setEditingQuestion(null); setShowQuestionForm(false);
     } catch (err) {
-      console.error('Failed to save question:', err);
       setError(err.response?.data?.error || 'Failed to save question');
     }
   };
@@ -159,9 +619,7 @@ export default function AssessmentBuilderPage() {
     try {
       await api.delete(`/assessments/${id}/questions/${questionId}`);
       setQuestions(questions.filter(q => q.id !== questionId));
-    } catch (err) {
-      console.error('Failed to delete question:', err);
-    }
+    } catch (err) { console.error(err); }
   };
 
   const togglePublish = async () => {
@@ -173,558 +631,332 @@ export default function AssessmentBuilderPage() {
     }
   };
 
+  // ── Loading ─────────────────────────────────────────────────
+  if (loading && !assessment.title) {
+    return (
+      <div style={{
+        display: 'flex', flexDirection: 'column', alignItems: 'center',
+        justifyContent: 'center', padding: '64px 0', gap: 14,
+        fontFamily: 'Nunito, sans-serif',
+      }}>
+        <div style={{
+          width: 36, height: 36, borderRadius: '50%',
+          border: `3px solid ${C.teacher.accentLight}`,
+          borderTop: `3px solid ${C.teacher.accent}`,
+          animation: 'spin 0.8s linear infinite',
+        }} />
+        <p style={{ fontSize: 13, fontWeight: 700, color: C.textSecondary, margin: 0 }}>
+          Loading assessment…
+        </p>
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      </div>
+    );
+  }
+
+  const canSave = assessment.title && assessment.description && assessment.story_theme;
+
+  // ── Builder UI ──────────────────────────────────────────────
   return (
-    <div className="p-6 max-w-4xl mx-auto">
-      <div className="mb-6 flex items-center justify-between">
+    <div style={{
+      fontFamily: '"Nunito", sans-serif',
+      color: C.textPrimary,
+      maxWidth: 860,
+      display: 'flex', flexDirection: 'column', gap: 28,
+    }}>
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+
+      {/* ── Page header ─────────────────────────────────────── */}
+      <div style={{
+        borderRadius: 22,
+        background: C.teacher.pageBg,
+        border: `1.5px solid ${C.teacher.border}`,
+        padding: '24px 28px',
+        display: 'flex', flexWrap: 'wrap', alignItems: 'center',
+        justifyContent: 'space-between', gap: 16,
+        boxShadow: C.shadowSm,
+      }}>
         <div>
-          <h1 className="text-3xl font-bold mb-1">Assessment Builder</h1>
-          <p className="text-slate-600">Design custom reading comprehension assessments for children with ASD</p>
+          <SectionLabel icon={<ClipboardList size={12} />} text="Assessment Builder" />
+          <SectionTitle style={{ fontSize: 'clamp(18px,3vw,24px)' }}>
+            {id ? 'Edit Assessment' : 'Create Assessment'}
+          </SectionTitle>
+          <p style={{ fontSize: 13, color: C.textSecondary, margin: '4px 0 0', lineHeight: 1.5 }}>
+            Design custom reading comprehension assessments for children with ASD
+          </p>
         </div>
         <button
           onClick={() => navigate('/teacher/assessments')}
-          className="text-slate-500 hover:text-slate-700 text-sm font-medium"
+          style={{
+            display: 'inline-flex', alignItems: 'center', gap: 6,
+            padding: '8px 14px', borderRadius: 10,
+            border: `1.5px solid ${C.teacher.border}`, background: C.white,
+            color: C.textSecondary, fontFamily: 'Nunito, sans-serif',
+            fontSize: 13, fontWeight: 700, cursor: 'pointer',
+            transition: 'all 0.15s',
+          }}
+          onMouseEnter={e => { e.currentTarget.style.background = C.teacher.pageBg; e.currentTarget.style.color = C.teacher.accent; }}
+          onMouseLeave={e => { e.currentTarget.style.background = C.white; e.currentTarget.style.color = C.textSecondary; }}
         >
-          ← Back to Assessments
+          <ArrowLeft size={14} /> Back to Assessments
         </button>
       </div>
 
+      {/* ── Error / success banners ──────────────────────────── */}
       {error && (
-        <div className="mb-4 p-3 bg-red-100 text-red-700 rounded flex items-center justify-between">
-          <span>{error}</span>
-          <button onClick={() => setError('')} className="text-red-500 hover:text-red-700">✕</button>
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '12px 16px', borderRadius: 12,
+          background: '#FEF0F0', border: '1.5px solid #F8C8C8',
+          color: '#C03030', fontSize: 13, fontWeight: 700,
+        }}>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <AlertCircle size={15} /> {error}
+          </span>
+          <button onClick={() => setError('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#C03030' }}>
+            <X size={14} />
+          </button>
         </div>
       )}
-
       {saveSuccess && (
-        <div className="mb-4 p-3 bg-green-100 text-green-700 rounded">
-          ✓ Assessment saved successfully
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 8,
+          padding: '12px 16px', borderRadius: 12,
+          background: C.teacher.accentLight, border: `1.5px solid ${C.teacher.border}`,
+          color: C.teacher.textDark, fontSize: 13, fontWeight: 700,
+        }}>
+          <CheckCircle2 size={15} /> Assessment saved successfully
         </div>
       )}
 
-      {/* Assessment Meta Section */}
-      <div className="bg-white rounded-lg shadow p-6 mb-6">
-        <h2 className="text-xl font-semibold mb-4">Assessment Details</h2>
+      {/* ── Assessment details card ──────────────────────────── */}
+      <Card>
+        <SectionLabel icon={<BookOpen size={12} />} text="Assessment Details" />
+        <SectionTitle style={{ marginBottom: 20 }}>Basic Information</SectionTitle>
 
-        <div className="space-y-4">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div>
-            <label className="block text-sm font-medium mb-2">Title *</label>
-            <input
-              type="text"
-              value={assessment.title}
+            <FieldLabel required>Title</FieldLabel>
+            <StyledInput type="text" value={assessment.title}
               onChange={e => handleAssessmentChange('title', e.target.value)}
-              className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-sky"
-              placeholder="e.g., The Hungry Caterpillar"
-            />
+              placeholder="e.g., The Hungry Caterpillar" />
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-2">Description *</label>
-            <textarea
-              value={assessment.description}
+            <FieldLabel required>Description</FieldLabel>
+            <StyledTextarea rows={3} value={assessment.description}
               onChange={e => handleAssessmentChange('description', e.target.value)}
-              className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-sky"
-              rows="3"
-              placeholder="What is this assessment about?"
-            />
+              placeholder="What is this assessment about?" />
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-2">Story Theme *</label>
-            <input
-              type="text"
-              value={assessment.story_theme}
+            <FieldLabel required>Story Theme</FieldLabel>
+            <StyledInput type="text" value={assessment.story_theme}
               onChange={e => handleAssessmentChange('story_theme', e.target.value)}
-              className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-sky"
-              placeholder="e.g., Animals, Space, Daily Routines"
-            />
+              placeholder="e.g., Animals, Space, Daily Routines" />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <div>
-              <label className="block text-sm font-medium mb-2">Min Age</label>
-              <input
-                type="number"
-                value={assessment.recommended_age_min}
+              <FieldLabel>Min Age</FieldLabel>
+              <StyledInput type="number" value={assessment.recommended_age_min}
                 onChange={e => handleAssessmentChange('recommended_age_min', e.target.value)}
-                className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-sky"
-                placeholder="5"
-              />
+                placeholder="5" />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-2">Max Age</label>
-              <input
-                type="number"
-                value={assessment.recommended_age_max}
+              <FieldLabel>Max Age</FieldLabel>
+              <StyledInput type="number" value={assessment.recommended_age_max}
                 onChange={e => handleAssessmentChange('recommended_age_max', e.target.value)}
-                className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-sky"
-                placeholder="10"
-              />
+                placeholder="10" />
             </div>
           </div>
-
-          {/* Difficulty Level */}
-          <div>
-            <label className="block text-sm font-medium mb-3">Difficulty Level</label>
-            <div className="grid grid-cols-1 gap-2">
-              {DIFFICULTY_LEVELS.map(level => (
-                <label key={level.id} className="flex items-start p-3 border rounded-lg cursor-pointer hover:bg-blue-50">
-                  <input
-                    type="radio"
-                    name="difficulty"
-                    value={level.id}
-                    checked={assessment.difficulty_level === level.id}
-                    onChange={e => handleAssessmentChange('difficulty_level', parseInt(e.target.value))}
-                    className="mt-1 mr-3"
-                  />
-                  <div>
-                    <div className="font-medium">{level.label}</div>
-                    <div className="text-sm text-slate-600">{level.desc}</div>
-                  </div>
-                </label>
-              ))}
-            </div>
-          </div>
-
-          {/* ASD Focus Areas */}
-          <div>
-            <label className="block text-sm font-medium mb-3">ASD Learning Focus Areas</label>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {AUTISM_FOCUS_AREAS.map(area => (
-                <label key={area.id} className="flex items-center p-3 border rounded-lg cursor-pointer hover:bg-purple-50">
-                  <input
-                    type="checkbox"
-                    checked={(assessment.autism_focus_areas || []).includes(area.id)}
-                    onChange={() => toggleFocusArea(area.id)}
-                    className="mr-3"
-                  />
-                  <span>
-                    <span className="mr-2">{area.icon}</span>
-                    {area.label}
-                  </span>
-                </label>
-              ))}
-            </div>
-          </div>
-
-          <div className="flex gap-3">
-            <button
-              onClick={saveAssessment}
-              disabled={loading || !assessment.title || !assessment.description || !assessment.story_theme}
-              className="flex-1 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 font-medium"
-            >
-              {loading ? 'Saving...' : id ? 'Save Changes' : 'Create Assessment'}
-            </button>
-            {id && (
-              <button
-                onClick={togglePublish}
-                className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${
-                  assessment.is_published
-                    ? 'bg-orange-100 text-orange-700 hover:bg-orange-200'
-                    : 'bg-green-100 text-green-700 hover:bg-green-200'
-                }`}
-              >
-                {assessment.is_published ? 'Unpublish' : 'Publish'}
-              </button>
-            )}
-          </div>
-
-          {id && (
-            <p className="text-xs text-slate-400 text-center">
-              Status: {assessment.is_published ? '✅ Published — visible to parents' : '⏸ Draft — not yet visible to parents'}
-            </p>
-          )}
         </div>
-      </div>
+      </Card>
 
-      {id && (
-        <>
-          {/* Pages Section */}
-          <div className="bg-white rounded-lg shadow p-6 mb-6">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-semibold">Story Pages ({pages.length})</h2>
-              <button
-                onClick={() => {
-                  setEditingPage(null);
-                  setShowPageForm(!showPageForm);
-                }}
-                className="flex items-center gap-2 bg-green-600 text-white px-3 py-2 rounded-lg hover:bg-green-700"
-              >
-                <Plus size={18} /> Add Page
-              </button>
-            </div>
-
-            {showPageForm && (
-              <PageForm
-                page={editingPage}
-                onSave={savePage}
-                onCancel={() => {
-                  setShowPageForm(false);
-                  setEditingPage(null);
-                }}
-              />
-            )}
-
-            <div className="space-y-2">
-              {pages.length === 0 && !showPageForm && (
-                <p className="text-slate-400 text-sm text-center py-4">No pages yet. Add pages to build the story.</p>
-              )}
-              {pages.map(page => (
-                <div key={page.id} className="flex justify-between items-center p-3 bg-slate-50 rounded">
-                  <div className="flex-1">
-                    <div className="font-medium">Page {page.page_number}</div>
-                    <div className="text-sm text-slate-600 truncate max-w-md">
-                      {page.page_text?.substring(0, 80)}{page.page_text?.length > 80 ? '...' : ''}
-                    </div>
-                  </div>
-                  <div className="flex gap-2 ml-3">
-                    <button
-                      onClick={() => {
-                        setEditingPage(page);
-                        setShowPageForm(true);
-                      }}
-                      className="p-2 text-blue-600 hover:bg-blue-100 rounded"
-                    >
-                      <Edit2 size={18} />
-                    </button>
-                    <button
-                      onClick={() => deletePage(page.id)}
-                      className="p-2 text-red-600 hover:bg-red-100 rounded"
-                    >
-                      <Trash2 size={18} />
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Questions Section */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-semibold">Questions ({questions.length})</h2>
-              <button
-                onClick={() => {
-                  setEditingQuestion(null);
-                  setShowQuestionForm(!showQuestionForm);
-                }}
-                className="flex items-center gap-2 bg-green-600 text-white px-3 py-2 rounded-lg hover:bg-green-700"
-              >
-                <Plus size={18} /> Add Question
-              </button>
-            </div>
-
-            {showQuestionForm && (
-              <QuestionForm
-                question={editingQuestion}
-                onSave={saveQuestion}
-                onCancel={() => {
-                  setShowQuestionForm(false);
-                  setEditingQuestion(null);
-                }}
-              />
-            )}
-
-            <div className="space-y-2">
-              {questions.length === 0 && !showQuestionForm && (
-                <p className="text-slate-400 text-sm text-center py-4">No questions yet. Add questions for students to answer.</p>
-              )}
-              {questions.map(question => (
-                <div key={question.id} className="flex justify-between items-center p-3 bg-slate-50 rounded">
-                  <div className="flex-1">
-                    <div className="font-medium truncate max-w-md">
-                      {question.question_text?.substring(0, 70)}{question.question_text?.length > 70 ? '...' : ''}
-                    </div>
-                    <div className="text-sm text-slate-600">
-                      Type: {question.question_type} · Category: {question.question_category || 'literal'} · Points: {question.points}
-                    </div>
-                  </div>
-                  <div className="flex gap-2 ml-3">
-                    <button
-                      onClick={() => {
-                        setEditingQuestion(question);
-                        setShowQuestionForm(true);
-                      }}
-                      className="p-2 text-blue-600 hover:bg-blue-100 rounded"
-                    >
-                      <Edit2 size={18} />
-                    </button>
-                    <button
-                      onClick={() => deleteQuestion(question.id)}
-                      className="p-2 text-red-600 hover:bg-red-100 rounded"
-                    >
-                      <Trash2 size={18} />
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </>
-      )}
-    </div>
-  );
-}
-
-function PageForm({ page, onSave, onCancel }) {
-  const [data, setData] = useState(page || {
-    page_number: 1,
-    page_text: '',
-    image_url: '',
-    image_description: '',
-    audio_hint: '',
-  });
-
-  return (
-    <div className="bg-slate-50 p-4 rounded-lg mb-4 border border-slate-200">
-      <div className="space-y-3">
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="block text-sm font-medium mb-1">Page Number</label>
-            <input
-              type="number"
-              value={data.page_number}
-              onChange={e => setData({ ...data, page_number: parseInt(e.target.value) })}
-              className="w-full px-2 py-1 border rounded text-sm"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Image URL</label>
-            <input
-              type="text"
-              value={data.image_url || ''}
-              onChange={e => setData({ ...data, image_url: e.target.value })}
-              className="w-full px-2 py-1 border rounded text-sm"
-              placeholder="https://..."
-            />
-          </div>
-        </div>
-        <div>
-          <label className="block text-sm font-medium mb-1">Page Text *</label>
-          <textarea
-            value={data.page_text}
-            onChange={e => setData({ ...data, page_text: e.target.value })}
-            className="w-full px-2 py-1 border rounded text-sm"
-            rows="3"
-            placeholder="The story text that students will read..."
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium mb-1">Image Description (accessibility)</label>
-          <input
-            type="text"
-            value={data.image_description || ''}
-            onChange={e => setData({ ...data, image_description: e.target.value })}
-            className="w-full px-2 py-1 border rounded text-sm"
-            placeholder="Describe the image for screen readers"
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium mb-1">Audio Hint (optional)</label>
-          <input
-            type="text"
-            value={data.audio_hint || ''}
-            onChange={e => setData({ ...data, audio_hint: e.target.value })}
-            className="w-full px-2 py-1 border rounded text-sm"
-          />
-        </div>
-        <div className="flex gap-2">
-          <button
-            onClick={() => onSave(data)}
-            disabled={!data.page_text}
-            className="flex-1 bg-blue-600 text-white py-1 rounded text-sm hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center gap-1"
-          >
-            <Save size={16} /> Save Page
-          </button>
-          <button
-            onClick={onCancel}
-            className="flex-1 bg-slate-400 text-white py-1 rounded text-sm hover:bg-slate-500 flex items-center justify-center gap-1"
-          >
-            <X size={16} /> Cancel
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function QuestionForm({ question, onSave, onCancel }) {
-  const [data, setData] = useState(question || {
-    question_text: '',
-    question_type: 'multiple_choice',
-    question_category: 'literal',
-    points: 1,
-    difficulty_score: 5,
-    time_estimate: 60,
-    options: ['', '', ''],
-    correct_answer: '',
-    image_url: '',
-  });
-
-  const handleOptionChange = (index, value) => {
-    const newOptions = [...(data.options || [])];
-    newOptions[index] = value;
-    setData({ ...data, options: newOptions });
-  };
-
-  const addOption = () => {
-    setData({ ...data, options: [...(data.options || []), ''] });
-  };
-
-  const removeOption = (index) => {
-    const newOptions = (data.options || []).filter((_, i) => i !== index);
-    setData({ ...data, options: newOptions });
-  };
-
-  return (
-    <div className="bg-slate-50 p-4 rounded-lg mb-4 border border-slate-200">
-      <div className="space-y-3">
-        <div>
-          <label className="block text-sm font-medium mb-1">Question Text *</label>
-          <textarea
-            value={data.question_text}
-            onChange={e => setData({ ...data, question_text: e.target.value })}
-            className="w-full px-2 py-1 border rounded text-sm"
-            rows="2"
-            placeholder="What is the question?"
-          />
-        </div>
-
-        <div className="grid grid-cols-3 gap-3">
-          <div>
-            <label className="block text-sm font-medium mb-1">Type</label>
-            <select
-              value={data.question_type}
-              onChange={e => setData({ ...data, question_type: e.target.value })}
-              className="w-full px-2 py-1 border rounded text-sm"
-            >
-              <option value="multiple_choice">Multiple Choice</option>
-              <option value="yes_no">Yes/No</option>
-              <option value="picture_choice">Picture Choice</option>
-              <option value="short_answer">Short Answer</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-1">Category</label>
-            <select
-              value={data.question_category}
-              onChange={e => setData({ ...data, question_category: e.target.value })}
-              className="w-full px-2 py-1 border rounded text-sm"
-            >
-              {QUESTION_CATEGORIES.map(cat => (
-                <option key={cat.id} value={cat.id}>{cat.label}</option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-1">Points</label>
-            <input
-              type="number"
-              min="1"
-              value={data.points}
-              onChange={e => setData({ ...data, points: parseInt(e.target.value) || 1 })}
-              className="w-full px-2 py-1 border rounded text-sm"
-            />
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="block text-sm font-medium mb-1">Difficulty (1-10)</label>
-            <input
-              type="number"
-              min="1"
-              max="10"
-              value={data.difficulty_score}
-              onChange={e => setData({ ...data, difficulty_score: parseInt(e.target.value) || 5 })}
-              className="w-full px-2 py-1 border rounded text-sm"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Time Estimate (sec)</label>
-            <input
-              type="number"
-              min="10"
-              value={data.time_estimate}
-              onChange={e => setData({ ...data, time_estimate: parseInt(e.target.value) || 60 })}
-              className="w-full px-2 py-1 border rounded text-sm"
-            />
-          </div>
-        </div>
-
-        {['multiple_choice', 'picture_choice'].includes(data.question_type) && (
-          <div>
-            <label className="block text-sm font-medium mb-1">Answer Options</label>
-            {(data.options || []).map((option, idx) => (
-              <div key={idx} className="flex gap-1 mb-1">
+      {/* ── Difficulty level card ────────────────────────────── */}
+      <Card>
+        <SectionLabel icon={<BarChart2 size={12} />} text="Difficulty" />
+        <SectionTitle style={{ marginBottom: 16 }}>Difficulty Level</SectionTitle>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {DIFFICULTY_LEVELS.map(level => {
+            const active = assessment.difficulty_level === level.id;
+            return (
+              <label key={level.id} style={{
+                display: 'flex', alignItems: 'center', gap: 14,
+                padding: '14px 16px', borderRadius: 12, cursor: 'pointer',
+                background: active ? C.teacher.accentLight : '#FAFAF8',
+                border: `1.5px solid ${active ? C.teacher.border : C.border}`,
+                transition: 'all 0.15s',
+              }}>
                 <input
-                  type="text"
-                  value={option}
-                  onChange={e => handleOptionChange(idx, e.target.value)}
-                  className="flex-1 px-2 py-1 border rounded text-sm"
-                  placeholder={`Option ${idx + 1}`}
+                  type="radio" name="difficulty" value={level.id}
+                  checked={active}
+                  onChange={e => handleAssessmentChange('difficulty_level', parseInt(e.target.value))}
+                  style={{ accentColor: C.teacher.accent, width: 16, height: 16, flexShrink: 0 }}
                 />
-                <button
-                  onClick={() => removeOption(idx)}
-                  className="p-1 text-red-500 hover:text-red-700"
-                  title="Remove option"
-                >
-                  <X size={14} />
-                </button>
-              </div>
-            ))}
-            <button
-              onClick={addOption}
-              className="text-blue-600 text-sm hover:underline mt-1"
-            >
-              + Add option
-            </button>
-          </div>
+                <div>
+                  <p style={{ fontSize: 13, fontWeight: 800, color: active ? C.teacher.textDark : C.textPrimary, margin: 0 }}>
+                    {level.label}
+                  </p>
+                  <p style={{ fontSize: 12, color: C.textSecondary, margin: '2px 0 0' }}>{level.desc}</p>
+                </div>
+              </label>
+            );
+          })}
+        </div>
+      </Card>
+
+      {/* ── ASD focus areas card ─────────────────────────────── */}
+      <Card>
+        <SectionLabel icon={<Brain size={12} />} text="Learning Focus" />
+        <SectionTitle style={{ marginBottom: 16 }}>ASD Learning Focus Areas</SectionTitle>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px,1fr))', gap: 8 }}>
+          {AUTISM_FOCUS_AREAS.map(area => {
+            const active = (assessment.autism_focus_areas || []).includes(area.id);
+            const Icon = area.icon;
+            return (
+              <label key={area.id} style={{
+                display: 'flex', alignItems: 'center', gap: 10,
+                padding: '12px 14px', borderRadius: 12, cursor: 'pointer',
+                background: active ? C.student.accentLight : '#FAFAF8',
+                border: `1.5px solid ${active ? C.student.border : C.border}`,
+                transition: 'all 0.15s',
+              }}>
+                <input
+                  type="checkbox"
+                  checked={active}
+                  onChange={() => toggleFocusArea(area.id)}
+                  style={{ accentColor: C.student.accent, width: 15, height: 15, flexShrink: 0 }}
+                />
+                <div style={{
+                  width: 28, height: 28, borderRadius: 8, flexShrink: 0,
+                  background: active ? C.student.iconBg : '#EDE8FF',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  <Icon size={13} style={{ color: active ? C.student.accent : C.textMuted }} />
+                </div>
+                <span style={{ fontSize: 12, fontWeight: 700, color: active ? C.student.textDark : C.textSecondary }}>
+                  {area.label}
+                </span>
+              </label>
+            );
+          })}
+        </div>
+      </Card>
+
+      {/* ── Save / Publish actions ───────────────────────────── */}
+      <div style={{
+        display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 12,
+        padding: '18px 22px', borderRadius: 16,
+        background: C.white, border: `1px solid ${C.border}`,
+        boxShadow: C.shadowSm,
+      }}>
+        <SoftButton
+          color={C.teacher.accent}
+          onClick={saveAssessment}
+          disabled={loading || !canSave}
+          style={{ flex: '1 1 auto' }}
+        >
+          <Save size={15} />
+          {loading ? 'Saving…' : id ? 'Save Changes' : 'Create Assessment'}
+        </SoftButton>
+
+        {id && (
+          <SoftButton
+            color={assessment.is_published ? C.parent.accent : C.teacher.accent}
+            outline
+            onClick={togglePublish}
+          >
+            {assessment.is_published ? <><EyeOff size={14} /> Unpublish</> : <><Eye size={14} /> Publish</>}
+          </SoftButton>
         )}
 
-        <div>
-          <label className="block text-sm font-medium mb-1">
-            Correct Answer *
-            {data.question_type === 'yes_no' && ' (Yes or No)'}
-            {['multiple_choice', 'picture_choice'].includes(data.question_type) && ' (must match an option exactly)'}
-          </label>
-          <input
-            type="text"
-            value={data.correct_answer}
-            onChange={e => setData({ ...data, correct_answer: e.target.value })}
-            className="w-full px-2 py-1 border rounded text-sm"
-            placeholder={data.question_type === 'yes_no' ? 'Yes or No' : 'Enter the correct answer'}
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium mb-1">Image URL (optional)</label>
-          <input
-            type="text"
-            value={data.image_url || ''}
-            onChange={e => setData({ ...data, image_url: e.target.value })}
-            className="w-full px-2 py-1 border rounded text-sm"
-            placeholder="https://..."
-          />
-        </div>
-
-        <div className="flex gap-2">
-          <button
-            onClick={() => onSave(data)}
-            disabled={!data.question_text || !data.correct_answer}
-            className="flex-1 bg-blue-600 text-white py-1 rounded text-sm hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center gap-1"
-          >
-            <Save size={16} /> Save Question
-          </button>
-          <button
-            onClick={onCancel}
-            className="flex-1 bg-slate-400 text-white py-1 rounded text-sm hover:bg-slate-500 flex items-center justify-center gap-1"
-          >
-            <X size={16} /> Cancel
-          </button>
-        </div>
+        {id && (
+          <p style={{ fontSize: 11, color: C.textMuted, fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: 5 }}>
+            {assessment.is_published
+              ? <><CheckCircle2 size={12} style={{ color: C.teacher.accent }} /> Published — visible to parents</>
+              : <><Clock size={12} /> Draft — not yet visible to parents</>}
+          </p>
+        )}
       </div>
+
+      {/* ── Pages section ────────────────────────────────────── */}
+      {id && (
+        <Card>
+          <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            flexWrap: 'wrap', gap: 10, marginBottom: 16,
+          }}>
+            <div>
+              <SectionLabel icon={<FileText size={12} />} text="Story Pages" />
+              <SectionTitle>Story Pages ({pages.length})</SectionTitle>
+            </div>
+            <SoftButton color={C.teacher.accent} small onClick={() => { setEditingPage(null); setShowPageForm(s => !s); }}>
+              <Plus size={14} /> Add Page
+            </SoftButton>
+          </div>
+
+          {showPageForm && (
+            <PageForm
+              page={editingPage}
+              onSave={savePage}
+              onCancel={() => { setShowPageForm(false); setEditingPage(null); }}
+            />
+          )}
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {pages.length === 0 && !showPageForm && (
+              <p style={{ fontSize: 13, color: C.textMuted, textAlign: 'center', padding: '20px 0', fontWeight: 600 }}>
+                No pages yet. Add pages to build the story.
+              </p>
+            )}
+            {pages.map(page => (
+              <PageRow key={page.id} page={page}
+                onEdit={p => { setEditingPage(p); setShowPageForm(true); }}
+                onDelete={deletePage} />
+            ))}
+          </div>
+        </Card>
+      )}
+
+      {/* ── Questions section ─────────────────────────────────── */}
+      {id && (
+        <Card>
+          <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            flexWrap: 'wrap', gap: 10, marginBottom: 16,
+          }}>
+            <div>
+              <SectionLabel icon={<ClipboardList size={12} />} text="Questions" />
+              <SectionTitle>Questions ({questions.length})</SectionTitle>
+            </div>
+            <SoftButton color={C.student.accent} small onClick={() => { setEditingQuestion(null); setShowQuestionForm(s => !s); }}>
+              <Plus size={14} /> Add Question
+            </SoftButton>
+          </div>
+
+          {showQuestionForm && (
+            <QuestionForm
+              question={editingQuestion}
+              onSave={saveQuestion}
+              onCancel={() => { setShowQuestionForm(false); setEditingQuestion(null); }}
+            />
+          )}
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {questions.length === 0 && !showQuestionForm && (
+              <p style={{ fontSize: 13, color: C.textMuted, textAlign: 'center', padding: '20px 0', fontWeight: 600 }}>
+                No questions yet. Add questions for students to answer.
+              </p>
+            )}
+            {questions.map(question => (
+              <QuestionRow key={question.id} question={question}
+                onEdit={q => { setEditingQuestion(q); setShowQuestionForm(true); }}
+                onDelete={deleteQuestion} />
+            ))}
+          </div>
+        </Card>
+      )}
+
     </div>
   );
 }
