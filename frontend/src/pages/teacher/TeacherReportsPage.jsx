@@ -1,7 +1,7 @@
 // ============================================================
 // TeacherReportsPage.jsx — Redesigned to match AssessmentsListPage
 // Soft pastels · Lucide icons · No emojis · Nunito + Fredoka One
-// Responsive Layout Enhancements for Mobile Devices Included
+// Responsive Layout Enhancements with Aligned Desktop Card Heights
 // ============================================================
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
@@ -71,146 +71,6 @@ function SectionLabel({ icon, text }) {
       <span style={{ fontSize: 11, fontWeight: 800, color: '#6050B0', textTransform: 'uppercase' }}>
         {text}
       </span>
-    </div>
-  );
-}
-
-// ─── Sub-component Elements ───────────────────────────────────
-function StudentReportPanel({ child, reports, sessions, formatDate }) {
-  const completed = sessions.filter(s => s.status === 'completed');
-  const avgScore  = completed.length > 0
-    ? Math.round(completed.reduce((sum, s) => sum + (s.percentage || 0), 0) / completed.length)
-    : null;
-
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 20, width: '100%' }}>
-      {/* Student header */}
-      <div className="reports-panel-header" style={{
-        background: C.student.pageBg,
-        border: `1.5px solid ${C.student.border}`,
-        borderRadius: 20, padding: '24px 26px',
-        boxShadow: C.shadowSm,
-        display: 'flex', flexWrap: 'wrap', alignItems: 'center',
-        justifyContent: 'space-between', gap: 16,
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
-          <div style={{
-            width: 52, height: 52, borderRadius: 16, flexShrink: 0,
-            background: C.student.iconBg, border: `1.5px solid ${C.student.border}`,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontFamily: '"Fredoka One", cursive', fontSize: 20, color: C.student.accent,
-          }}>
-            {(child.first_name?.[0] || '?').toUpperCase()}{(child.last_name?.[0] || '').toUpperCase()}
-          </div>
-          <div>
-            <SectionLabel icon={<Baby size={12} />} text="Student" />
-            <SectionTitle style={{ fontSize: 'clamp(18px, 2.5vw, 22px)' }}>
-              {child.first_name} {child.last_name}
-            </SectionTitle>
-            {(child.age || child.gender) && (
-              <p style={{ fontSize: 12, color: C.textSecondary, margin: '2px 0 0' }}>
-                {[child.age ? `Age ${child.age}` : null, child.gender].filter(Boolean).join(' · ')}
-              </p>
-            )}
-          </div>
-        </div>
-        <SoftButton
-          to={`/teacher/children/${child.id}`}
-          color={C.student.accent}
-          className="reports-action-btn"
-          style={{ minWidth: '130px' }}
-        >
-          Full Profile <ArrowRight size={13} />
-        </SoftButton>
-      </div>
-
-      {/* Stats strip */}
-      <div className="reports-stats-strip" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12, width: '100%' }}>
-        <StatTile icon={Sparkles}    label="Sessions"   value={sessions.length}   scheme={C.teacher} />
-        <StatTile icon={CheckCircle2} label="Completed" value={completed.length}  scheme={C.student} />
-        <StatTile icon={BarChart2}   label="Avg Score"  value={avgScore != null ? `${avgScore}%` : '—'}
-          scheme={avgScore != null ? (avgScore >= 70 ? C.teacher : C.parent) : { accent: C.textMuted, iconBg: '#F0EDF8' }} />
-      </div>
-
-      {/* ASD Notes */}
-      {child.asd_notes && (
-        <div style={{
-          padding: '14px 18px', borderRadius: 14,
-          background: C.student.pageBg, border: `1.5px solid ${C.student.border}`,
-          boxShadow: C.shadowSm,
-        }}>
-          <p style={{ fontSize: 11, fontWeight: 800, color: C.student.textDark, margin: '0 0 5px', textTransform: 'uppercase' }}>
-            ASD Notes
-          </p>
-          <p style={{ fontSize: 13, color: C.textPrimary, margin: 0, lineHeight: 1.6 }}>{child.asd_notes}</p>
-        </div>
-      )}
-
-      {/* Sessions table */}
-      <div style={{
-        background: C.white, border: `1.5px solid ${C.border}`,
-        borderRadius: 20, overflow: 'hidden', boxShadow: C.shadowSm, width: '100%'
-      }}>
-        <div style={{
-          padding: '14px 22px', borderBottom: `1.5px solid ${C.border}`,
-          background: C.teacher.pageBg,
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-            <Sparkles size={14} style={{ color: C.teacher.accent }} />
-            <span style={{ fontSize: 13, fontWeight: 800, color: C.teacher.textDark }}>Assessment Sessions</span>
-          </div>
-          <span style={{
-            fontSize: 11, fontWeight: 700, color: C.textMuted,
-            background: '#F0EDF8', border: `1px solid ${C.border}`,
-            borderRadius: 20, padding: '2px 10px', flexShrink: 0
-          }}>
-            {sessions.length} total
-          </span>
-        </div>
-        {sessions.length === 0 ? (
-          <div style={{ padding: '32px 22px', textAlign: 'center' }}>
-            <p style={{ fontSize: 13, color: C.textMuted, margin: 0 }}>No sessions yet for this student.</p>
-          </div>
-        ) : (
-          sessions.slice(0, 10).map((session, idx) => (
-            <SessionRow key={session.id} session={session} formatDate={formatDate} hasBorder={idx < sessions.length - 1} />
-          ))
-        )}
-      </div>
-
-      {/* Reports table */}
-      <div style={{
-        background: C.white, border: `1.5px solid ${C.border}`,
-        borderRadius: 20, overflow: 'hidden', boxShadow: C.shadowSm, width: '100%'
-      }}>
-        <div style={{
-          padding: '14px 22px', borderBottom: `1.5px solid ${C.border}`,
-          background: C.student.pageBg,
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-            <FileText size={14} style={{ color: C.student.accent }} />
-            <span style={{ fontSize: 13, fontWeight: 800, color: C.student.textDark }}>Reports Sent</span>
-          </div>
-          <span style={{
-            fontSize: 11, fontWeight: 700, color: C.textMuted,
-            background: '#F0EDF8', border: `1px solid ${C.border}`,
-            borderRadius: 20, padding: '2px 10px', flexShrink: 0
-          }}>
-            {reports.length} total
-          </span>
-        </div>
-        {reports.length === 0 ? (
-          <div style={{ padding: '32px 22px', textAlign: 'center' }}>
-            <p style={{ fontSize: 13, color: C.textMuted, margin: 0 }}>No reports sent yet for this student.</p>
-          </div>
-        ) : (
-          reports.map((report, idx) => (
-            <ReportRow key={report.id} report={report} formatDate={formatDate} hasBorder={idx < reports.length - 1} />
-          ))
-        )}
-      </div>
     </div>
   );
 }
@@ -324,7 +184,6 @@ export default function TeacherReportsPage() {
       const res = await api.get(`/classrooms/${classroomId}/children`);
       setClassroomStudents(p => ({ ...p, [classroomId]: res.data.children || [] }));
     } catch {
-      classroomStudents[classroomId] = [];
       setClassroomStudents(p => ({ ...p, [classroomId]: [] }));
     } finally {
       setLoadingClassroomStudents(p => { const n = { ...p }; delete n[classroomId]; return n; });
@@ -419,9 +278,8 @@ export default function TeacherReportsPage() {
       display: 'flex', flexDirection: 'column', gap: 36,
       width: '100%',
     }}>
-      {/* Responsive media styling anchors */}
       <style>{`
-        .reports-split-row { display: flex; gap: 20px; alignItems: flex-start; width: 100%; }
+        .reports-split-row { display: flex; gap: 20px; alignItems: stretch; width: 100%; }
         @media (max-width: 768px) {
           .reports-split-row { flex-direction: column !important; align-items: stretch !important; }
           .reports-sidebar-aside { width: 100% !important; }
@@ -477,12 +335,13 @@ export default function TeacherReportsPage() {
         <div className="reports-split-row">
 
           {/* ── Left sidebar: classroom + student tree ─────────── */}
-          <aside className="reports-sidebar-aside" style={{ width: 264, flexShrink: 0 }}>
+          <aside className="reports-sidebar-aside" style={{ width: 264, flexShrink: 0, display: 'flex', flexDirection: 'column' }}>
             <div style={{
               background: C.white,
               border: `1.5px solid ${C.border}`,
               borderRadius: 20, overflow: 'hidden',
               boxShadow: C.shadowSm,
+              flex: 1,
             }}>
               <div style={{
                 padding: '14px 18px',
@@ -608,7 +467,7 @@ export default function TeacherReportsPage() {
           </aside>
 
           {/* ── Right: detail panel ─────────────────────────── */}
-          <div style={{ flex: 1, minWidth: 0, width: '100%' }}>
+          <div style={{ flex: 1, minWidth: 0, width: '100%', display: 'flex', flexDirection: 'column' }}>
             {!selectedChild && !selectedClassroom ? (
               <SelectPrompt />
             ) : selectedChild ? (
@@ -642,7 +501,8 @@ function SelectPrompt() {
       background: C.white,
       border: `1.5px solid ${C.border}`,
       borderRadius: 20, padding: '64px 28px',
-      textAlign: 'center', boxShadow: C.shadowSm, width: '100%', boxSizing: 'border-box'
+      textAlign: 'center', boxShadow: C.shadowSm, width: '100%', boxSizing: 'border-box',
+      flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center'
     }}>
       <div style={{
         width: 52, height: 52, borderRadius: 16,
@@ -670,7 +530,7 @@ function ClassroomOverviewPanel({ classroom, children, reports, sessions, format
     : null;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 20, width: '100%' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20, width: '100%', flex: 1 }}>
       <div className="reports-panel-header" style={{
         background: C.teacher.pageBg,
         border: `1.5px solid ${C.teacher.border}`,
@@ -720,7 +580,7 @@ function ClassroomOverviewPanel({ classroom, children, reports, sessions, format
       {/* Per-student rows */}
       <div style={{
         background: C.white, border: `1.5px solid ${C.border}`,
-        borderRadius: 20, overflow: 'hidden', boxShadow: C.shadowSm, width: '100%'
+        borderRadius: 20, overflow: 'hidden', boxShadow: C.shadowSm, width: '100%', flex: 1
       }}>
         <div style={{
           padding: '14px 22px',
