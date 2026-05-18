@@ -41,7 +41,7 @@ export default function ParentChildDetailPage() {
         assessment_id: assessmentId,
         child_id: id,
       });
-      navigate(`/student-mode/${res.data.session.id}`);
+      navigate(`/assessment/${res.data.session.id}`);
     } catch (err) {
       console.error('Failed to start session:', err);
       setError(err.message || 'Failed to start session');
