@@ -10,7 +10,7 @@ import {
   BookOpen, ClipboardList, BarChart2, Brain,
   Hash, Clock, Tag, CheckCircle2, Eye, EyeOff,
   FileText, Image, Mic, ChevronDown, ChevronUp,
-  AlertCircle, CircleCheck,
+  AlertCircle,
 } from 'lucide-react';
 
 // ─── Design tokens ────────────────────────────────────────────
@@ -63,7 +63,7 @@ const AUTISM_FOCUS_AREAS = [
   { id: 'inference',  label: 'Inferential Thinking',   icon: Brain     },
   { id: 'vocabulary', label: 'Vocabulary Recognition', icon: FileText  },
   { id: 'sequence',   label: 'Sequence Understanding', icon: Hash      },
-  { id: 'emotion',    label: 'Emotion / Social Skills',icon: CircleCheck },
+  { id: 'emotion',    label: 'Emotion / Social Skills',icon: CircleCheck2 },
 ];
 
 const QUESTION_CATEGORIES = [
