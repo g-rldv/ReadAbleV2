@@ -238,8 +238,26 @@ function StudentCard({ student, onRemove, onAction, isRemoving, isActing }) {
           </Link>
         </p>
         <p style={{ fontSize: 11, color: C.textMuted, margin: 0, display: 'flex', alignItems: 'center', gap: 4 }}>
-          <User size={10} /> Parent: {student.parent_name || '—'}
+          <User size={10} /> Parent: {student.parent_first_name ? `${student.parent_first_name} ${student.parent_last_name}` : '—'}
         </p>
+        {student.date_of_birth && (
+          <p style={{ fontSize: 11, color: C.textMuted, margin: '2px 0 0', display: 'flex', alignItems: 'center', gap: 4 }}>
+            <CalendarDays size={10} /> DOB: {new Date(student.date_of_birth).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
+          </p>
+        )}
+        {student.gender && (
+          <p style={{ fontSize: 11, color: C.textMuted, margin: '2px 0 0', display: 'flex', alignItems: 'center', gap: 4 }}>
+            <User size={10} /> Gender: {student.gender}
+          </p>
+        )}
+        {student.asd_notes && (
+          <p style={{ fontSize: 11, color: C.textMuted, margin: '2px 0 0', display: 'flex', alignItems: 'flex-start', gap: 4 }}>
+            <ClipboardList size={10} style={{ marginTop: 2, flexShrink: 0 }} />
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+              Notes: {student.asd_notes}
+            </span>
+          </p>
+        )}
         <span style={{
           fontSize: 10, fontWeight: 800, padding: '2px 8px', borderRadius: 10,
           background: theme.bg, border: `1px solid ${theme.border}`,
