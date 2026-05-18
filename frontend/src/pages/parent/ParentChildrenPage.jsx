@@ -218,6 +218,9 @@ function AddChildPanel({
   setAsdNotes,
   adding,
   onSubmit,
+  classrooms,
+  selectedClassroom,
+  setSelectedClassroom,
 }) {
   return (
     <section className="children-add-panel">
@@ -294,6 +297,20 @@ function AddChildPanel({
         </div>
 
         <div className="children-form-actions">
+          {classrooms && classrooms.length > 0 && (
+            <div style={{ marginRight: 'auto', display: 'flex', alignItems: 'center', gap: 10 }}>
+              <select
+                value={selectedClassroom || ''}
+                onChange={e => setSelectedClassroom(e.target.value || null)}
+                style={{ height: 44, borderRadius: 12, border: `1.5px solid ${C.border}`, padding: '0 12px' }}
+              >
+                <option value="">Link to classroom (optional)</option>
+                {classrooms.map(cl => (
+                  <option key={cl.id} value={cl.id}>{cl.name} — {cl.code} ({cl.status})</option>
+                ))}
+              </select>
+            </div>
+          )}
           <SoftButton type="submit" disabled={adding || !firstName.trim()} color={C.parent.accent} className="children-primary-action">
             {adding ? <Loader2 size={16} className="children-spin" /> : <UserPlus size={16} />}
             {adding ? 'Adding child...' : 'Add Child'}
@@ -394,6 +411,8 @@ function ErrorState({ message }) {
 
 export default function ParentChildrenPage() {
   const [children, setChildren] = useState([]);
+  const [classrooms, setClassrooms] = useState([]);
+  const [selectedClassroom, setSelectedClassroom] = useState(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
   const [firstName, setFirstName] = useState('');
@@ -409,6 +428,15 @@ export default function ParentChildrenPage() {
       try {
         const res = await api.get('/parent/children');
         setChildren(res.data.children || []);
+        // also fetch parent's classrooms so they can pick target classroom when adding a child
+        try {
+          const cm = await api.get('/classrooms/my');
+          const my = (cm.data.classrooms || []).filter(c => c.status === 'approved');
+          setClassrooms(my);
+          if (my.length === 1) setSelectedClassroom(my[0].id);
+        } catch (err) {
+          console.warn('Failed to load classrooms for parent:', err?.message || err);
+        }
       } catch (err) {
         console.error('Failed to fetch children:', err);
         setLoadError(err.response?.data?.error || err.message || 'Failed to load children');
@@ -432,6 +460,7 @@ export default function ParentChildrenPage() {
         date_of_birth: dob || null,
         gender: gender || null,
         asd_notes: asdNotes.trim() || null,
+        classroom_id: selectedClassroom || null,
       });
 
       setChildren(prev => [res.data.child, ...prev]);
@@ -442,6 +471,14 @@ export default function ParentChildrenPage() {
       setAsdNotes('');
       setFlash({ type: 'success', msg: 'Child profile added successfully.' });
       setTimeout(() => setFlash(null), 3000);
+      // Refresh classrooms in case memberships/approved list changed
+      try {
+        const cm = await api.get('/classrooms/my');
+        const my = (cm.data.classrooms || []).filter(c => c.status === 'approved');
+        setClassrooms(my);
+      } catch (err) {
+        // non-fatal
+      }
     } catch (err) {
       console.error('Failed to add child:', err);
       setFlash({ type: 'error', msg: err.response?.data?.error || 'Failed to add child.' });
@@ -826,6 +863,9 @@ export default function ParentChildrenPage() {
           setAsdNotes={setAsdNotes}
           adding={adding}
           onSubmit={addChild}
+          classrooms={classrooms}
+          selectedClassroom={selectedClassroom}
+          setSelectedClassroom={setSelectedClassroom}
         />
 
         <section>

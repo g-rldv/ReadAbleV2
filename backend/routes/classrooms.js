@@ -248,18 +248,29 @@ router.post('/:id/members/:userId/:action', requireAuth, requireRole('teacher'),
     const status = action === 'approve' ? 'approved' : 'rejected';
     const approved_at = action === 'approve' ? new Date() : null;
 
-    await pool.query(
-      'UPDATE class_memberships SET status = $1, approved_at = $2 WHERE classroom_id = $3 AND user_id = $4',
-      [status, approved_at, id, userId]
-    );
-
-    // If approved, link the parent's children to this teacher
-    if (action === 'approve') {
-      await pool.query(
-        `UPDATE children SET teacher_id = $1
-         WHERE parent_id = $2 AND (teacher_id IS NULL OR teacher_id = $1)`,
-        [req.user.id, userId]
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      await client.query(
+        'UPDATE class_memberships SET status = $1, approved_at = $2 WHERE classroom_id = $3 AND user_id = $4',
+        [status, approved_at, id, userId]
       );
+
+      // If approved, link the parent's children to this teacher
+      if (action === 'approve') {
+        await client.query(
+          `UPDATE children SET teacher_id = $1
+           WHERE parent_id = $2 AND (teacher_id IS NULL OR teacher_id = $1)`,
+          [req.user.id, userId]
+        );
+      }
+
+      await client.query('COMMIT');
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
     }
 
     res.json({ success: true, status });

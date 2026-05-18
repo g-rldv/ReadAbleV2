@@ -25,29 +25,54 @@ router.get('/children', async (req, res) => {
 // ── Parent: Create a child (added so parents can register their own children)
 router.post('/children', async (req, res) => {
   try {
-    const { first_name, last_name, date_of_birth, age, gender, avatar, asd_notes } = req.body;
+    const { first_name, last_name, date_of_birth, age, gender, avatar, asd_notes, classroom_id } = req.body;
     if (!first_name || !first_name.trim()) {
       return res.status(400).json({ error: 'Child first name is required' });
     }
+    let teacher_id = null;
 
-    const teacherRes = await pool.query(
-      `SELECT c.teacher_id
-       FROM class_memberships cm
-       JOIN classrooms c ON cm.classroom_id = c.id
-       WHERE cm.user_id = $1
-         AND cm.status = 'approved'
-       ORDER BY cm.approved_at DESC
-       LIMIT 1`,
-      [req.user.id]
-    );
-    const teacher_id = teacherRes.rows[0]?.teacher_id || null;
+    // If a classroom_id is provided, validate the parent has an approved membership for it
+    if (classroom_id) {
+      const allowed = await pool.query(
+        `SELECT c.teacher_id FROM class_memberships cm
+         JOIN classrooms c ON cm.classroom_id = c.id
+         WHERE cm.user_id = $1 AND cm.classroom_id = $2 AND cm.status = 'approved' LIMIT 1`,
+        [req.user.id, classroom_id]
+      );
+      if (allowed.rows.length === 0) {
+        return res.status(400).json({ error: 'You are not an approved member of the selected classroom' });
+      }
+      teacher_id = allowed.rows[0].teacher_id || null;
+    } else {
+      const teacherRes = await pool.query(
+        `SELECT c.teacher_id
+         FROM class_memberships cm
+         JOIN classrooms c ON cm.classroom_id = c.id
+         WHERE cm.user_id = $1
+           AND cm.status = 'approved'
+         ORDER BY cm.approved_at DESC
+         LIMIT 1`,
+        [req.user.id]
+      );
+      teacher_id = teacherRes.rows[0]?.teacher_id || null;
+    }
 
-    const result = await pool.query(
+    const insert = await pool.query(
       `INSERT INTO children (parent_id, teacher_id, first_name, last_name, date_of_birth, age, gender, avatar, asd_notes, created_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW()) RETURNING *`,
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW()) RETURNING id`,
       [req.user.id, teacher_id, first_name.trim(), (last_name || '').trim(), date_of_birth || null, age || null, gender || null, avatar || null, asd_notes || null]
     );
-    res.status(201).json({ child: result.rows[0] });
+
+    // Fetch the created child with teacher info for a consistent response shape
+    const childId = insert.rows[0].id;
+    const childRes = await pool.query(
+      `SELECT c.*, t.first_name AS teacher_first_name, t.last_name AS teacher_last_name
+       FROM children c
+       LEFT JOIN users t ON t.id = c.teacher_id
+       WHERE c.id = $1`,
+      [childId]
+    );
+    res.status(201).json({ child: childRes.rows[0] });
   } catch (err) {
     console.error('[Parent/CreateChild]', err.message);
     res.status(500).json({ error: 'Failed to create child' });
