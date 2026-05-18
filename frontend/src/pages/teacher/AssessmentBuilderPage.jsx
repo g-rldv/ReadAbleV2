@@ -10,7 +10,7 @@ import {
   BookOpen, ClipboardList, BarChart2, Brain,
   Hash, Clock, Tag, CheckCircle2, Eye, EyeOff,
   FileText, Image, Mic, ChevronDown, ChevronUp,
-  AlertCircle, CircleCheck2,
+  AlertCircle,
 } from 'lucide-react';
 
 // ─── Design tokens ────────────────────────────────────────────
