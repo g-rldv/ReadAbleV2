@@ -102,6 +102,21 @@ function SoftButton({ children, onClick, color, outline, small, disabled, type =
   );
 }
 
+// ─── Panel Layout Primitives ─────────────────────────────────
+function Panel({ children, scheme = null, style: extra = {} }) {
+  const bg    = scheme ? scheme.pageBg  : C.white;
+  const bdr   = scheme ? scheme.border  : C.border;
+  return (
+    <div style={{
+      background: bg, border: `1.5px solid ${bdr}`,
+      borderRadius: 20, padding: '24px 26px',
+      boxShadow: C.shadowSm, ...extra,
+    }}>
+      {children}
+    </div>
+  );
+}
+
 export default function ClassroomsListPage() {
   const navigate = useNavigate();
   const [classrooms, setClassrooms] = useState([]);
@@ -332,13 +347,11 @@ export default function ClassroomsListPage() {
       {/* ── Classrooms List Rows Container ────────────────── */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         {classrooms.length === 0 ? (
-          <div style={{
-            background: C.white, border: `1.5px solid ${C.border}`,
-            borderRadius: 22, padding: '48px 24px', textAlign: 'center', boxShadow: C.shadowSm,
-          }}>
+          <Panel scheme={C.teacher} style={{ textAlign: 'center', padding: '48px 24px' }}>
             <div style={{
-              width: 56, height: 56, borderRadius: 16, background: C.teacher.pageBg,
+              width: 56, height: 56, borderRadius: 16, background: C.white,
               display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px',
+              border: `1px solid ${C.teacher.border}`
             }}>
               <BookOpen size={26} style={{ color: C.teacher.accent }} />
             </div>
@@ -351,7 +364,7 @@ export default function ClassroomsListPage() {
             <SoftButton onClick={() => setShowCreate(true)} color={C.teacher.accent}>
               Create Your First Classroom
             </SoftButton>
-          </div>
+          </Panel>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             {classrooms.map((classroom) => {
