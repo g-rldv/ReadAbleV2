@@ -803,7 +803,6 @@ export default function ParentChildrenPage() {
               <Users size={26} style={{ color: C.parent.accent }} />
             </div>
             <div>
-              <SectionLabel icon={<Heart size={12} />} text="Children" />
               <SectionTitle>Your Children</SectionTitle>
               <p className="children-lead">
                 Browse child profiles, manage classroom links, and keep reading support organised.
