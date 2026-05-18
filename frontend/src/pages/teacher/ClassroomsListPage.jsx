@@ -38,6 +38,16 @@ const C = {
     iconBg:      '#D0D8F8',
   },
 
+  // ── Added missing parent scheme ──────────────────────────
+  parent: {
+    pageBg:      '#EEF3FF',
+    border:      '#C0CEFA',
+    accent:      '#3D55C4',
+    accentLight: '#D4DCFA',
+    textDark:    '#1B2B80',
+    iconBg:      '#D4DCFA',
+  },
+
   amber: {
     pageBg:      'rgba(245, 158, 11, 0.12)',
     border:      'rgba(245, 158, 11, 0.35)',
