@@ -251,7 +251,8 @@ function TextSizeConfirm({ currentSize, nextSize, onCancel, onConfirm }) {
             width: 42, height: 42, borderRadius: 14,
             background: C.student.iconBg,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            flexShrink: 0,          }}>
+            flexShrink: 0,
+          }}>
             <Type size={22} style={{ color: C.student.accent }} />
           </div>
           <div>
@@ -437,6 +438,7 @@ export default function ParentSettings() {
   const [ttsSaving, setTtsSaving] = useState(false);
 
   const [pendingTextSize, setPendingTextSize] = useState(settings?.text_size ?? 'medium');
+  const [originalTextSize, setOriginalTextSize] = useState(settings?.text_size ?? 'medium');
   const [showTextConfirm, setShowTextConfirm] = useState(false);
   const [selectedVoice, setSelectedVoice] = useState(settings?.tts_voice ?? '');
 
@@ -448,11 +450,61 @@ export default function ParentSettings() {
 
   // ── Sync Effect ───────────────────────────────────────────
   useEffect(() => {
-    setPendingTextSize(settings?.text_size ?? 'medium');
+    if (!showTextConfirm) {
+      setPendingTextSize(settings?.text_size ?? 'medium');
+      setOriginalTextSize(settings?.text_size ?? 'medium');
+    }
+  }, [settings?.text_size, showTextConfirm]);
+
+  useEffect(() => {
     setSelectedVoice(settings?.tts_voice ?? '');
     setTtsPitch(settings?.tts_pitch ?? 1.0);
     setTtsSpeed(settings?.tts_rate ?? 0.9);
-  }, [settings?.text_size, settings?.tts_voice, settings?.tts_pitch, settings?.tts_rate]);
+  }, [settings?.tts_voice, settings?.tts_pitch, settings?.tts_rate]);
+
+  // ── Helper To Preview Without Saving ──────────────────────
+  const previewTextSize = (nextSize) => {
+    if (!showTextConfirm) {
+      setOriginalTextSize(settings?.text_size ?? 'medium');
+    }
+    setPendingTextSize(nextSize);
+    setShowTextConfirm(true);
+    const html = document.documentElement;
+    html.classList.remove('text-small', 'text-medium', 'text-large', 'text-xlarge');
+    html.classList.add(`text-${nextSize}`);
+    const FONT_SCALE = {
+      small: 0.92,
+      medium: 1,
+      large: 1.12,
+      xlarge: 1.25,
+    };
+    const scale = FONT_SCALE[nextSize] || 1;
+    html.style.setProperty('--readable-font-scale', String(scale));
+    html.style.fontSize = `${16 * scale}px`;
+    document.body.style.zoom = String(scale);
+    document.body.style.transformOrigin = 'top left';
+  };
+
+  // ── Helper To Revert Preview ──────────────────────────────
+  const revertTextSizePreview = () => {
+    const oldSize = originalTextSize || settings?.text_size || 'medium';
+    const html = document.documentElement;
+    html.classList.remove('text-small', 'text-medium', 'text-large', 'text-xlarge');
+    html.classList.add(`text-${oldSize}`);
+    const FONT_SCALE = {
+      small: 0.92,
+      medium: 1,
+      large: 1.12,
+      xlarge: 1.25,
+    };
+    const scale = FONT_SCALE[oldSize] || 1;
+    html.style.setProperty('--readable-font-scale', String(scale));
+    html.style.fontSize = `${16 * scale}px`;
+    document.body.style.zoom = String(scale);
+    document.body.style.transformOrigin = 'top left';
+    setPendingTextSize(oldSize);
+    setShowTextConfirm(false);
+  };
 
   // ── TTS preview ───────────────────────────────────────────
   const previewTTS = useCallback(() => {
@@ -525,6 +577,11 @@ export default function ParentSettings() {
           .voice-model-grid {
             grid-template-columns: 1fr !important;
           }
+          .voice-model-grid, .voice-model-grid button {
+            min-width: 0 !important;
+            max-width: 100% !important;
+            overflow: hidden !important;
+          }
           .tts-actions {
             display: grid !important;
             grid-template-columns: 1fr !important;
@@ -584,7 +641,6 @@ export default function ParentSettings() {
             <Settings size={26} style={{ color: C.parent.accent }} />
           </div>
           <div>
-            <SectionLabel icon={<Settings size={12} />} text="Preferences" />
             <SectionTitle>Settings</SectionTitle>
             <p style={{ fontSize: 13, color: C.textSecondary, margin: '4px 0 0', lineHeight: 1.5 }}>
               Customise how ReadAble looks and sounds for your family.
@@ -608,7 +664,6 @@ export default function ParentSettings() {
             }}>
               {THEMES.map(({ key, label, Icon, swatch }) => {
                 const active = settings?.theme === key;
-                const isNight = key === 'night';
                 return (
                   <button
                     key={key}
@@ -678,11 +733,10 @@ export default function ParentSettings() {
             }}>
               {TEXT_SIZES.map(({ key, label, size }) => {
                 const active = pendingTextSize === key;
-                const saved = settings?.text_size === key;
                 return (
                   <button
                     key={key}
-                    onClick={() => setPendingTextSize(key)}
+                    onClick={() => previewTextSize(key)}
                     style={{
                       borderRadius: 16, padding: '18px 12px',
                       border: `2px solid ${active ? C.student.accent : C.border}`,
@@ -821,13 +875,18 @@ export default function ParentSettings() {
                         alignItems: 'center',
                         gap: 10,
                         textAlign: 'left',
+                        minWidth: 0,
+                        maxWidth: '100%',
+                        overflow: 'hidden',
                         fontFamily: 'Nunito, sans-serif',
                       }}
                     >
                       <Headphones size={18} style={{ color: active ? C.student.accent : C.textMuted, flexShrink: 0 }} />
-                      <span style={{ minWidth: 0 }}>
+                      <span style={{ minWidth: 0, flex: 1, overflow: 'hidden' }}>
                         <strong style={{
                           display: 'block',
+                          width: '100%',
+                          maxWidth: '100%',
                           fontSize: 12,
                           color: active ? C.student.accent : C.textPrimary,
                           whiteSpace: 'nowrap',
@@ -958,12 +1017,9 @@ export default function ParentSettings() {
       {/* ── Text size confirmation modal ─────────────────── */}
       {showTextConfirm && (
         <TextSizeConfirm
-          currentSize={settings?.text_size}
+          currentSize={originalTextSize}
           nextSize={pendingTextSize}
-          onCancel={() => {
-            setPendingTextSize(settings?.text_size ?? 'medium');
-            setShowTextConfirm(false);
-          }}
+          onCancel={revertTextSizePreview}
           onConfirm={() => {
             setTextSize(pendingTextSize);
             setShowTextConfirm(false);
