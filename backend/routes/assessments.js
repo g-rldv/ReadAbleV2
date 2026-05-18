@@ -45,14 +45,14 @@ router.get('/', async (req, res) => {
 
 router.post('/', requireRole('teacher'), async (req, res) => {
   try {
-    const { title, description, story_theme, difficulty, difficulty_level, autism_focus_areas, recommended_age_min, recommended_age_max, break_interval } = req.body;
+    const { title, description, story_theme, difficulty, difficulty_level, autism_focus_areas, recommended_age_min, recommended_age_max, break_interval, classroom_id } = req.body;
     if (!title || !description || !story_theme) {
       return res.status(400).json({ error: 'Title, description, and story theme are required' });
     }
     const result = await pool.query(
       `INSERT INTO assessments
-         (title, description, story_theme, difficulty, difficulty_level, autism_focus_areas, recommended_age_min, recommended_age_max, break_interval, teacher_id, is_published, created_at, updated_at)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,FALSE,NOW(),NOW())
+         (title, description, story_theme, difficulty, difficulty_level, autism_focus_areas, recommended_age_min, recommended_age_max, break_interval, teacher_id, is_published, created_at, updated_at, classroom_id)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,FALSE,NOW(),NOW(),$11)
        RETURNING *`,
       [
         title.trim(),
@@ -64,7 +64,8 @@ router.post('/', requireRole('teacher'), async (req, res) => {
         recommended_age_min || null,
         recommended_age_max || null,
         break_interval || 10,
-        req.user.id
+        req.user.id,
+        classroom_id || null
       ]
     );
     res.status(201).json({ assessment: result.rows[0] });
@@ -118,7 +119,7 @@ router.get('/:id', async (req, res) => {
 router.put('/:id', requireRole('teacher'), async (req, res) => {
   try {
     const { id } = req.params;
-    const { title, description, story_theme, difficulty, difficulty_level, autism_focus_areas, recommended_age_min, recommended_age_max, break_interval } = req.body;
+    const { title, description, story_theme, difficulty, difficulty_level, autism_focus_areas, recommended_age_min, recommended_age_max, break_interval, classroom_id } = req.body;
     const assessment = await getAssessmentById(id);
     if (!assessment || assessment.teacher_id !== req.user.id) {
       return res.status(404).json({ error: 'Assessment not found' });
@@ -127,7 +128,8 @@ router.put('/:id', requireRole('teacher'), async (req, res) => {
       `UPDATE assessments SET
          title=$1, description=$2, story_theme=$3,
          difficulty=$4, difficulty_level=$5, autism_focus_areas=$6,
-         recommended_age_min=$7, recommended_age_max=$8, break_interval=$9, updated_at=NOW()
+         recommended_age_min=$7, recommended_age_max=$8, break_interval=$9, updated_at=NOW(),
+         classroom_id=$11
        WHERE id=$10 RETURNING *`,
       [
         title || assessment.title,
@@ -139,7 +141,8 @@ router.put('/:id', requireRole('teacher'), async (req, res) => {
         recommended_age_min !== undefined ? recommended_age_min : assessment.recommended_age_min,
         recommended_age_max !== undefined ? recommended_age_max : assessment.recommended_age_max,
         break_interval || assessment.break_interval,
-        id
+        id,
+        classroom_id !== undefined ? classroom_id : assessment.classroom_id
       ]
     );
     res.json({ assessment: result.rows[0] });

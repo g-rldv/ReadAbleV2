@@ -65,6 +65,8 @@ async function ensureRuntimeSchema(pool) {
       await client.query(`
         ALTER TABLE classroom_child_assignments ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'pending';
 
+        ALTER TABLE assessments ADD COLUMN IF NOT EXISTS classroom_id INTEGER REFERENCES classrooms(id) ON DELETE SET NULL;
+
         ALTER TABLE assessment_sessions ADD COLUMN IF NOT EXISTS assessment_id INTEGER REFERENCES assessments(id) ON DELETE SET NULL;
         ALTER TABLE assessment_sessions ADD COLUMN IF NOT EXISTS child_id INTEGER REFERENCES children(id) ON DELETE SET NULL;
         ALTER TABLE assessment_sessions ADD COLUMN IF NOT EXISTS teacher_id INTEGER REFERENCES users(id) ON DELETE SET NULL;

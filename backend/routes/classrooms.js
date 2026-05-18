@@ -308,11 +308,12 @@ router.get('/:id/activities', requireAuth, requireRole('parent'), async (req, re
     const teacherId = classroomRes.rows[0].teacher_id;
 
     const assessments = await pool.query(
-      `SELECT id, title, description, story_theme, difficulty, is_published, created_at
+      `SELECT id, title, description, story_theme, difficulty, is_published, created_at, classroom_id
        FROM assessments
        WHERE teacher_id = $1 AND is_published = TRUE
+         AND (classroom_id = $2 OR classroom_id IS NULL)
        ORDER BY created_at DESC`,
-      [teacherId]
+      [teacherId, id]
     );
 
     res.json({ classroom: classroomRes.rows[0], activities: assessments.rows });

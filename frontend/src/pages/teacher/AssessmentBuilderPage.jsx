@@ -518,9 +518,11 @@ export default function AssessmentBuilderPage() {
     title: '', description: '', story_theme: '',
     difficulty_level: 1, autism_focus_areas: [],
     recommended_age_min: '', recommended_age_max: '',
+    classroom_id: '',
   });
   const [pages, setPages] = useState([]);
   const [questions, setQuestions] = useState([]);
+  const [classrooms, setClassrooms] = useState([]);
   const [editingPage, setEditingPage] = useState(null);
   const [editingQuestion, setEditingQuestion] = useState(null);
   const [showPageForm, setShowPageForm] = useState(false);
@@ -529,7 +531,19 @@ export default function AssessmentBuilderPage() {
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [error, setError] = useState('');
 
-  useEffect(() => { if (id) loadAssessment(); }, [id]);
+  useEffect(() => {
+    if (id) loadAssessment();
+    loadClassrooms();
+  }, [id]);
+
+  const loadClassrooms = async () => {
+    try {
+      const response = await api.get('/classrooms');
+      setClassrooms(response.data.classrooms || []);
+    } catch (err) {
+      console.error('Failed to load classrooms', err);
+    }
+  };
 
   const loadAssessment = async () => {
     try {
@@ -750,6 +764,17 @@ export default function AssessmentBuilderPage() {
             <StyledInput type="text" value={assessment.story_theme}
               onChange={e => handleAssessmentChange('story_theme', e.target.value)}
               placeholder="e.g., Animals, Space, Daily Routines" />
+          </div>
+
+          <div>
+            <FieldLabel>Assign to Classroom</FieldLabel>
+            <StyledSelect value={assessment.classroom_id || ''}
+              onChange={e => handleAssessmentChange('classroom_id', e.target.value)}>
+              <option value="">No Classroom (Visible to all my students)</option>
+              {classrooms.map(cls => (
+                <option key={cls.id} value={cls.id}>{cls.name}</option>
+              ))}
+            </StyledSelect>
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
