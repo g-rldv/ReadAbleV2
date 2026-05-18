@@ -1,6 +1,6 @@
 // ============================================================
-// ClassroomDetailPage — Teacher approves / rejects parent requests
-// Design-synced with TeacherDashboard (Soft pastels, CSS variables)
+// ClassroomDetailPage.jsx — Teacher approves / rejects parent requests
+// Design-synced with TeacherDashboard (Sage green accent hierarchy)
 // ============================================================
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -30,12 +30,12 @@ const C = {
   },
 
   student: {
-    pageBg:      'var(--bg-sidebar, #EBF0FF)',
-    border:      'var(--border-interactive, #B8C8F0)',
-    accent:      'var(--accent, #4058C0)',
-    accentLight: 'var(--bg-primary, #D0D8F8)',
-    textDark:    'var(--text-primary, #1A2870)',
-    iconBg:      'var(--bg-sidebar, #D0D8F8)',
+    pageBg:      '#EBF0FF',
+    border:      '#B8C8F0',
+    accent:      '#4058C0',
+    accentLight: '#D0D8F8',
+    textDark:    '#1A2870',
+    iconBg:      '#D0D8F8',
   },
 
   amber: {
@@ -48,7 +48,7 @@ const C = {
 
   rose: {
     pageBg:      'rgba(232, 48, 96, 0.1)',
-    border:      'var(--border-focus, #FECDD3)',
+    border:      '#FECDD3',
     accent:      '#E83060',
     accentLight: 'rgba(232, 48, 96, 0.15)',
     textDark:    'var(--text-primary, #881337)',
@@ -57,7 +57,7 @@ const C = {
   textPrimary: 'var(--text-primary, #28264A)',
   textSecondary: 'var(--text-muted, #6A6898)',
   textMuted: 'var(--text-muted, #9A98C0)',
-  primary: 'var(--accent, #5A50A0)',
+  primary: 'var(--accent, #3A7A5C)',
 };
 
 // ─── Status primitive token variables ─────────────────────────
@@ -107,8 +107,8 @@ function SoftButton({ children, onClick, color, outline, small, disabled, type =
     border: `2px solid ${col}`, transition: 'all 0.15s',
     opacity: disabled ? 0.5 : 1, ...extra,
   };
-  const filled  = { ...base, background: hov && !disabled ? 'var(--border-focus)' : col, color: '#FFF' };
-  const outline_ = { ...base, background: hov && !disabled ? 'rgba(128,128,128,0.12)' : 'transparent', color: col };
+  const filled  = { ...base, background: hov && !disabled ? `${col}DD` : col, color: '#FFF' };
+  const outline_ = { ...base, background: hov && !disabled ? `${col}12` : 'transparent', color: col };
   return (
     <button type={type} onClick={onClick} disabled={disabled} style={outline ? outline_ : filled}
       onMouseEnter={() => setHov(true)} onMouseLeave={() => setHov(false)}>
@@ -117,10 +117,12 @@ function SoftButton({ children, onClick, color, outline, small, disabled, type =
   );
 }
 
-function Card({ children, style: extra = {} }) {
+function Panel({ children, scheme = null, style: extra = {} }) {
+  const bg    = scheme ? scheme.pageBg  : C.white;
+  const bdr   = scheme ? scheme.border  : C.border;
   return (
     <div style={{
-      background: C.white, border: `1.5px solid ${C.border}`,
+      background: bg, border: `1.5px solid ${bdr}`,
       borderRadius: 20, padding: '24px 26px',
       boxShadow: C.shadowSm, ...extra,
     }}>
@@ -197,7 +199,7 @@ export default function ClassroomDetailPage() {
         setTimeout(() => setFlash(null), 2500);
       }
     } catch (err) {
-      alert(err.response?.data?.error || 'Action configuration execution failed');
+      alert(err.response?.data?.error || 'Action failed');
     } finally {
       setActionLoading(null);
     }
@@ -238,7 +240,7 @@ export default function ClassroomDetailPage() {
     return (
       <div style={{ fontFamily: 'Nunito, sans-serif', display: 'flex', flexDirection: 'column', gap: 16, width: '100%' }}>
         <div>
-          <SoftButton onClick={() => navigate('/teacher/classrooms')} outline color="var(--accent)">
+          <SoftButton onClick={() => navigate('/teacher/classrooms')} outline color={C.teacher.accent}>
             <ArrowLeft size={14} /> Back to Classrooms
           </SoftButton>
         </div>
@@ -280,14 +282,14 @@ export default function ClassroomDetailPage() {
           boxShadow: '0 8px 24px rgba(0,0,0,0.2)', fontSize: 13, fontWeight: 700, color: 'var(--text-primary)',
           animation: 'toastSlide 0.22s ease-out'
         }}>
-          {flash.type === 'success' ? <CheckCircle2 size={15} style={{ color: 'green' }} /> : <Info size={15} style={{ color: 'var(--accent)' }} />}
+          {flash.type === 'success' ? <CheckCircle2 size={15} style={{ color: 'green' }} /> : <Info size={15} style={{ color: C.teacher.accent }} />}
           {flash.msg}
         </div>
       )}
 
-      {/* ── Navigation Trigger ──────────────────────────────── */}
+      {/* ── Back Trigger ──────────────────────────────── */}
       <div>
-        <SoftButton onClick={() => navigate('/teacher/classrooms')} outline color="var(--text-muted)" small>
+        <SoftButton onClick={() => navigate('/teacher/classrooms')} outline color={C.textSecondary} small>
           <ArrowLeft size={14} /> Back to Classrooms
         </SoftButton>
       </div>
@@ -306,18 +308,18 @@ export default function ClassroomDetailPage() {
           </p>
         </div>
 
-        {/* Sync code structure with system preferences layout standard */}
+        {/* Sync code block structure with the ClassroomList code presentation style */}
         <div className="code-box-wrapper" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <div style={{ textAlign: 'center' }}>
-            <p style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em', margin: '0 0 6px' }}>Join Code</p>
+            <p style={{ fontSize: 10, color: C.textMuted, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em', margin: '0 0 6px' }}>Join Code</p>
             <div style={{
-              display: 'flex', alignItems: 'center', gap: 10, background: 'var(--bg-card)',
-              border: '2px dashed var(--border-color)', borderRadius: 14, padding: '8px 16px', height: 44, boxSizing: 'border-box'
+              display: 'flex', alignItems: 'center', gap: 10, background: C.white,
+              border: `1.5px solid ${C.teacher.border}`, borderRadius: 14, padding: '8px 16px', height: 44, boxSizing: 'border-box'
             }}>
-              <span style={{ fontFamily: '"Courier New", monospace', fontWeight: 900, color: 'var(--text-primary)', letterSpacing: '0.15em', fontSize: 18 }}>
+              <span style={{ fontFamily: '"Courier New", monospace', fontWeight: 900, color: C.textPrimary, letterSpacing: '0.05em', fontSize: 18 }}>
                 {classroom.code}
               </span>
-              <button onClick={copyCode} title="Copy Code" style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', padding: 2, color: copied ? 'green' : 'var(--text-muted)' }}>
+              <button onClick={copyCode} title="Copy Code" style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', padding: 2, color: copied ? C.teacher.accent : C.textMuted }}>
                 {copied ? <Check size={15} /> : <Copy size={15} />}
               </button>
             </div>
@@ -328,17 +330,17 @@ export default function ClassroomDetailPage() {
       {/* ── Statistics Summary Bar ──────────────────────────── */}
       <div style={{
         display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 16,
-        padding: '14px 20px', borderRadius: 16, background: 'var(--bg-card)', border: '1.5px solid var(--border-color)', boxShadow: C.shadowSm, fontSize: 13
+        padding: '14px 20px', borderRadius: 16, background: C.white, border: `1.5px solid ${C.border}`, boxShadow: C.shadowSm, fontSize: 13
       }}>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 20, fontWeight: 700 }}>
           <span style={{ color: C.textPrimary }}><span style={{ fontSize: 15, fontFamily: '"Fredoka One", cursive' }}>{members.length}</span> Total Requests</span>
-          <span style={{ color: 'var(--text-muted)' }}><span style={{ fontSize: 15, fontFamily: '"Fredoka One", cursive', color: 'green' }}>{approved.length}</span> Active Connections</span>
+          <span style={{ color: C.teacher.textDark }}><span style={{ fontSize: 15, fontFamily: '"Fredoka One", cursive', color: C.teacher.accent }}>{approved.length}</span> Active Connections</span>
           {pending.length > 0 && (
             <span style={{ color: C.amber.accent, display: 'inline-flex', alignItems: 'center', gap: 4 }}><span style={{ fontSize: 15, fontFamily: '"Fredoka One", cursive' }}>{pending.length}</span> Pending Approval</span>
           )}
         </div>
         <button onClick={fetchData} style={{
-          background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)',
+          background: 'none', border: 'none', cursor: 'pointer', color: C.textMuted,
           display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 800, textTransform: 'uppercase'
         }}>
           <RefreshCw size={12} /> Refresh
@@ -368,27 +370,27 @@ export default function ClassroomDetailPage() {
         </div>
         {students.length === 0 ? (
           <div style={{
-            background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: 16,
-            padding: '32px 20px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 13, fontWeight: 600
+            background: C.white, border: `1.5px solid ${C.border}`, borderRadius: 16,
+            padding: '32px 20px', textAlign: 'center', color: C.textMuted, fontSize: 13, fontWeight: 600
           }}>
-            No students are currently linked to this classroom container dashboard workspace. Approving linked family units will display student profiles here.
+            No students are currently linked to this classroom workspace. Approving linked family units will display student profiles here.
           </div>
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 12 }}>
             {students.map((s) => (
               <div key={s.id} style={{
-                background: 'var(--bg-card)', border: '1.5px solid var(--border-color)', borderRadius: 16,
+                background: C.white, border: `1.5px solid ${C.border}`, borderRadius: 16,
                 padding: '16px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, boxShadow: C.shadowSm
               }}>
                 <div style={{ minWidth: 0, flex: 1 }}>
-                  <p style={{ fontSize: 14, fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 4px', truncate: true }}>
+                  <p style={{ fontSize: 14, fontWeight: 800, color: C.textPrimary, margin: '0 0 4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {s.first_name} {s.last_name}
                   </p>
-                  <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: 0, display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <p style={{ fontSize: 11, color: C.textMuted, margin: 0, display: 'flex', alignItems: 'center', gap: 4 }}>
                     <User size={12} /> Parent: {s.parent_name || '—'}
                   </p>
                 </div>
-                <span style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 700, flexShrink: 0 }}>
+                <span style={{ fontSize: 10, color: C.textMuted, fontWeight: 700, flexShrink: 0 }}>
                   {s.created_at ? new Date(s.created_at).toLocaleDateString() : '—'}
                 </span>
               </div>
@@ -417,7 +419,7 @@ export default function ClassroomDetailPage() {
         <section style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <SectionLabel icon={<UserX size={12} />} text="Archived" />
-            <SectionTitle style={{ fontSize: 16, color: 'var(--text-muted)' }}>Rejected Profiles ({rejected.length})</SectionTitle>
+            <SectionTitle style={{ fontSize: 16, color: C.textMuted }}>Rejected Profiles ({rejected.length})</SectionTitle>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10, opacity: 0.75 }}>
             {rejected.map((m) => (
@@ -427,18 +429,18 @@ export default function ClassroomDetailPage() {
         </section>
       )}
 
-      {/* ── Workspace Empty State Container Fallback ─────────── */}
+      {/* ── Empty Fallback ─────────── */}
       {members.length === 0 && (
         <Panel style={{ textAlign: 'center', padding: '48px 24px' }}>
           <div style={{
-            width: 52, height: 52, borderRadius: 16, background: 'var(--bg-sidebar)',
+            width: 52, height: 52, borderRadius: 16, background: C.teacher.pageBg,
             display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px'
           }}>
-            <ClipboardList size={24} style={{ color: 'var(--accent)' }} />
+            <ClipboardList size={24} style={{ color: C.teacher.accent }} />
           </div>
           <SectionTitle style={{ fontSize: 18, marginBottom: 6 }}>No join requests received yet</SectionTitle>
-          <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: 0, lineHeight: 1.5 }}>
-            Provide the specialized 6-digit identification structural string <strong style={{ fontFamily: 'monospace', color: 'var(--text-primary)' }}>{classroom.code}</strong> directly to student parents to handle remote enrollment routing requests.
+          <p style={{ fontSize: 13, color: C.textMuted, margin: 0, lineHeight: 1.5 }}>
+            Provide the unique 6-digit code string <strong style={{ fontFamily: 'monospace', color: C.textPrimary }}>{classroom.code}</strong> directly to student parents to request classroom entry routing.
           </p>
         </Panel>
       )}
@@ -446,44 +448,44 @@ export default function ClassroomDetailPage() {
   );
 }
 
-// ── Embedded Sub-Component Component Row ──────────────────────
+// ── Member row component ──────────────────────────────────────
 function MemberRow({ member, onAction, isLoading, showActions }) {
   const initials = `${(member.first_name || '?')[0]}${(member.last_name || '?')[0]}`.toUpperCase();
   const theme = STATUS_THEMES[member.status] || STATUS_THEMES.pending;
 
   return (
     <div className="member-card-wrapper" style={{
-      background: 'var(--bg-card)', border: '1.5px solid var(--border-color)', borderRadius: 16,
+      background: C.white, border: `1.5px solid ${C.border}`, borderRadius: 16,
       padding: '14px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16,
-      boxShadow: 'var(--shadow)'
+      boxShadow: C.shadowSm
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 14, minWidth: 0, flex: 1 }}>
         <div style={{
-          width: 38, height: 38, borderRadius: 12, background: 'var(--bg-sidebar)',
-          color: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontFamily: '"Fredoka One", cursive', fontSize: 14, flexShrink: 0, border: '1.5px solid var(--border-color)'
+          width: 38, height: 38, borderRadius: 12, background: C.teacher.pageBg,
+          color: C.teacher.accent, display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontFamily: '"Fredoka One", cursive', fontSize: 14, flexShrink: 0, border: `1.5px solid ${C.teacher.border}`
         }}>
           {initials}
         </div>
         <div style={{ minWidth: 0, flex: 1 }}>
-          <p style={{ fontSize: 14, fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 2px', truncate: true }}>
+          <p style={{ fontSize: 14, fontWeight: 800, color: C.textPrimary, margin: '0 0 2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {member.first_name} {member.last_name}
           </p>
-          <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: 0, truncate: true }}>{member.email}</p>
+          <p style={{ fontSize: 11, color: C.textMuted, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{member.email}</p>
         </div>
       </div>
 
-      <span style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600, display: 'none' }} className="sm:block">
+      <span style={{ fontSize: 12, color: C.textMuted, fontWeight: 600, display: 'none' }} className="sm:block">
         {member.requested_at ? new Date(member.requested_at).toLocaleDateString() : '—'}
       </span>
 
       {showActions && member.status === 'pending' ? (
         <div className="member-card-actions" style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-          <SoftButton onClick={() => onAction(member.user_id, 'approve')} disabled={isLoading} color="var(--accent)" small>
+          <SoftButton onClick={() => onAction(member.user_id, 'approve')} disabled={isLoading} color={C.teacher.accent} small>
             <UserCheck size={14} />
             {isLoading ? '…' : 'Approve'}
           </SoftButton>
-          <SoftButton onClick={() => onAction(member.user_id, 'reject')} disabled={isLoading} color="#E83060" outline small>
+          <SoftButton onClick={() => onAction(member.user_id, 'reject')} disabled={isLoading} color={C.rose.accent} outline small>
             <UserX size={14} />
             Reject
           </SoftButton>
