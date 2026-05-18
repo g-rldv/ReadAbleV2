@@ -263,6 +263,13 @@ router.post('/:id/members/:userId/:action', requireAuth, requireRole('teacher'),
            WHERE parent_id = $2 AND (teacher_id IS NULL OR teacher_id = $1)`,
           [req.user.id, userId]
         );
+
+        // Remove any child assignments for this parent when they are removed
+        await client.query(
+          `DELETE FROM classroom_child_assignments
+           WHERE classroom_id = $1 AND parent_id = $2`,
+          [id, userId]
+        );
       }
 
       await client.query('COMMIT');
@@ -293,6 +300,76 @@ router.delete('/:id', requireAuth, requireRole('teacher'), async (req, res) => {
   } catch (err) {
     console.error('[Classrooms/Delete]', err.message);
     res.status(500).json({ error: 'Failed to delete classroom' });
+  }
+});
+
+// ── Teacher: Remove member from classroom ┇
+router.delete('/:id/members/:userId', requireAuth, requireRole('teacher'), async (req, res) => {
+  const { id, userId } = req.params;
+  try {
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      // Delete membership
+      await client.query(
+        `DELETE FROM class_memberships WHERE classroom_id = $1 AND user_id = $2`,
+        [id, userId]
+      );
+      // Delete any child assignments for this parent in this classroom
+      await client.query(
+        `DELETE FROM classroom_child_assignments WHERE classroom_id = $1 AND parent_id = $2`,
+        [id, userId]
+      );
+      // If the removed parent was the teacher for any of their children, clear the teacher linkage
+      await client.query(
+        `UPDATE children SET teacher_id = NULL WHERE parent_id = $1 AND teacher_id = (SELECT teacher_id FROM classrooms WHERE id = $2)`,
+        [userId, id]
+      );
+      await client.query('COMMIT');
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
+    res.json({ success: true });
+  } catch (err) {
+    console.error('[Classrooms/RemoveMember]', err.message);
+    res.status(500).json({ error: 'Failed to remove member' });
+  }
+});
+
+// ── Parent: Assign child to an approved classroom ┇
+router.post('/:id/children', requireAuth, requireRole('parent'), async (req, res) => {
+  const { id } = req.params;
+  const { childId } = req.body;
+  if (!childId) return res.status(400).json({ error: 'childId is required' });
+  try {
+    // Verify parent membership is approved for this classroom
+    const membershipRes = await pool.query(
+      'SELECT status FROM class_memberships WHERE classroom_id = $1 AND user_id = $2',
+      [id, req.user.id]
+    );
+    if (!membershipRes.rows.length || membershipRes.rows[0].status !== 'approved') {
+      return res.status(403).json({ error: 'You are not an approved member of this classroom' });
+    }
+    // Verify the child belongs to this parent
+    const childRes = await pool.query(
+      'SELECT id FROM children WHERE id = $1 AND parent_id = $2',
+      [childId, req.user.id]
+    );
+    if (!childRes.rows.length) return res.status(404).json({ error: 'Child not found or does not belong to you' });
+    // Insert assignment, avoid duplicates
+    await pool.query(
+      `INSERT INTO classroom_child_assignments (classroom_id, parent_id, child_id)
+       VALUES ($1, $2, $3)
+       ON CONFLICT (classroom_id, child_id) DO NOTHING`,
+      [id, req.user.id, childId]
+    );
+    res.json({ success: true });
+  } catch (err) {
+    console.error('[Classrooms/AssignChild]', err.message);
+    res.status(500).json({ error: 'Failed to assign child to classroom' });
   }
 });
 
