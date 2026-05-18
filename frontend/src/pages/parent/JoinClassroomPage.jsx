@@ -73,7 +73,7 @@ const C = {
 const STATUS_CONFIG = {
   approved: { label: 'Approved', icon: CheckCircle, scheme: C.teacher },
   pending:  { label: 'Pending',  icon: Clock,       scheme: C.amber   },
-  rejected: { label: 'Rejected', icon: XCircle,     scheme: C.rose    },
+  rejected: { label: 'Rejected', icon: XCircle,      scheme: C.rose    },
 };
 
 // ─── Shared primitives ────────────────────────────────────────
@@ -209,7 +209,7 @@ function ClassroomRow({ classroom }) {
 export default function JoinClassroomPage() {
   const [code, setCode] = useState('');
   const [joining, setJoining] = useState(false);
-  const [flash, setFlash] = useState(null); // { type: 'success'|'error', msg }
+  const [flash, setFlash] = useState(null);
   const [classrooms, setClassrooms] = useState([]);
   const [loading, setLoading] = useState(true);
   const [inputFocused, setInputFocused] = useState(false);
@@ -255,6 +255,7 @@ export default function JoinClassroomPage() {
       color: C.textPrimary,
       maxWidth: 900,
       display: 'flex', flexDirection: 'column', gap: 32,
+      width: '100%',
     }}>
 
       {/* ── Page header ───────────────────────────────────── */}
@@ -272,122 +273,126 @@ export default function JoinClassroomPage() {
         </p>
       </div>
 
-      {/* ── Two-column grid ───────────────────────────────── */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+      {/* ── Synchronized Height Grid Column Wrapper ─────────── */}
+      <div className="join-panels-row" style={{
+        display: 'flex',
+        flexWrap: 'wrap',
         gap: 20,
-        alignItems: 'start',
+        alignItems: 'stretch',
+        width: '100%',
       }}>
 
-        {/* ── Join by code panel ───────────────────────────── */}
+        {/* ── Left Column Box ──────────────────────────────── */}
         <div style={{
+          flex: '1 1 280px',
           background: C.white,
-          border: `1px solid ${C.border}`,
+          border: `1.5px solid ${C.border}`,
           borderRadius: 20,
           padding: '24px 24px 20px',
           boxShadow: C.shadowSm,
-          display: 'flex', flexDirection: 'column', gap: 20,
+          display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: 20,
         }}>
-          <div>
-            <SectionLabel icon={<Key size={12} />} text="Enter Code" />
-            <SectionTitle>Classroom Code</SectionTitle>
-          </div>
-
-          <form onSubmit={joinClassroom} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            {/* Code input */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
             <div>
-              <label style={{
-                display: 'block', fontSize: 12, fontWeight: 800,
-                color: C.textSecondary, marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.05em',
-              }}>
-                6-Character Code
-              </label>
-              <input
-                ref={inputRef}
-                type="text"
-                value={code}
-                onChange={(e) => setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''))}
-                onFocus={() => setInputFocused(true)}
-                onBlur={() => setInputFocused(false)}
-                placeholder="AB12XY"
-                maxLength={6}
-                autoComplete="off"
-                spellCheck="false"
-                style={{
-                  width: '100%',
-                  boxSizing: 'border-box',
-                  padding: '14px 16px',
-                  borderRadius: 14,
-                  border: `2px solid ${inputFocused ? C.parent.accent : C.border}`,
-                  background: inputFocused ? C.parent.pageBg : '#FAFAF8',
-                  fontFamily: '"Courier New", monospace',
-                  fontSize: 28,
-                  fontWeight: 700,
-                  letterSpacing: '0.45em',
-                  textAlign: 'center',
-                  textTransform: 'uppercase',
-                  color: C.textPrimary,
-                  outline: 'none',
-                  transition: 'border-color 0.15s, background 0.15s',
-                }}
-              />
-              {/* Character count dots */}
-              <div style={{
-                display: 'flex', justifyContent: 'center', gap: 6, marginTop: 8,
-              }}>
-                {Array.from({ length: 6 }).map((_, i) => (
-                  <div key={i} style={{
-                    width: 6, height: 6, borderRadius: '50%',
-                    background: i < code.length ? C.parent.accent : C.border,
-                    transition: 'background 0.12s',
-                  }} />
-                ))}
-              </div>
+              <SectionLabel icon={<Key size={12} />} text="Enter Code" />
+              <SectionTitle>Classroom Code</SectionTitle>
             </div>
 
-            {/* Flash message */}
-            {flash && (
-              <div style={{
-                display: 'flex', alignItems: 'flex-start', gap: 10,
-                padding: '12px 14px', borderRadius: 12,
-                background: flash.type === 'success' ? C.teacher.pageBg : C.rose.pageBg,
-                border: `1.5px solid ${flash.type === 'success' ? C.teacher.border : C.rose.border}`,
-              }}>
-                {flash.type === 'success'
-                  ? <CheckCircle size={15} style={{ color: C.teacher.accent, flexShrink: 0, marginTop: 1 }} />
-                  : <AlertCircle size={15} style={{ color: C.rose.accent, flexShrink: 0, marginTop: 1 }} />}
-                <p style={{
-                  fontSize: 12, fontWeight: 700, margin: 0, lineHeight: 1.5,
-                  color: flash.type === 'success' ? C.teacher.textDark : C.rose.textDark,
+            <form onSubmit={joinClassroom} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div>
+                <label style={{
+                  display: 'block', fontSize: 11, fontWeight: 800,
+                  color: C.textSecondary, marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.05em',
                 }}>
-                  {flash.msg}
-                </p>
+                  6-Character Code
+                </label>
+                <input
+                  ref={inputRef}
+                  type="text"
+                  value={code}
+                  onChange={(e) => setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''))}
+                  onFocus={() => setInputFocused(true)}
+                  onBlur={() => setInputFocused(false)}
+                  placeholder="A B 1 2 X Y"
+                  maxLength={6}
+                  autoComplete="off"
+                  spellCheck="false"
+                  style={{
+                    width: '100%',
+                    boxSizing: 'border-box',
+                    padding: '14px 16px',
+                    borderRadius: 14,
+                    border: `1.5px solid ${inputFocused ? C.parent.accent : C.border}`,
+                    background: inputFocused ? C.parent.pageBg : '#FAFAF8',
+                    fontFamily: '"Courier New", monospace',
+                    fontSize: 26,
+                    defaultValue: 'A B 1 2 X Y',
+                    placeholderColor: '#C8C0E0',
+                    color: i => i < code.length ? C.parent.accent : C.textPrimary,
+                    fontWeight: 700,
+                    letterSpacing: '0.25em',
+                    textAlign: 'center',
+                    textTransform: 'uppercase',
+                    outline: 'none',
+                    transition: 'border-color 0.15s, background 0.15s',
+                  }}
+                />
+                
+                {/* Character count progress indicators */}
+                <div style={{
+                  display: 'flex', justifyContent: 'center', gap: 6, marginTop: 12,
+                }}>
+                  {Array.from({ length: 6 }).map((_, i) => (
+                    <div key={i} style={{
+                      width: 6, height: 6, borderRadius: '50%',
+                      background: i < code.length ? C.parent.accent : C.border,
+                      transition: 'background 0.12s',
+                    }} />
+                  ))}
+                </div>
               </div>
-            )}
 
-            {/* Submit button */}
-            <button
-              type="submit"
-              disabled={joining || !isReady}
-              style={{
-                width: '100%',
-                padding: '13px 20px',
-                borderRadius: 14,
-                border: 'none',
-                background: isReady && !joining ? C.parent.accent : C.border,
-                color: isReady && !joining ? '#FFFFFF' : C.textMuted,
-                fontSize: 14, fontWeight: 800,
-                fontFamily: 'Nunito, sans-serif',
-                cursor: isReady && !joining ? 'pointer' : 'not-allowed',
-                transition: 'all 0.15s',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-              }}
-            >
-              <Key size={15} />
-              {joining ? 'Sending request…' : 'Request to Join'}
-            </button>
-          </form>
+              {flash && (
+                <div style={{
+                  display: 'flex', alignItems: 'flex-start', gap: 10,
+                  padding: '12px 14px', borderRadius: 12,
+                  background: flash.type === 'success' ? C.teacher.pageBg : C.rose.pageBg,
+                  border: `1.5px solid ${flash.type === 'success' ? C.teacher.border : C.rose.border}`,
+                }}>
+                  {flash.type === 'success'
+                    ? <CheckCircle size={15} style={{ color: C.teacher.accent, flexShrink: 0, marginTop: 1 }} />
+                    : <AlertCircle size={15} style={{ color: C.rose.accent, flexShrink: 0, marginTop: 1 }} />}
+                  <p style={{
+                    fontSize: 12, fontWeight: 700, margin: 0, lineHeight: 1.5,
+                    color: flash.type === 'success' ? C.teacher.textDark : C.rose.textDark,
+                  }}>
+                    {flash.msg}
+                  </p>
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={joining || !isReady}
+                style={{
+                  width: '100%',
+                  padding: '13px 20px',
+                  borderRadius: 14,
+                  border: 'none',
+                  background: isReady && !joining ? 'rgba(90, 80, 160, 0.18)' : C.border,
+                  color: isReady && !joining ? C.primary : C.textMuted,
+                  fontSize: 14, fontWeight: 800,
+                  fontFamily: 'Nunito, sans-serif',
+                  cursor: isReady && !joining ? 'pointer' : 'not-allowed',
+                  transition: 'all 0.15s',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                }}
+              >
+                <Key size={15} />
+                {joining ? 'Sending request…' : 'Request to Join'}
+              </button>
+            </form>
+          </div>
 
           <p style={{
             fontSize: 11, color: C.textMuted, lineHeight: 1.6,
@@ -398,10 +403,11 @@ export default function JoinClassroomPage() {
           </p>
         </div>
 
-        {/* ── My classrooms panel ───────────────────────────── */}
+        {/* ── Right Column Box ─────────────────────────────── */}
         <div style={{
+          flex: '1 1 280px',
           background: C.white,
-          border: `1px solid ${C.border}`,
+          border: `1.5px solid ${C.border}`,
           borderRadius: 20,
           padding: '24px 24px 20px',
           boxShadow: C.shadowSm,
@@ -415,7 +421,7 @@ export default function JoinClassroomPage() {
           {loading ? (
             <div style={{
               display: 'flex', flexDirection: 'column', alignItems: 'center',
-              justifyContent: 'center', padding: '32px 0', gap: 12,
+              justifyContent: 'center', padding: '32px 0', gap: 12, flex: 1,
             }}>
               <div style={{
                 width: 28, height: 28, borderRadius: '50%',
@@ -429,13 +435,14 @@ export default function JoinClassroomPage() {
               <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
             </div>
           ) : classrooms.length === 0 ? (
-            /* Empty state */
             <div style={{
               background: C.teacher.pageBg,
               border: `1.5px solid ${C.teacher.border}`,
               borderRadius: 16,
               padding: '36px 20px',
               textAlign: 'center',
+              flex: 1,
+              display: 'flex', flexDirection: 'column', justifyContent: 'center',
             }}>
               <div style={{
                 width: 48, height: 48, borderRadius: 14,
@@ -456,7 +463,7 @@ export default function JoinClassroomPage() {
               </p>
             </div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, flex: 1 }}>
               {classrooms.map(classroom => (
                 <ClassroomRow key={classroom.id} classroom={classroom} />
               ))}
@@ -464,7 +471,6 @@ export default function JoinClassroomPage() {
           )}
         </div>
       </div>
-
     </div>
   );
 }
