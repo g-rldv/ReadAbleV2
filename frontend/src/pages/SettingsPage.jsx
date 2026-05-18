@@ -51,7 +51,7 @@ const C = {
   primaryH: '#4A4090',
 };
 
-// ─── Theme catalogue (mirrors LandingPage THEME_OPTIONS) ─────
+// ─── Theme catalogue ──────────────────────────────────────────
 const THEMES = [
   { key: 'cotton',    label: 'Light',      Icon: Sun,      swatch: ['#FAFAFA', '#E8E4FF'] },
   { key: 'sky',       label: 'Berry',      Icon: Heart,    swatch: ['#F0E8FF', '#C8B0F0'] },
@@ -65,9 +65,9 @@ const THEMES = [
 ];
 
 const TEXT_SIZES = [
-  { key: 'small',  label: 'Small',      size: 13 },
-  { key: 'medium', label: 'Medium',     size: 15 },
-  { key: 'large',  label: 'Large',      size: 18 },
+  { key: 'small',  label: 'Small',       size: 13 },
+  { key: 'medium', label: 'Medium',      size: 15 },
+  { key: 'large',  label: 'Large',       size: 18 },
   { key: 'xlarge', label: 'Extra Large', size: 22 },
 ];
 
@@ -110,7 +110,7 @@ function SoftButton({ children, onClick, color, outline, small, danger, disabled
     border: `2px solid ${col}`, transition: 'all 0.15s',
     opacity: disabled ? 0.5 : 1, ...extra,
   };
-  const filled  = { ...base, background: hov && !disabled ? `${col}DD` : col, color: '#FFF' };
+  const filled   = { ...base, background: hov && !disabled ? `${col}DD` : col, color: '#FFF' };
   const outline_ = { ...base, background: hov && !disabled ? `${col}12` : 'transparent', color: col };
   return (
     <button
@@ -126,8 +126,8 @@ function SoftButton({ children, onClick, color, outline, small, danger, disabled
 
 // ─── Panel wrapper ────────────────────────────────────────────
 function Panel({ children, scheme = null, style: extra = {} }) {
-  const bg    = scheme ? scheme.pageBg  : C.white;
-  const bdr   = scheme ? scheme.border  : C.border;
+  const bg  = scheme ? scheme.pageBg : C.white;
+  const bdr = scheme ? scheme.border : C.border;
   return (
     <div style={{
       background: bg, border: `1.5px solid ${bdr}`,
@@ -139,12 +139,20 @@ function Panel({ children, scheme = null, style: extra = {} }) {
   );
 }
 
-// ─── Slider ───────────────────────────────────────────────────
+// ─── Slider — FIXED ──────────────────────────────────────────
+// Key fixes:
+//   1. Wrapper is position:relative with explicit height (44px touch target)
+//   2. The <input type=range> is absolutely positioned, full width, full height,
+//      opacity:0 but pointer-events:all — so dragging always works
+//   3. Visual track + thumb are purely decorative divs, updated via value/pct
 function SliderRow({ label, hint, value, min, max, step, onChange, accent, formatValue }) {
   const pct = ((value - min) / (max - min)) * 100;
+  const col = accent || C.primary;
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      {/* Header row */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
           <p style={{ fontSize: 14, fontWeight: 800, color: C.textPrimary, margin: 0 }}>{label}</p>
           {hint && <p style={{ fontSize: 11, color: C.textMuted, margin: '2px 0 0' }}>{hint}</p>}
@@ -153,46 +161,57 @@ function SliderRow({ label, hint, value, min, max, step, onChange, accent, forma
           padding: '4px 12px', borderRadius: 20,
           background: '#EDE8FF', border: '1px solid #C8C0F0',
           fontSize: 13, fontWeight: 800, color: C.primary,
-          minWidth: 52, textAlign: 'center',
+          minWidth: 56, textAlign: 'center', flexShrink: 0,
         }}>
           {formatValue ? formatValue(value) : value}
         </div>
       </div>
-      <div style={{ position: 'relative', height: 6 }}>
+
+      {/* Track + thumb area — 44px tall for easy grabbing */}
+      <div style={{ position: 'relative', height: 44, display: 'flex', alignItems: 'center' }}>
         {/* Track background */}
         <div style={{
-          position: 'absolute', inset: 0,
-          borderRadius: 6, background: '#E8E4F8',
+          position: 'absolute', left: 0, right: 0,
+          height: 8, borderRadius: 8, background: '#E8E4F8',
         }} />
-        {/* Filled track */}
+        {/* Filled portion */}
         <div style={{
-          position: 'absolute', left: 0, top: 0, bottom: 0,
-          width: `${pct}%`, borderRadius: 6,
-          background: accent || C.primary,
-          transition: 'width 0.05s',
+          position: 'absolute', left: 0,
+          width: `${pct}%`, height: 8, borderRadius: 8,
+          background: col, transition: 'width 0.04s',
+          pointerEvents: 'none',
         }} />
+        {/* Visual thumb */}
+        <div style={{
+          position: 'absolute',
+          left: `${pct}%`,
+          transform: 'translateX(-50%)',
+          width: 22, height: 22, borderRadius: '50%',
+          background: C.white,
+          border: `3px solid ${col}`,
+          boxShadow: `0 2px 8px ${col}44`,
+          pointerEvents: 'none',
+          transition: 'left 0.04s',
+          zIndex: 1,
+        }} />
+        {/* Invisible full-area range input — sits on top, handles all interaction */}
         <input
-          type="range" min={min} max={max} step={step} value={value}
+          type="range"
+          min={min} max={max} step={step} value={value}
           onChange={e => onChange(Number(e.target.value))}
           style={{
-            position: 'absolute', inset: 0, width: '100%',
-            opacity: 0, cursor: 'pointer', height: 6,
+            position: 'absolute', inset: 0,
+            width: '100%', height: '100%',
+            opacity: 0,
+            cursor: 'pointer',
+            zIndex: 2,
+            margin: 0, padding: 0,
           }}
         />
-        {/* Thumb indicator */}
-        <div style={{
-          position: 'absolute', top: '50%',
-          left: `${pct}%`, transform: 'translate(-50%, -50%)',
-          width: 18, height: 18, borderRadius: '50%',
-          background: '#FFFFFF',
-          border: `2.5px solid ${accent || C.primary}`,
-          boxShadow: '0 1px 6px rgba(80,60,160,0.18)',
-          pointerEvents: 'none',
-          transition: 'left 0.05s',
-        }} />
       </div>
+
       {/* Min / Max labels */}
-      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: -4 }}>
         <span style={{ fontSize: 10, color: C.textMuted }}>{formatValue ? formatValue(min) : min}</span>
         <span style={{ fontSize: 10, color: C.textMuted }}>{formatValue ? formatValue(max) : max}</span>
       </div>
@@ -200,8 +219,8 @@ function SliderRow({ label, hint, value, min, max, step, onChange, accent, forma
   );
 }
 
-// ─── Preview bubble ───────────────────────────────────────────
-function TTSPreviewBtn({ pitch, speed, disabled, onPlay }) {
+// ─── Preview button ───────────────────────────────────────────
+function TTSPreviewBtn({ onPlay, disabled }) {
   const [hov, setHov] = useState(false);
   return (
     <button
@@ -217,7 +236,7 @@ function TTSPreviewBtn({ pitch, speed, disabled, onPlay }) {
         color: C.student.accent, cursor: disabled ? 'not-allowed' : 'pointer',
         fontFamily: 'Nunito, sans-serif', fontSize: 14, fontWeight: 700,
         transition: 'all 0.15s', opacity: disabled ? 0.5 : 1,
-        width: '100%', flex: 1,
+        flex: 1,
       }}
     >
       <Play size={15} /> Preview voice
@@ -225,10 +244,10 @@ function TTSPreviewBtn({ pitch, speed, disabled, onPlay }) {
   );
 }
 
-// ─── Text confirmation modal ──────────────────────────────────
+// ─── Text size confirm modal ──────────────────────────────────
 function TextSizeConfirm({ currentSize, nextSize, onCancel, onConfirm }) {
   const current = TEXT_SIZES.find(s => s.key === currentSize)?.label || 'Current';
-  const next = TEXT_SIZES.find(s => s.key === nextSize)?.label || 'Selected';
+  const next    = TEXT_SIZES.find(s => s.key === nextSize)?.label    || 'Selected';
   return (
     <div
       onClick={e => e.target === e.currentTarget && onCancel()}
@@ -243,34 +262,27 @@ function TextSizeConfirm({ currentSize, nextSize, onCancel, onConfirm }) {
         width: '100%', maxWidth: 380,
         borderRadius: 20, background: C.white,
         boxShadow: '0 8px 40px rgba(60,50,120,0.18)',
-        padding: 22,
-        animation: 'modalPop 0.22s ease-out',
+        padding: 22, animation: 'modalPop 0.22s ease-out',
       }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
           <div style={{
             width: 42, height: 42, borderRadius: 14,
             background: C.student.iconBg,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            flexShrink: 0,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
           }}>
             <Type size={22} style={{ color: C.student.accent }} />
           </div>
           <div>
-            <p style={{
-              fontFamily: '"Fredoka One", cursive',
-              fontSize: 19, color: C.textPrimary, margin: '0 0 4px',
-            }}>
+            <p style={{ fontFamily: '"Fredoka One", cursive', fontSize: 19, color: C.textPrimary, margin: '0 0 4px' }}>
               Apply text size?
             </p>
             <p style={{ fontSize: 13, color: C.textSecondary, lineHeight: 1.55, margin: 0 }}>
-              This will change text size across the whole system from <strong>{current}</strong> to <strong>{next}</strong>.
+              This will change text size from <strong>{current}</strong> to <strong>{next}</strong>.
             </p>
           </div>
         </div>
         <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
-          <SoftButton onClick={onCancel} outline color={C.primary} style={{ flex: 1 }}>
-            Cancel
-          </SoftButton>
+          <SoftButton onClick={onCancel} outline color={C.primary} style={{ flex: 1 }}>Cancel</SoftButton>
           <SoftButton onClick={onConfirm} color={C.student.accent} style={{ flex: 1 }}>
             <Check size={14} /> Apply
           </SoftButton>
@@ -280,11 +292,11 @@ function TextSizeConfirm({ currentSize, nextSize, onCancel, onConfirm }) {
   );
 }
 
-// ─── Delete confirmation overlay ──────────────────────────────
+// ─── Delete confirm overlay ───────────────────────────────────
 function DeleteConfirm({ onCancel, onConfirm, loading }) {
   const [typed, setTyped] = useState('');
   const PHRASE = 'delete my account';
-  const ready = typed.toLowerCase().trim() === PHRASE;
+  const ready  = typed.toLowerCase().trim() === PHRASE;
 
   return (
     <div
@@ -300,10 +312,8 @@ function DeleteConfirm({ onCancel, onConfirm, loading }) {
         width: '100%', maxWidth: 400,
         borderRadius: 20, background: C.white,
         boxShadow: '0 8px 40px rgba(60,50,120,0.18)',
-        overflow: 'hidden',
-        animation: 'modalPop 0.22s ease-out',
+        overflow: 'hidden', animation: 'modalPop 0.22s ease-out',
       }}>
-        {/* Header stripe */}
         <div style={{
           background: C.danger.pageBg, padding: '20px 22px 16px',
           borderBottom: `1px solid ${C.danger.border}`,
@@ -317,10 +327,9 @@ function DeleteConfirm({ onCancel, onConfirm, loading }) {
             <AlertTriangle size={22} style={{ color: C.danger.accent }} />
           </div>
           <div>
-            <p style={{
-              fontFamily: '"Fredoka One", cursive',
-              fontSize: 19, color: C.danger.textDark, margin: '0 0 3px',
-            }}>Delete account?</p>
+            <p style={{ fontFamily: '"Fredoka One", cursive', fontSize: 19, color: C.danger.textDark, margin: '0 0 3px' }}>
+              Delete account?
+            </p>
             <p style={{ fontSize: 12, color: C.textSecondary, margin: 0, lineHeight: 1.5 }}>
               This is permanent. All your data — children, reports, and classrooms — will be erased.
             </p>
@@ -328,15 +337,8 @@ function DeleteConfirm({ onCancel, onConfirm, loading }) {
         </div>
 
         <div style={{ padding: '20px 22px 22px' }}>
-          {/* Warning checklist */}
-          {[
-            'All children profiles removed',
-            'All class enrolments cancelled',
-            'All progress reports deleted',
-          ].map(w => (
-            <div key={w} style={{
-              display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8,
-            }}>
+          {['All children profiles removed', 'All class enrolments cancelled', 'All progress reports deleted'].map(w => (
+            <div key={w} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
               <div style={{
                 width: 20, height: 20, borderRadius: 6,
                 background: C.danger.accentLight,
@@ -348,17 +350,12 @@ function DeleteConfirm({ onCancel, onConfirm, loading }) {
             </div>
           ))}
 
-          {/* Confirmation input */}
           <div style={{ marginTop: 18 }}>
-            <label style={{
-              display: 'block', fontSize: 12, fontWeight: 800,
-              color: C.textSecondary, marginBottom: 6,
-            }}>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 800, color: C.textSecondary, marginBottom: 6 }}>
               Type <strong style={{ color: C.textPrimary, fontStyle: 'italic' }}>"{PHRASE}"</strong> to confirm
             </label>
             <input
-              autoFocus
-              value={typed}
+              autoFocus value={typed}
               onChange={e => setTyped(e.target.value)}
               placeholder={PHRASE}
               style={{
@@ -374,13 +371,8 @@ function DeleteConfirm({ onCancel, onConfirm, loading }) {
           </div>
 
           <div style={{ display: 'flex', gap: 10, marginTop: 18 }}>
-            <SoftButton onClick={onCancel} outline color={C.primary} style={{ flex: 1 }}>
-              Cancel
-            </SoftButton>
-            <SoftButton
-              onClick={onConfirm} danger disabled={!ready || loading}
-              style={{ flex: 1 }}
-            >
+            <SoftButton onClick={onCancel} outline color={C.primary} style={{ flex: 1 }}>Cancel</SoftButton>
+            <SoftButton onClick={onConfirm} danger disabled={!ready || loading} style={{ flex: 1 }}>
               {loading ? 'Deleting…' : <><Trash2 size={14} /> Delete</>}
             </SoftButton>
           </div>
@@ -395,12 +387,7 @@ function Toast({ msg, type = 'success', onDone }) {
   const color = type === 'success' ? C.teacher.accent : C.danger.accent;
   const bg    = type === 'success' ? C.teacher.pageBg : C.danger.pageBg;
   const bdr   = type === 'success' ? C.teacher.border : C.danger.border;
-
-  useEffect(() => {
-    const t = setTimeout(onDone, 2800);
-    return () => clearTimeout(t);
-  }, [onDone]);
-
+  useEffect(() => { const t = setTimeout(onDone, 2800); return () => clearTimeout(t); }, [onDone]);
   return (
     <div style={{
       position: 'fixed', bottom: 24, right: 24, zIndex: 9998,
@@ -408,8 +395,7 @@ function Toast({ msg, type = 'success', onDone }) {
       padding: '12px 18px', borderRadius: 14,
       background: bg, border: `1.5px solid ${bdr}`,
       boxShadow: C.shadowMd,
-      fontFamily: 'Nunito, sans-serif', fontSize: 13,
-      fontWeight: 700, color,
+      fontFamily: 'Nunito, sans-serif', fontSize: 13, fontWeight: 700, color,
       animation: 'slideUp 0.25s ease-out',
     }}>
       {type === 'success' ? <Check size={15} /> : <AlertTriangle size={15} />}
@@ -421,34 +407,27 @@ function Toast({ msg, type = 'success', onDone }) {
 // ─── Main page ────────────────────────────────────────────────
 export default function ParentSettings() {
   const {
-    settings,
-    setTheme,
-    setTextSize,
-    setTtsEnabled,
-    setTtsVoice,
-    updateSettings,
-    voices = [],
+    settings, setTheme, setTextSize,
+    setTtsEnabled, setTtsVoice, updateSettings, voices = [],
   } = useSettings();
   const { user, logout } = useAuth();
 
-  // TTS local state (saved to settings context / api on apply)
-  const [ttsPitch, setTtsPitch] = useState(settings?.tts_pitch ?? 1.0);
-  const [ttsSpeed, setTtsSpeed] = useState(settings?.tts_rate ?? 0.9);
-  const [ttsChanged, setTtsChanged] = useState(false);
-  const [ttsSaving, setTtsSaving] = useState(false);
-
-  const [pendingTextSize, setPendingTextSize] = useState(settings?.text_size ?? 'medium');
-  const [originalTextSize, setOriginalTextSize] = useState(settings?.text_size ?? 'medium');
-  const [showTextConfirm, setShowTextConfirm] = useState(false);
+  const [ttsPitch,      setTtsPitch]      = useState(settings?.tts_pitch ?? 1.0);
+  const [ttsSpeed,      setTtsSpeed]      = useState(settings?.tts_rate  ?? 0.9);
+  const [ttsChanged,    setTtsChanged]    = useState(false);
+  const [ttsSaving,     setTtsSaving]     = useState(false);
   const [selectedVoice, setSelectedVoice] = useState(settings?.tts_voice ?? '');
 
-  const [showDelete, setShowDelete] = useState(false);
+  const [pendingTextSize,  setPendingTextSize]  = useState(settings?.text_size ?? 'medium');
+  const [originalTextSize, setOriginalTextSize] = useState(settings?.text_size ?? 'medium');
+  const [showTextConfirm,  setShowTextConfirm]  = useState(false);
+
+  const [showDelete,    setShowDelete]    = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
-  const [toast, setToast] = useState(null);
+  const [toast,         setToast]         = useState(null);
 
   const showToast = (msg, type = 'success') => setToast({ msg, type });
 
-  // ── Sync Effect ───────────────────────────────────────────
   useEffect(() => {
     if (!showTextConfirm) {
       setPendingTextSize(settings?.text_size ?? 'medium');
@@ -459,54 +438,36 @@ export default function ParentSettings() {
   useEffect(() => {
     setSelectedVoice(settings?.tts_voice ?? '');
     setTtsPitch(settings?.tts_pitch ?? 1.0);
-    setTtsSpeed(settings?.tts_rate ?? 0.9);
+    setTtsSpeed(settings?.tts_rate  ?? 0.9);
   }, [settings?.tts_voice, settings?.tts_pitch, settings?.tts_rate]);
 
-  // ── Helper To Preview Without Saving ──────────────────────
-  const previewTextSize = (nextSize) => {
-    if (!showTextConfirm) {
-      setOriginalTextSize(settings?.text_size ?? 'medium');
-    }
-    setPendingTextSize(nextSize);
-    setShowTextConfirm(true);
+  const FONT_SCALE = { small: 0.92, medium: 1, large: 1.12, xlarge: 1.25 };
+
+  const applyFontScale = (sizeKey) => {
     const html = document.documentElement;
     html.classList.remove('text-small', 'text-medium', 'text-large', 'text-xlarge');
-    html.classList.add(`text-${nextSize}`);
-    const FONT_SCALE = {
-      small: 0.92,
-      medium: 1,
-      large: 1.12,
-      xlarge: 1.25,
-    };
-    const scale = FONT_SCALE[nextSize] || 1;
+    html.classList.add(`text-${sizeKey}`);
+    const scale = FONT_SCALE[sizeKey] || 1;
     html.style.setProperty('--readable-font-scale', String(scale));
     html.style.fontSize = `${16 * scale}px`;
     document.body.style.zoom = String(scale);
     document.body.style.transformOrigin = 'top left';
   };
 
-  // ── Helper To Revert Preview ──────────────────────────────
+  const previewTextSize = (nextSize) => {
+    if (!showTextConfirm) setOriginalTextSize(settings?.text_size ?? 'medium');
+    setPendingTextSize(nextSize);
+    setShowTextConfirm(true);
+    applyFontScale(nextSize);
+  };
+
   const revertTextSizePreview = () => {
-    const oldSize = originalTextSize || settings?.text_size || 'medium';
-    const html = document.documentElement;
-    html.classList.remove('text-small', 'text-medium', 'text-large', 'text-xlarge');
-    html.classList.add(`text-${oldSize}`);
-    const FONT_SCALE = {
-      small: 0.92,
-      medium: 1,
-      large: 1.12,
-      xlarge: 1.25,
-    };
-    const scale = FONT_SCALE[oldSize] || 1;
-    html.style.setProperty('--readable-font-scale', String(scale));
-    html.style.fontSize = `${16 * scale}px`;
-    document.body.style.zoom = String(scale);
-    document.body.style.transformOrigin = 'top left';
-    setPendingTextSize(oldSize);
+    const old = originalTextSize || settings?.text_size || 'medium';
+    applyFontScale(old);
+    setPendingTextSize(old);
     setShowTextConfirm(false);
   };
 
-  // ── TTS preview ───────────────────────────────────────────
   const previewTTS = useCallback(() => {
     if (!window.speechSynthesis) return;
     window.speechSynthesis.cancel();
@@ -514,21 +475,16 @@ export default function ParentSettings() {
     utt.pitch = ttsPitch;
     utt.rate  = ttsSpeed;
     if (selectedVoice) {
-      const foundVoice = window.speechSynthesis.getVoices().find(v => v.name === selectedVoice);
-      if (foundVoice) utt.voice = foundVoice;
+      const found = window.speechSynthesis.getVoices().find(v => v.name === selectedVoice);
+      if (found) utt.voice = found;
     }
     window.speechSynthesis.speak(utt);
   }, [ttsPitch, ttsSpeed, selectedVoice]);
 
-  // ── Save TTS ──────────────────────────────────────────────
   const saveTTS = async () => {
     setTtsSaving(true);
     try {
-      await updateSettings({
-        tts_pitch: ttsPitch,
-        tts_rate: ttsSpeed,
-        tts_voice: selectedVoice,
-      });
+      await updateSettings({ tts_pitch: ttsPitch, tts_rate: ttsSpeed, tts_voice: selectedVoice });
       setTtsChanged(false);
       showToast('Voice settings saved.');
     } catch {
@@ -538,7 +494,6 @@ export default function ParentSettings() {
     }
   };
 
-  // ── Delete account ────────────────────────────────────────
   const handleDelete = async () => {
     setDeleteLoading(true);
     try {
@@ -553,67 +508,40 @@ export default function ParentSettings() {
 
   return (
     <>
-      {/* ── Global keyframes & Responsive Styles ────────────── */}
       <style>{`
-        @keyframes modalPop  { from { opacity:0; transform:scale(0.93) translateY(10px);} to { opacity:1; transform:none;} }
-        @keyframes slideUp   { from { opacity:0; transform:translateY(14px);} to { opacity:1; transform:none;} }
-        @keyframes spin      { to   { transform:rotate(360deg);} }
-        input[type=range]    { -webkit-appearance:none; appearance:none; background:transparent; }
-        input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; }
-        @media (max-width: 560px) {
-          .settings-page {
-            max-width: 100% !important;
-            gap: 24px !important;
-            padding: 0 4px !important;
-          }
-          .settings-header {
-            padding: 20px 18px !important;
-            border-radius: 18px !important;
-            align-items: flex-start !important;
-          }
-          .settings-header p {
-            font-size: 12px !important;
-          }
-          .voice-model-grid {
-            grid-template-columns: 1fr !important;
-          }
-          .voice-model-grid, .voice-model-grid button {
-            min-width: 0 !important;
-            max-width: 100% !important;
-            overflow: hidden !important;
-          }
-          .tts-actions {
-            display: grid !important;
-            grid-template-columns: 1fr !important;
-          }
-          .tts-actions button {
-            width: 100% !important;
-            min-height: 46px !important;
-          }
-          .danger-zone-row {
-            display: grid !important;
-            grid-template-columns: 1fr !important;
-            gap: 14px !important;
-          }
-          .danger-zone-icon {
-            display: none !important;
-          }
-          .danger-zone-row p {
-            max-width: 100% !important;
-          }
-          .danger-zone-row button {
-            width: 100% !important;
-          }
+        @keyframes modalPop { from { opacity:0; transform:scale(0.93) translateY(10px);} to { opacity:1; transform:none;} }
+        @keyframes slideUp  { from { opacity:0; transform:translateY(14px);} to { opacity:1; transform:none;} }
+        @keyframes spin     { to   { transform:rotate(360deg);} }
+
+        /* Fully reset range input cross-browser */
+        input[type=range] {
+          -webkit-appearance: none;
+          appearance: none;
+          background: transparent;
+          outline: none;
         }
-        @media (max-width: 380px) {
-          .settings-header {
-            padding: 18px 16px !important;
-          }
-          .settings-header > div:first-child {
-            width: 44px !important;
-            height: 44px !important;
-            border-radius: 14px !important;
-          }
+        input[type=range]::-webkit-slider-thumb {
+          -webkit-appearance: none;
+          width: 1px; height: 1px;
+        }
+        input[type=range]::-moz-range-thumb {
+          width: 1px; height: 1px;
+          border: none; background: transparent;
+        }
+        input[type=range]::-ms-thumb {
+          width: 1px; height: 1px;
+        }
+        input[type=range]::-webkit-slider-runnable-track { background: transparent; }
+        input[type=range]::-moz-range-track              { background: transparent; }
+
+        @media (max-width: 560px) {
+          .settings-page { max-width: 100% !important; gap: 24px !important; padding: 0 4px !important; }
+          .voice-model-grid { grid-template-columns: 1fr !important; }
+          .tts-actions { display: grid !important; grid-template-columns: 1fr !important; }
+          .tts-actions button { width: 100% !important; min-height: 46px !important; }
+          .danger-zone-row { display: grid !important; grid-template-columns: 1fr !important; gap: 14px !important; }
+          .danger-zone-icon { display: none !important; }
+          .danger-zone-row button { width: 100% !important; }
         }
       `}</style>
 
@@ -625,7 +553,7 @@ export default function ParentSettings() {
       }}>
 
         {/* ── Page header ──────────────────────────────────── */}
-        <div className="settings-header" style={{
+        <div style={{
           borderRadius: 22,
           background: C.parent.pageBg,
           border: `1.5px solid ${C.parent.border}`,
@@ -655,32 +583,21 @@ export default function ParentSettings() {
           <p style={{ fontSize: 13, color: C.textSecondary, margin: '4px 0 16px' }}>
             Applies across the whole app, including student mode.
           </p>
-
           <Panel>
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))',
-              gap: 10,
-            }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: 10 }}>
               {THEMES.map(({ key, label, Icon, swatch }) => {
                 const active = settings?.theme === key;
                 return (
-                  <button
-                    key={key}
-                    onClick={() => setTheme(key)}
-                    style={{
-                      borderRadius: 16,
-                      border: `2px solid ${active ? C.parent.accent : C.border}`,
-                      background: active ? C.parent.pageBg : C.white,
-                      cursor: 'pointer', padding: '14px 10px 12px',
-                      display: 'flex', flexDirection: 'column',
-                      alignItems: 'center', gap: 8,
-                      transition: 'all 0.15s',
-                      boxShadow: active ? C.shadowMd : C.shadowSm,
-                      transform: active ? 'translateY(-2px)' : 'none',
-                    }}
-                  >
-                    {/* Swatch preview */}
+                  <button key={key} onClick={() => setTheme(key)} style={{
+                    borderRadius: 16,
+                    border: `2px solid ${active ? C.parent.accent : C.border}`,
+                    background: active ? C.parent.pageBg : C.white,
+                    cursor: 'pointer', padding: '14px 10px 12px',
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
+                    transition: 'all 0.15s',
+                    boxShadow: active ? C.shadowMd : C.shadowSm,
+                    transform: active ? 'translateY(-2px)' : 'none',
+                  }}>
                     <div style={{
                       width: '100%', height: 36, borderRadius: 10, overflow: 'hidden',
                       display: 'flex', border: `1px solid ${C.border}`,
@@ -688,23 +605,15 @@ export default function ParentSettings() {
                       <div style={{ flex: 1, background: swatch[0] }} />
                       <div style={{ flex: 1, background: swatch[1] }} />
                     </div>
-
-                    <div style={{
-                      display: 'flex', alignItems: 'center', gap: 5,
-                    }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
                       <Icon size={13} style={{ color: active ? C.parent.accent : C.textMuted }} />
-                      <span style={{
-                        fontSize: 12, fontWeight: 800,
-                        color: active ? C.parent.accent : C.textPrimary,
-                      }}>
+                      <span style={{ fontSize: 12, fontWeight: 800, color: active ? C.parent.accent : C.textPrimary }}>
                         {label}
                       </span>
                     </div>
-
                     {active && (
                       <div style={{
-                        width: 20, height: 20, borderRadius: '50%',
-                        background: C.parent.accent,
+                        width: 20, height: 20, borderRadius: '50%', background: C.parent.accent,
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                       }}>
                         <Check size={11} color="#FFF" />
@@ -724,49 +633,24 @@ export default function ParentSettings() {
           <p style={{ fontSize: 13, color: C.textSecondary, margin: '4px 0 16px' }}>
             Larger text helps learners with ASD read more comfortably.
           </p>
-
           <Panel>
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))',
-              gap: 10,
-            }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 10 }}>
               {TEXT_SIZES.map(({ key, label, size }) => {
                 const active = pendingTextSize === key;
                 return (
-                  <button
-                    key={key}
-                    onClick={() => previewTextSize(key)}
-                    style={{
-                      borderRadius: 16, padding: '18px 12px',
-                      border: `2px solid ${active ? C.student.accent : C.border}`,
-                      background: active ? C.student.pageBg : C.white,
-                      cursor: 'pointer', transition: 'all 0.15s',
-                      display: 'flex', flexDirection: 'column',
-                      alignItems: 'center', gap: 6,
-                      boxShadow: active ? C.shadowMd : C.shadowSm,
-                      transform: active ? 'translateY(-2px)' : 'none',
-                    }}
-                  >
-                    <span style={{
-                      fontSize: size, fontFamily: '"Fredoka One", cursive',
-                      color: active ? C.student.accent : C.textPrimary,
-                      lineHeight: 1,
-                    }}>
-                      Aa
-                    </span>
-                    <span style={{
-                      fontSize: 12, fontWeight: 800,
-                      color: active ? C.student.accent : C.textSecondary,
-                    }}>
-                      {label}
-                    </span>
+                  <button key={key} onClick={() => previewTextSize(key)} style={{
+                    borderRadius: 16, padding: '18px 12px',
+                    border: `2px solid ${active ? C.student.accent : C.border}`,
+                    background: active ? C.student.pageBg : C.white,
+                    cursor: 'pointer', transition: 'all 0.15s',
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
+                    boxShadow: active ? C.shadowMd : C.shadowSm,
+                    transform: active ? 'translateY(-2px)' : 'none',
+                  }}>
+                    <span style={{ fontSize: size, fontFamily: '"Fredoka One", cursive', color: active ? C.student.accent : C.textPrimary, lineHeight: 1 }}>Aa</span>
+                    <span style={{ fontSize: 12, fontWeight: 800, color: active ? C.student.accent : C.textSecondary }}>{label}</span>
                     {active && (
-                      <div style={{
-                        width: 18, height: 18, borderRadius: '50%',
-                        background: C.student.accent,
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      }}>
+                      <div style={{ width: 18, height: 18, borderRadius: '50%', background: C.student.accent, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                         <Check size={10} color="#FFF" />
                       </div>
                     )}
@@ -774,18 +658,9 @@ export default function ParentSettings() {
                 );
               })}
             </div>
-
             {pendingTextSize !== settings?.text_size && (
-              <div style={{
-                marginTop: 16,
-                display: 'flex',
-                justifyContent: 'flex-end',
-              }}>
-                <SoftButton
-                  onClick={() => setShowTextConfirm(true)}
-                  color={C.student.accent}
-                  style={{ minWidth: 180 }}
-                >
+              <div style={{ marginTop: 16, display: 'flex', justifyContent: 'flex-end' }}>
+                <SoftButton onClick={() => setShowTextConfirm(true)} color={C.student.accent} style={{ minWidth: 180 }}>
                   <Check size={14} /> Apply text size
                 </SoftButton>
               </div>
@@ -802,7 +677,7 @@ export default function ParentSettings() {
           </p>
 
           <Panel style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-            {/* TTS enabled toggle */}
+            {/* TTS toggle */}
             <button
               onClick={() => setTtsEnabled?.(!settings?.tts_enabled)}
               style={{
@@ -822,15 +697,10 @@ export default function ParentSettings() {
                   <Volume2 size={19} style={{ color: settings?.tts_enabled ? C.teacher.accent : C.textMuted }} />
                 </div>
                 <span>
-                  <strong style={{ display: 'block', fontSize: 14, color: C.textPrimary }}>
-                    Read-aloud enabled
-                  </strong>
-                  <span style={{ display: 'block', fontSize: 12, color: C.textSecondary, marginTop: 2 }}>
-                    Text-to-speech during student sessions
-                  </span>
+                  <strong style={{ display: 'block', fontSize: 14, color: C.textPrimary }}>Read-aloud enabled</strong>
+                  <span style={{ display: 'block', fontSize: 12, color: C.textSecondary, marginTop: 2 }}>Text-to-speech during student sessions</span>
                 </span>
               </span>
-              {/* Toggle pill */}
               <span style={{
                 width: 48, height: 26, borderRadius: 20, flexShrink: 0,
                 background: settings?.tts_enabled ? C.teacher.accent : '#C8C8DC',
@@ -838,108 +708,62 @@ export default function ParentSettings() {
                 justifyContent: settings?.tts_enabled ? 'flex-end' : 'flex-start',
                 transition: 'all 0.2s',
               }}>
-                <span style={{
-                  width: 20, height: 20, borderRadius: '50%', background: '#FFF',
-                  boxShadow: '0 1px 4px rgba(0,0,0,0.15)',
-                }} />
+                <span style={{ width: 20, height: 20, borderRadius: '50%', background: '#FFF', boxShadow: '0 1px 4px rgba(0,0,0,0.15)' }} />
               </span>
             </button>
 
             {/* Voice models */}
             <div>
-              <p style={{ fontSize: 14, fontWeight: 800, color: C.textPrimary, margin: '0 0 8px' }}>
-                Device TTS voice
-              </p>
-              <div className="voice-model-grid" style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
-                gap: 10,
-              }}>
+              <p style={{ fontSize: 14, fontWeight: 800, color: C.textPrimary, margin: '0 0 8px' }}>Device TTS voice</p>
+              <div className="voice-model-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 10 }}>
                 {voices.length ? voices.slice(0, 8).map(voice => {
                   const active = selectedVoice === voice.name;
                   return (
-                    <button
-                      key={voice.name}
-                      onClick={() => {
-                        setSelectedVoice(voice.name);
-                        setTtsChanged(true);
-                        setTtsVoice?.(voice.name);
-                      }}
-                      style={{
-                        borderRadius: 14,
-                        border: `2px solid ${active ? C.student.accent : C.border}`,
-                        background: active ? C.student.pageBg : C.white,
-                        padding: '12px 14px',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 10,
-                        textAlign: 'left',
-                        minWidth: 0,
-                        maxWidth: '100%',
-                        overflow: 'hidden',
-                        fontFamily: 'Nunito, sans-serif',
-                      }}
-                    >
+                    <button key={voice.name} onClick={() => { setSelectedVoice(voice.name); setTtsChanged(true); setTtsVoice?.(voice.name); }} style={{
+                      borderRadius: 14,
+                      border: `2px solid ${active ? C.student.accent : C.border}`,
+                      background: active ? C.student.pageBg : C.white,
+                      padding: '12px 14px', cursor: 'pointer',
+                      display: 'flex', alignItems: 'center', gap: 10,
+                      textAlign: 'left', minWidth: 0, maxWidth: '100%', overflow: 'hidden',
+                      fontFamily: 'Nunito, sans-serif',
+                    }}>
                       <Headphones size={18} style={{ color: active ? C.student.accent : C.textMuted, flexShrink: 0 }} />
                       <span style={{ minWidth: 0, flex: 1, overflow: 'hidden' }}>
-                        <strong style={{
-                          display: 'block',
-                          width: '100%',
-                          maxWidth: '100%',
-                          fontSize: 12,
-                          color: active ? C.student.accent : C.textPrimary,
-                          whiteSpace: 'nowrap',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                        }}>
+                        <strong style={{ display: 'block', fontSize: 12, color: active ? C.student.accent : C.textPrimary, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                           {voice.name}
                         </strong>
-                        <span style={{ display: 'block', fontSize: 10, color: C.textMuted }}>
-                          {voice.lang || 'System voice'}
-                        </span>
+                        <span style={{ display: 'block', fontSize: 10, color: C.textMuted }}>{voice.lang || 'System voice'}</span>
                       </span>
                     </button>
                   );
                 }) : (
-                  <div style={{
-                    gridColumn: '1 / -1',
-                    padding: '12px 14px',
-                    borderRadius: 14,
-                    background: '#FAFAFE',
-                    border: `1px solid ${C.border}`,
-                    fontSize: 12,
-                    color: C.textSecondary,
-                  }}>
+                  <div style={{ gridColumn: '1 / -1', padding: '12px 14px', borderRadius: 14, background: '#FAFAFE', border: `1px solid ${C.border}`, fontSize: 12, color: C.textSecondary }}>
                     No device voices found. Your browser will use its default voice.
                   </div>
                 )}
               </div>
             </div>
 
-            {/* Pitch */}
+            {/* Sliders */}
             <SliderRow
               label="Voice pitch"
               hint="Higher = lighter voice · Lower = deeper voice"
-              value={ttsPitch}
-              min={0.5} max={2.0} step={0.05}
+              value={ttsPitch} min={0.5} max={2.0} step={0.05}
               accent={C.student.accent}
               formatValue={v => `${v.toFixed(2)}×`}
               onChange={v => { setTtsPitch(v); setTtsChanged(true); }}
             />
-
-            {/* Speed */}
             <SliderRow
               label="Reading speed"
               hint="Slower speed helps learners follow along"
-              value={ttsSpeed}
-              min={0.5} max={2.0} step={0.05}
+              value={ttsSpeed} min={0.5} max={2.0} step={0.05}
               accent={C.parent.accent}
               formatValue={v => `${v.toFixed(2)}×`}
               onChange={v => { setTtsSpeed(v); setTtsChanged(true); }}
             />
 
-            {/* Info note */}
+            {/* Info */}
             <div style={{
               display: 'flex', alignItems: 'flex-start', gap: 10,
               padding: '12px 14px', borderRadius: 12,
@@ -951,18 +775,11 @@ export default function ParentSettings() {
               </p>
             </div>
 
-            {/* Action row */}
+            {/* Actions */}
             <div className="tts-actions" style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-              <TTSPreviewBtn
-                pitch={ttsPitch} speed={ttsSpeed}
-                disabled={!settings?.tts_enabled}
-                onPlay={previewTTS}
-              />
+              <TTSPreviewBtn onPlay={previewTTS} disabled={!settings?.tts_enabled} />
               {ttsChanged && (
-                <SoftButton
-                  onClick={saveTTS} disabled={ttsSaving}
-                  color={C.teacher.accent}
-                >
+                <SoftButton onClick={saveTTS} disabled={ttsSaving} color={C.teacher.accent}>
                   {ttsSaving ? 'Saving…' : <><Check size={14} /> Save voice settings</>}
                 </SoftButton>
               )}
@@ -977,35 +794,18 @@ export default function ParentSettings() {
           <p style={{ fontSize: 13, color: C.textSecondary, margin: '4px 0 16px' }}>
             These actions cannot be undone.
           </p>
-
           <Panel scheme={C.danger}>
-            <div className="danger-zone-row" style={{
-              display: 'flex', alignItems: 'center',
-              justifyContent: 'space-between', flexWrap: 'wrap', gap: 16,
-            }}>
+            <div className="danger-zone-row" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                <div className="danger-zone-icon" style={{
-                  width: 44, height: 44, borderRadius: 14,
-                  background: C.danger.iconBg, flexShrink: 0,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                }}>
+                <div className="danger-zone-icon" style={{ width: 44, height: 44, borderRadius: 14, background: C.danger.iconBg, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <Trash2 size={22} style={{ color: C.danger.accent }} />
                 </div>
                 <div>
-                  <p style={{ fontSize: 14, fontWeight: 800, color: C.danger.textDark, margin: 0 }}>
-                    Delete my account
-                  </p>
-                  <p style={{ fontSize: 12, color: C.textSecondary, margin: '3px 0 0', lineHeight: 1.5 }}>
-                    Permanently removes your account, children, reports, and enrolments.
-                  </p>
+                  <p style={{ fontSize: 14, fontWeight: 800, color: C.danger.textDark, margin: 0 }}>Delete my account</p>
+                  <p style={{ fontSize: 12, color: C.textSecondary, margin: '3px 0 0', lineHeight: 1.5 }}>Permanently removes your account, children, reports, and enrolments.</p>
                 </div>
               </div>
-              <SoftButton
-                onClick={() => setShowDelete(true)}
-                danger
-                outline
-                style={{ flexShrink: 0 }}
-              >
+              <SoftButton onClick={() => setShowDelete(true)} danger outline style={{ flexShrink: 0 }}>
                 <Trash2 size={14} /> Delete account
               </SoftButton>
             </div>
@@ -1014,33 +814,15 @@ export default function ParentSettings() {
 
       </div>
 
-      {/* ── Text size confirmation modal ─────────────────── */}
       {showTextConfirm && (
         <TextSizeConfirm
-          currentSize={originalTextSize}
-          nextSize={pendingTextSize}
+          currentSize={originalTextSize} nextSize={pendingTextSize}
           onCancel={revertTextSizePreview}
-          onConfirm={() => {
-            setTextSize(pendingTextSize);
-            setShowTextConfirm(false);
-            showToast('Text size applied.');
-          }}
+          onConfirm={() => { setTextSize(pendingTextSize); setShowTextConfirm(false); showToast('Text size applied.'); }}
         />
       )}
-
-      {/* ── Delete confirmation overlay ───────────────────── */}
-      {showDelete && (
-        <DeleteConfirm
-          onCancel={() => setShowDelete(false)}
-          onConfirm={handleDelete}
-          loading={deleteLoading}
-        />
-      )}
-
-      {/* ── Toast ─────────────────────────────────────────── */}
-      {toast && (
-        <Toast msg={toast.msg} type={toast.type} onDone={() => setToast(null)} />
-      )}
+      {showDelete && <DeleteConfirm onCancel={() => setShowDelete(false)} onConfirm={handleDelete} loading={deleteLoading} />}
+      {toast && <Toast msg={toast.msg} type={toast.type} onDone={() => setToast(null)} />}
     </>
   );
 }
