@@ -609,73 +609,7 @@ export default function TeacherDashboard() {
         </div>
       </section>
 
-      {/* ── Students overview ─────────────────────────────── */}
-      {children.length > 0 && (
-        <section>
-          <div style={{
-            background: C.white,
-            border: `1px solid ${C.border}`,
-            borderRadius: 20,
-            padding: '24px 24px 20px',
-            boxShadow: C.shadowSm,
-          }}>
-            <div style={{
-              display: 'flex', alignItems: 'center',
-              justifyContent: 'space-between', marginBottom: 18,
-              flexWrap: 'wrap', gap: 10,
-            }}>
-              <div>
-                <SectionLabel icon={<GraduationCap size={12} />} text="Students" />
-                <SectionTitle>Your students</SectionTitle>
-              </div>
-              <SoftButton to="/teacher/children" outline color={C.teacher.accent} small>
-                View all <ArrowRight size={13} />
-              </SoftButton>
-            </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {children.slice(0, 5).map(child => (
-                <StudentRow key={child.id} child={child} />
-              ))}
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* ── Empty state for no students ───────────────────── */}
-      {children.length === 0 && (
-        <section>
-          <div style={{
-            background: C.teacher.pageBg,
-            border: `1.5px solid ${C.teacher.border}`,
-            borderRadius: 20,
-            padding: '36px 28px',
-            textAlign: 'center',
-            boxShadow: C.shadowSm,
-          }}>
-            <div style={{
-              width: 56, height: 56, borderRadius: 18,
-              background: C.teacher.iconBg,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              margin: '0 auto 14px',
-            }}>
-              <TrendingUp size={28} style={{ color: C.teacher.accent }} />
-            </div>
-            <p style={{
-              fontFamily: '"Fredoka One", cursive',
-              fontSize: 20, color: C.teacher.textDark, margin: '0 0 6px',
-            }}>
-              No students yet
-            </p>
-            <p style={{ fontSize: 13, color: C.textSecondary, margin: '0 0 20px', lineHeight: 1.6 }}>
-              Students will appear here once they join your classroom.
-            </p>
-            <SoftButton to="/teacher/assessments" color={C.teacher.accent}>
-              View Assessments <ArrowRight size={14} />
-            </SoftButton>
-          </div>
-        </section>
-      )}
 
     </div>
   );
