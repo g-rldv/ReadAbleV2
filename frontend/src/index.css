@@ -430,3 +430,119 @@ textarea:focus {
 .drop-zone {
   border-color: var(--border-interactive) !important;
 }
+
+
+/* ============================================================
+   Night theme visibility patch
+   Makes dark mode readable across parent pages using Tailwind
+   fixed light classes.
+   ============================================================ */
+
+[data-theme="night"] {
+  --bg-primary:    #0B0820;
+  --bg-card:       #181334;
+  --bg-card-grad:  linear-gradient(145deg, #201944 0%, #15102E 100%);
+  --bg-sidebar:    #100C26;
+  --text-primary:  #F8F4FF;
+  --text-muted:    #C9BFF2;
+  --border-color:  #4E4278;
+  --shadow:        0 8px 28px rgba(0,0,0,0.45);
+  --accent:        #9B7CFF;
+}
+
+/* Page background */
+[data-theme="night"] body,
+[data-theme="night"] #root {
+  background: var(--bg-primary) !important;
+  color: var(--text-primary) !important;
+}
+
+/* App surfaces/cards */
+[data-theme="night"] .bg-white,
+[data-theme="night"] .bg-gray-50,
+[data-theme="night"] .bg-slate-50,
+[data-theme="night"] .bg-zinc-50 {
+  background-color: var(--bg-card) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border-color) !important;
+}
+
+/* Light gradient/card helpers */
+[data-theme="night"] [style*="background: C.white"],
+[data-theme="night"] [style*="background: #FFFFFF"],
+[data-theme="night"] [style*="background:#FFFFFF"] {
+  background: var(--bg-card) !important;
+}
+
+/* Text colors commonly used on parent pages */
+[data-theme="night"] .text-gray-900,
+[data-theme="night"] .text-gray-800,
+[data-theme="night"] .text-gray-700,
+[data-theme="night"] .text-slate-900,
+[data-theme="night"] .text-slate-800,
+[data-theme="night"] .text-zinc-900 {
+  color: var(--text-primary) !important;
+}
+
+[data-theme="night"] .text-gray-600,
+[data-theme="night"] .text-gray-500,
+[data-theme="night"] .text-gray-400,
+[data-theme="night"] .text-slate-600,
+[data-theme="night"] .text-slate-500,
+[data-theme="night"] .text-zinc-500 {
+  color: var(--text-muted) !important;
+}
+
+/* Plain headings/paragraphs inside dark pages */
+[data-theme="night"] h1,
+[data-theme="night"] h2,
+[data-theme="night"] h3,
+[data-theme="night"] h4 {
+  color: var(--text-primary);
+}
+
+[data-theme="night"] p,
+[data-theme="night"] label {
+  color: inherit;
+}
+
+/* Borders */
+[data-theme="night"] .border,
+[data-theme="night"] .border-gray-100,
+[data-theme="night"] .border-gray-200,
+[data-theme="night"] .border-slate-200 {
+  border-color: var(--border-color) !important;
+}
+
+/* Inputs */
+[data-theme="night"] input,
+[data-theme="night"] textarea,
+[data-theme="night"] select {
+  background: #100C26 !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border-color) !important;
+}
+
+[data-theme="night"] input::placeholder,
+[data-theme="night"] textarea::placeholder {
+  color: #8F85BE !important;
+}
+
+/* Keep success/warning cards readable */
+[data-theme="night"] .bg-green-50,
+[data-theme="night"] .bg-emerald-50 {
+  background-color: rgba(34, 197, 94, 0.12) !important;
+  border-color: rgba(34, 197, 94, 0.35) !important;
+}
+
+[data-theme="night"] .bg-orange-50,
+[data-theme="night"] .bg-amber-50 {
+  background-color: rgba(249, 115, 22, 0.14) !important;
+  border-color: rgba(249, 115, 22, 0.35) !important;
+}
+
+[data-theme="night"] .bg-blue-50,
+[data-theme="night"] .bg-sky-50 {
+  background-color: rgba(96, 165, 250, 0.14) !important;
+  border-color: rgba(96, 165, 250, 0.35) !important;
+}

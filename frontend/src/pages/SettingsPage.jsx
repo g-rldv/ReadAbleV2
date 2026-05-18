@@ -644,8 +644,8 @@ export default function ParentSettings() {
         {/* ── Page header ──────────────────────────────────── */}
         <div className="settings-header" style={{
           borderRadius: 22,
-          background: C.parent.pageBg,
-          border: `1.5px solid ${C.parent.border}`,
+          background: 'var(--bg-card, #FDF0E8)',
+          border: '1.5px solid var(--border-color, #F0C8A8)',
           padding: '26px 28px',
           boxShadow: C.shadowSm,
           display: 'flex', alignItems: 'center', gap: 16,
