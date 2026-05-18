@@ -10,7 +10,7 @@ import {
   Copy, Check, Clock, RefreshCw, Sparkles,
   GraduationCap, CalendarDays, ClipboardList,
   User, CheckCircle2, AlertCircle, Baby,
-  Hash, BookOpen,
+  Hash, BookOpen, Trash2,
 } from 'lucide-react';
 
 // ─── Design tokens (exact mirror of AssessmentsListPage) ─────
@@ -405,9 +405,19 @@ export default function ClassroomDetailPage() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const pending  = members.filter(m => m.status === 'pending');
-  const approved = members.filter(m => m.status === 'approved');
-  const rejected = members.filter(m => m.status === 'rejected');
+  const handleDeleteClassroom = async () => {
+    if (!window.confirm('Are you sure you want to delete this classroom? This action cannot be undone.')) return;
+    try {
+      await api.delete(`/classrooms/${id}`);
+      setFlash({ type: 'success', msg: 'Classroom deleted successfully.' });
+      setTimeout(() => navigate('/teacher/classrooms'), 1500);
+    } catch (err) {
+      alert(err.response?.data?.error || 'Failed to delete classroom');
+    }
+  };
+
+  const pendingStudents  = students.filter(s => s.status === 'pending');
+  const approvedStudents = students.filter(s => s.status === 'approved');
 
   // ── Loading ─────────────────────────────────────────────────
   if (loading) {
@@ -480,9 +490,12 @@ export default function ClassroomDetailPage() {
       )}
 
       {/* ── Back button ─────────────────────────────────────── */}
-      <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <SoftButton onClick={() => navigate('/teacher/classrooms')} outline color={C.textSecondary} small>
           <ArrowLeft size={14} /> Back to Classrooms
+        </SoftButton>
+        <SoftButton onClick={handleDeleteClassroom} color={C.rose.accent} small>
+          <Trash2 size={14} /> Delete Classroom
         </SoftButton>
       </div>
 
@@ -540,10 +553,9 @@ export default function ClassroomDetailPage() {
         gap: 12,
       }}>
         {[
-          { icon: Users,        label: 'Total Requests', value: members.length,  scheme: C.teacher },
-          { icon: CheckCircle2, label: 'Approved',       value: approved.length, scheme: C.student },
-          { icon: Clock,        label: 'Pending',        value: pending.length,  scheme: C.parent  },
-          { icon: Baby,         label: 'Students',       value: students.length, scheme: { accent: '#5A50A0', iconBg: '#EDE8FF' } },
+          { icon: Baby,         label: 'Total Students', value: students.length, scheme: { accent: '#5A50A0', iconBg: '#EDE8FF' } },
+          { icon: CheckCircle2, label: 'Approved',       value: approvedStudents.length, scheme: C.student },
+          { icon: Clock,        label: 'Pending',        value: pendingStudents.length,  scheme: C.parent  },
         ].map(({ icon: Icon, label, value, scheme }) => (
           <div key={label} style={{
             background: C.white, border: `1.5px solid ${C.border}`,
@@ -570,22 +582,7 @@ export default function ClassroomDetailPage() {
       </div>
 
       {/* ── Pending requests ────────────────────────────────── */}
-      {pending.length > 0 && (
-        <section style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          <div>
-            <SectionLabel icon={<Clock size={12} />} text="Pending" />
-            <SectionTitle style={{ fontSize: 'clamp(17px, 2.5vw, 21px)', marginBottom: 14 }}>
-              Pending requests ({pending.length})
-            </SectionTitle>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {pending.map(m => (
-                <MemberRow key={m.user_id} member={m} onAction={handleAction}
-                  isLoading={actionLoading === m.user_id} showActions />
-              ))}
-            </div>
-          </div>
-        </section>
-      )}
+
 
       {/* ── Enrolled students ────────────────────────────────── */}
       <section style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -637,75 +634,7 @@ export default function ClassroomDetailPage() {
         )}
       </section>
 
-      {/* ── Approved members ─────────────────────────────────── */}
-      {approved.length > 0 && (
-        <section style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          <div>
-            <SectionLabel icon={<Users size={12} />} text="Roster" />
-            <SectionTitle style={{ fontSize: 'clamp(17px, 2.5vw, 21px)', marginBottom: 14 }}>
-              Approved guardians ({approved.length})
-            </SectionTitle>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {approved.map(m => (
-                <MemberRow key={m.user_id} member={m} onAction={handleAction} isLoading={false} />
-              ))}
-            </div>
-          </div>
-        </section>
-      )}
 
-      {/* ── Rejected members ─────────────────────────────────── */}
-      {rejected.length > 0 && (
-        <section style={{ display: 'flex', flexDirection: 'column', gap: 14, opacity: 0.8 }}>
-          <div>
-            <SectionLabel icon={<UserX size={12} />} text="Archived" />
-            <SectionTitle style={{ fontSize: 'clamp(17px, 2.5vw, 21px)', color: C.textMuted, marginBottom: 14 }}>
-              Rejected requests ({rejected.length})
-            </SectionTitle>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {rejected.map(m => (
-                <MemberRow key={m.user_id} member={m} onAction={handleAction} isLoading={false} />
-              ))}
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* ── Empty state ──────────────────────────────────────── */}
-      {members.length === 0 && (
-        <div style={{
-          background: C.teacher.pageBg,
-          border: `1.5px solid ${C.teacher.border}`,
-          borderRadius: 20, padding: '40px 28px',
-          textAlign: 'center', boxShadow: C.shadowSm,
-        }}>
-          <div style={{
-            width: 56, height: 56, borderRadius: 18,
-            background: C.teacher.iconBg,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            margin: '0 auto 14px',
-          }}>
-            <ClipboardList size={28} style={{ color: C.teacher.accent }} />
-          </div>
-          <p style={{ fontFamily: '"Fredoka One", cursive', fontSize: 20, color: C.teacher.textDark, margin: '0 0 6px' }}>
-            No join requests yet
-          </p>
-          <p style={{ fontSize: 13, color: C.textSecondary, margin: '0 0 6px', lineHeight: 1.6 }}>
-            Share the join code with parents so they can request access.
-          </p>
-          <div style={{
-            display: 'inline-flex', alignItems: 'center', gap: 6,
-            padding: '6px 14px', borderRadius: 10,
-            background: C.white, border: `1.5px solid ${C.teacher.border}`,
-            fontFamily: '"Courier New", monospace', fontWeight: 900,
-            fontSize: 18, color: C.textPrimary, letterSpacing: '0.06em',
-            marginTop: 8,
-          }}>
-            <Hash size={14} style={{ color: C.textMuted }} />
-            {classroom.code}
-          </div>
-        </div>
-      )}
 
       {/* ── Refresh ─────────────────────────────────────────── */}
       <div style={{ display: 'flex', justifyContent: 'flex-end' }}>

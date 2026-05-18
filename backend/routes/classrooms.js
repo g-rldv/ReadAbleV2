@@ -272,6 +272,24 @@ router.post('/:id/children/:childId/:action', requireAuth, requireRole('teacher'
   }
 });
 
+// ── Teacher: Delete classroom ───────────────────────────────
+router.delete('/:id', requireAuth, requireRole('teacher'), async (req, res) => {
+  const { id } = req.params;
+  try {
+    const classroom = await pool.query(
+      'SELECT id FROM classrooms WHERE id = $1 AND teacher_id = $2',
+      [id, req.user.id]
+    );
+    if (classroom.rows.length === 0) return res.status(404).json({ error: 'Classroom not found' });
+
+    await pool.query('DELETE FROM classrooms WHERE id = $1', [id]);
+    res.json({ success: true });
+  } catch (err) {
+    console.error('[Classrooms/Delete]', err.message);
+    res.status(500).json({ error: 'Failed to delete classroom' });
+  }
+});
+
 // ── Parent: Get activities for an approved classroom (visible to approved members)
 router.get('/:id/activities', requireAuth, requireRole('parent'), async (req, res) => {
   const { id } = req.params;
