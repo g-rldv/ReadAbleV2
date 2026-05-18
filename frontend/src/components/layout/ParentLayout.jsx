@@ -40,6 +40,98 @@ const NAV_LINKS = [
   { to: '/parent/settings',       label: 'Settings',  Icon: Settings      },
 ];
 
+// ─── Logout confirm modal ─────────────────────────────────────
+function LogoutConfirmModal({ onConfirm, onCancel }) {
+  return (
+    <div
+      onClick={e => e.target === e.currentTarget && onCancel()}
+      style={{
+        position: 'fixed',
+        inset: 0,
+        zIndex: 9999,
+        background: 'rgba(20, 16, 40, 0.55)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 18,
+      }}
+    >
+      <div
+        style={{
+          width: '100%',
+          maxWidth: 360,
+          borderRadius: 20,
+          background: 'var(--bg-card, #FFFFFF)',
+          border: '1.5px solid var(--border-color, #DDD8F2)',
+          boxShadow: '0 18px 60px rgba(0,0,0,0.22)',
+          padding: 22,
+          fontFamily: '"Nunito", sans-serif',
+        }}
+      >
+        <h3
+          style={{
+            fontFamily: '"Fredoka One", cursive',
+            fontSize: 22,
+            color: 'var(--text-primary, #28264A)',
+            margin: '0 0 6px',
+          }}
+        >
+          Sign out?
+        </h3>
+
+        <p
+          style={{
+            fontSize: 13,
+            color: 'var(--text-muted, #6A6898)',
+            lineHeight: 1.55,
+            margin: '0 0 20px',
+          }}
+        >
+          Your progress is saved. You can sign back in anytime.
+        </p>
+
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button
+            type="button"
+            onClick={onCancel}
+            style={{
+              flex: 1,
+              minHeight: 42,
+              borderRadius: 12,
+              border: '1.5px solid var(--border-color, #DDD8F2)',
+              background: 'transparent',
+              color: 'var(--text-muted, #6A6898)',
+              fontFamily: 'inherit',
+              fontWeight: 800,
+              cursor: 'pointer',
+            }}
+          >
+            Cancel
+          </button>
+
+          <button
+            type="button"
+            onClick={onConfirm}
+            style={{
+              flex: 1,
+              minHeight: 42,
+              borderRadius: 12,
+              border: '1.5px solid #C03030',
+              background: '#C03030',
+              color: '#FFFFFF',
+              fontFamily: 'inherit',
+              fontWeight: 900,
+              cursor: 'pointer',
+            }}
+          >
+            Sign Out
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Desktop NavLink pill ─────────────────────────────────────
 function DesktopLink({ to, label, Icon }) {
   return (
@@ -137,95 +229,6 @@ function IconBtn({ onClick, children, title, danger }) {
   );
 }
 
-// ─── Logout Confirmation Modal ────────────────────────────────
-function LogoutConfirmModal({ onConfirm, onCancel }) {
-  return (
-    <div
-      onClick={e => e.target === e.currentTarget && onCancel()}
-      style={{
-        position: 'fixed',
-        inset: 0,
-        zIndex: 9999,
-        background: 'rgba(20, 16, 40, 0.55)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: 18,
-      }}
-    >
-      <div
-        style={{
-          width: '100%',
-          maxWidth: 360,
-          borderRadius: 20,
-          background: 'var(--bg-card, #FFFFFF)',
-          border: '1.5px solid var(--border-color, #DDD8F2)',
-          boxShadow: '0 18px 60px rgba(0,0,0,0.22)',
-          padding: 22,
-          fontFamily: '"Nunito", sans-serif',
-        }}
-      >
-        <h3
-          style={{
-            fontFamily: '"Fredoka One", cursive',
-            fontSize: 22,
-            color: 'var(--text-primary, #28264A)',
-            margin: '0 0 6px',
-          }}
-        >
-          Sign out?
-        </h3>
-        <p
-          style={{
-            fontSize: 13,
-            color: 'var(--text-muted, #6A6898)',
-            lineHeight: 1.55,
-            margin: '0 0 20px',
-          }}
-        >
-          Your progress is saved. You can sign back in anytime.
-        </p>
-        <div style={{ display: 'flex', gap: 10 }}>
-          <button
-            type="button"
-            onClick={onCancel}
-            style={{
-              flex: 1,
-              minHeight: 42,
-              borderRadius: 12,
-              border: '1.5px solid var(--border-color, #DDD8F2)',
-              background: 'transparent',
-              color: 'var(--text-muted, #6A6898)',
-              fontFamily: 'inherit',
-              fontWeight: 800,
-              cursor: 'pointer',
-            }}
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            onClick={onConfirm}
-            style={{
-              flex: 1,
-              minHeight: 42,
-              borderRadius: 12,
-              border: '1.5px solid #C03030',
-              background: '#C03030',
-              color: '#FFFFFF',
-              fontFamily: 'inherit',
-              fontWeight: 900,
-              cursor: 'pointer',
-            }}
-          >
-            Sign Out
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 // ─── Main layout ──────────────────────────────────────────────
 export default function ParentLayout() {
   const { logout, user } = useAuth();
@@ -270,7 +273,7 @@ export default function ParentLayout() {
         color:       C.textPrimary,
       }}>
 
-        {/* ══ Header ══════════════════════════════════════════ */}
+        {/* ══ Header (mobile only) ════════════════════════════ */}
         <header className="parent-topbar" style={{
           position:     'sticky', top: 0, zIndex: 100,
           background:   C.white,
@@ -307,19 +310,13 @@ export default function ParentLayout() {
               </div>
 
               {/* Divider */}
-              <div style={{
-                width: 1, height: 22, background: C.border, flexShrink: 0,
-                display: 'none',
-              }}
+              <div
                 className="desk-divider"
+                style={{ width: 1, height: 22, background: C.border, flexShrink: 0, display: 'none' }}
               />
 
               {/* ── Desktop nav ─────────────────────────────── */}
-              <nav style={{
-                display: 'none', alignItems: 'center', gap: 2,
-              }}
-                className="desktop-nav"
-              >
+              <nav className="desktop-nav" style={{ display: 'none', alignItems: 'center', gap: 2 }}>
                 {NAV_LINKS.map(link => (
                   <DesktopLink key={link.to} {...link} />
                 ))}
@@ -330,14 +327,15 @@ export default function ParentLayout() {
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
 
               {/* User pill — desktop only */}
-              <div style={{
-                display: 'none', alignItems: 'center', gap: 8,
-                padding: '5px 12px 5px 6px',
-                borderRadius: 20,
-                border: `1px solid ${C.border}`,
-                background: C.page,
-              }}
+              <div
                 className="user-pill"
+                style={{
+                  display: 'none', alignItems: 'center', gap: 8,
+                  padding: '5px 12px 5px 6px',
+                  borderRadius: 20,
+                  border: `1px solid ${C.border}`,
+                  background: C.page,
+                }}
               >
                 <div style={{
                   width: 26, height: 26, borderRadius: 8,
@@ -410,7 +408,7 @@ export default function ParentLayout() {
                 {NAV_LINKS.map(link => (
                   <MobileLink
                     key={link.to}
-                    {link}
+                    {...link}
                     onClick={() => setMobileOpen(false)}
                   />
                 ))}
@@ -446,14 +444,16 @@ export default function ParentLayout() {
         <main style={{ maxWidth: 1100, margin: '0 auto', padding: '32px 24px' }}>
           <Outlet />
         </main>
-      </div>
 
-      {showLogoutModal && (
-        <LogoutConfirmModal
-          onCancel={() => setShowLogoutModal(false)}
-          onConfirm={handleLogout}
-        />
-      )}
+        {/* ── Logout confirm modal ─────────────────────────── */}
+        {showLogoutModal && (
+          <LogoutConfirmModal
+            onCancel={() => setShowLogoutModal(false)}
+            onConfirm={handleLogout}
+          />
+        )}
+
+      </div>
     </>
   );
 }
