@@ -101,10 +101,10 @@ router.get('/', requireAuth, requireRole('teacher'), async (req, res) => {
   try {
     const classrooms = await pool.query(
       `SELECT c.*,
-              COUNT(cm.id) FILTER (WHERE cm.status = 'approved') AS member_count,
-              COUNT(cm.id) FILTER (WHERE cm.status = 'pending')  AS pending_count
+              COUNT(cca.id) FILTER (WHERE cca.status = 'approved') AS member_count,
+              COUNT(cca.id) FILTER (WHERE cca.status = 'pending')  AS pending_count
        FROM classrooms c
-       LEFT JOIN class_memberships cm ON c.id = cm.classroom_id
+       LEFT JOIN classroom_child_assignments cca ON c.id = cca.classroom_id
        WHERE c.teacher_id = $1
        GROUP BY c.id
        ORDER BY c.created_at DESC`,

@@ -113,6 +113,23 @@ export default function ParentChildDetailPage() {
             Teacher: {child.teacher_first_name} {child.teacher_last_name}
           </p>
         )}
+        <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-slate-600">
+          {child.date_of_birth && (
+            <div>
+              <span className="font-semibold">Date of Birth:</span> {new Date(child.date_of_birth).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
+            </div>
+          )}
+          {child.gender && (
+            <div>
+              <span className="font-semibold">Gender:</span> {child.gender}
+            </div>
+          )}
+          {child.asd_notes && (
+            <div className="md:col-span-2">
+              <span className="font-semibold">Notes / ASD Context:</span> {child.asd_notes}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Available Assessments */}

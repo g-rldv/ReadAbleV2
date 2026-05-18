@@ -140,12 +140,12 @@ function ClassroomCard({ classroom, onCopy, copied, onManage }) {
           <span style={{
             display: 'inline-flex', alignItems: 'center', gap: 4,
             padding: '4px 10px', borderRadius: 20,
-            background: C.parent.accentLight,
-            border: `1px solid ${C.parent.border}`,
-            fontSize: 11, fontWeight: 800, color: C.parent.textDark,
+            background: '#FFEBEB',
+            border: `1px solid #FFCACA`,
+            fontSize: 11, fontWeight: 800, color: '#D60000',
             whiteSpace: 'nowrap',
           }}>
-            <Bell size={11} /> {pendingCount} pending
+            <Bell size={11} style={{ fill: '#D60000' }} /> {pendingCount} pending
           </span>
         ) : (
           <span style={{
@@ -181,7 +181,7 @@ function ClassroomCard({ classroom, onCopy, copied, onManage }) {
           background: C.student.accentLight, border: `1px solid ${C.student.border}`,
           fontSize: 11, fontWeight: 700, color: C.student.textDark,
         }}>
-          <Users size={10} /> {memberCount} member{memberCount !== 1 ? 's' : ''}
+          <Baby size={10} /> {memberCount} student{memberCount !== 1 ? 's' : ''}
         </div>
         {/* Clickable join code chip */}
         <button

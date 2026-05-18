@@ -283,7 +283,7 @@ const NAV_LINKS = [
   { icon: Users,           label: 'Students',          to: '/teacher/children' },
   { icon: ClipboardList,   label: 'Assessments',       to: '/teacher/assessments' },
   { icon: BarChart2,       label: 'Analytics',         to: '/teacher/analytics' },
-  { icon: PlusCircle,      label: 'Create Assessment', to: '/teacher/assessment-builder' },
+  { icon: PlusCircle,      label: 'Create Assessment', to: '/teacher/assessments/new' },
   { icon: Settings,        label: 'Settings',          to: '/teacher/settings' },
 ];
 
@@ -512,7 +512,7 @@ export default function TeacherDashboard() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           {/* Burger menu — visible only on mobile */}
           <BurgerMenu />
-          <SoftButton to="/teacher/assessment-builder" color={C.teacher.accent} style={{ flexShrink: 0 }}>
+          <SoftButton to="/teacher/assessments/new" color={C.teacher.accent} style={{ flexShrink: 0 }}>
             <PlusCircle size={16} /> Create Assessment
           </SoftButton>
         </div>
@@ -603,7 +603,7 @@ export default function TeacherDashboard() {
             icon={PlusCircle}
             label="Create Assessment"
             desc="Build a new reading assessment for your class"
-            to="/teacher/assessment-builder"
+            to="/teacher/assessments/new"
             scheme={C.teacher}
           />
         </div>
