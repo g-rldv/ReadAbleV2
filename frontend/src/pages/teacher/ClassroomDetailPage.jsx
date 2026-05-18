@@ -1,26 +1,135 @@
 // ============================================================
 // ClassroomDetailPage — Teacher approves / rejects parent requests
+// Design-synced with TeacherDashboard (Soft pastels, CSS variables)
 // ============================================================
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../../utils/api';
 import {
   ArrowLeft, UserCheck, UserX, Users,
-  Copy, Check, Clock, RefreshCw,
+  Copy, Check, Clock, RefreshCw, Sparkles,
+  GraduationCap, CalendarDays, ClipboardList,
+  User, CheckCircle2, AlertCircle, X, Baby
 } from 'lucide-react';
 
-const STATUS_STYLES = {
-  approved: 'bg-green-100 text-green-700 border-green-200',
-  rejected: 'bg-red-100  text-red-700  border-red-200',
-  pending:  'bg-amber-100 text-amber-700 border-amber-200',
+// ─── Design tokens linked to Global CSS Variables ────────────
+const C = {
+  page: 'var(--bg-primary, #F2F0FA)',
+  white: 'var(--bg-card, #FFFFFF)',
+  border: 'var(--border-color, #DDD8F2)',
+  shadowSm: 'var(--shadow, 0 1px 8px rgba(80,60,160,0.07))',
+  shadowMd: '0 4px 24px rgba(80,60,160,0.10)',
+
+  teacher: {
+    pageBg:      'var(--bg-sidebar, #EBF4EF)',
+    border:      'var(--border-color, #B8D8C4)',
+    accent:      'var(--accent, #3A7A5C)',
+    accentLight: 'var(--bg-primary, #CCEADB)',
+    textDark:    'var(--text-primary, #1A4A38)',
+    iconBg:      'var(--bg-sidebar, #D0EDE0)',
+  },
+
+  student: {
+    pageBg:      'var(--bg-sidebar, #EBF0FF)',
+    border:      'var(--border-interactive, #B8C8F0)',
+    accent:      'var(--accent, #4058C0)',
+    accentLight: 'var(--bg-primary, #D0D8F8)',
+    textDark:    'var(--text-primary, #1A2870)',
+    iconBg:      'var(--bg-sidebar, #D0D8F8)',
+  },
+
+  amber: {
+    pageBg:      'rgba(245, 158, 11, 0.12)',
+    border:      'rgba(245, 158, 11, 0.35)',
+    accent:      '#B45309',
+    accentLight: 'rgba(245, 158, 11, 0.15)',
+    textDark:    'var(--text-primary, #78350F)',
+  },
+
+  rose: {
+    pageBg:      'rgba(232, 48, 96, 0.1)',
+    border:      'var(--border-focus, #FECDD3)',
+    accent:      '#E83060',
+    accentLight: 'rgba(232, 48, 96, 0.15)',
+    textDark:    'var(--text-primary, #881337)',
+  },
+
+  textPrimary: 'var(--text-primary, #28264A)',
+  textSecondary: 'var(--text-muted, #6A6898)',
+  textMuted: 'var(--text-muted, #9A98C0)',
+  primary: 'var(--accent, #5A50A0)',
 };
 
-const STATUS_LABEL = {
-  approved: '✓ Approved',
-  rejected: '✗ Rejected',
-  pending:  '⏳ Pending',
+// ─── Status primitive token variables ─────────────────────────
+const STATUS_THEMES = {
+  approved: { text: C.teacher.textDark, bg: C.teacher.pageBg, border: C.teacher.border, label: 'Approved' },
+  rejected: { text: C.rose.textDark, bg: C.rose.pageBg, border: C.rose.border, label: 'Rejected' },
+  pending:  { text: C.amber.textDark, bg: C.amber.pageBg, border: C.amber.border, label: 'Pending' },
 };
 
+// ─── Shared primitives ────────────────────────────────────────
+function SectionLabel({ icon, text }) {
+  return (
+    <div style={{
+      display: 'inline-flex', alignItems: 'center', gap: 6,
+      padding: '5px 12px', borderRadius: 20,
+      background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)', marginBottom: 10,
+    }}>
+      <span style={{ color: 'var(--accent)', display: 'flex' }}>{icon}</span>
+      <span style={{ fontSize: 11, fontWeight: 800, color: 'var(--accent)', textTransform: 'uppercase' }}>
+        {text}
+      </span>
+    </div>
+  );
+}
+
+function SectionTitle({ children, style = {} }) {
+  return (
+    <h2 style={{
+      fontFamily: '"Fredoka One", cursive',
+      fontSize: 'clamp(18px, 2.5vw, 22px)',
+      color: C.textPrimary, margin: '0 0 4px', lineHeight: 1.2,
+      ...style,
+    }}>
+      {children}
+    </h2>
+  );
+}
+
+function SoftButton({ children, onClick, color, outline, small, disabled, type = 'button', style: extra = {} }) {
+  const [hov, setHov] = useState(false);
+  const col = color || C.primary;
+  const base = {
+    display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+    padding: small ? '6px 14px' : '10px 20px',
+    borderRadius: 12, fontSize: small ? 12 : 13, fontWeight: 700,
+    fontFamily: 'Nunito, sans-serif', cursor: disabled ? 'not-allowed' : 'pointer',
+    border: `2px solid ${col}`, transition: 'all 0.15s',
+    opacity: disabled ? 0.5 : 1, ...extra,
+  };
+  const filled  = { ...base, background: hov && !disabled ? 'var(--border-focus)' : col, color: '#FFF' };
+  const outline_ = { ...base, background: hov && !disabled ? 'rgba(128,128,128,0.12)' : 'transparent', color: col };
+  return (
+    <button type={type} onClick={onClick} disabled={disabled} style={outline ? outline_ : filled}
+      onMouseEnter={() => setHov(true)} onMouseLeave={() => setHov(false)}>
+      {children}
+    </button>
+  );
+}
+
+function Card({ children, style: extra = {} }) {
+  return (
+    <div style={{
+      background: C.white, border: `1.5px solid ${C.border}`,
+      borderRadius: 20, padding: '24px 26px',
+      boxShadow: C.shadowSm, ...extra,
+    }}>
+      {children}
+    </div>
+  );
+}
+
+// ─── Main component ───────────────────────────────────────────
 export default function ClassroomDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -29,7 +138,7 @@ export default function ClassroomDetailPage() {
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [actionLoading, setActionLoading] = useState(null); // userId being actioned
+  const [actionLoading, setActionLoading] = useState(null); 
   const [flash, setFlash] = useState(null);
   const [copied, setCopied] = useState(false);
 
@@ -44,7 +153,7 @@ export default function ClassroomDetailPage() {
       ]);
       setClassroom(classRes.data.classroom);
       setMembers(membersRes.data.members || []);
-      // fetch students linked to this classroom
+      
       try {
         const kids = await api.get(`/classrooms/${id}/children`);
         setStudents(kids.data.children || []);
@@ -67,7 +176,6 @@ export default function ClassroomDetailPage() {
     setActionLoading(userId);
     try {
       await api.post(`/classrooms/${id}/members/${userId}/${action}`);
-      // Optimistic update
       setMembers((prev) =>
         prev.map((m) =>
           m.user_id === userId
@@ -76,21 +184,20 @@ export default function ClassroomDetailPage() {
         )
       );
       if (action === 'approve') {
-        // refresh students list — backend links parent's children to teacher on approve
         try {
           const kids = await api.get(`/classrooms/${id}/children`);
           setStudents(kids.data.children || []);
         } catch (e) {
           // ignore
         }
-        setFlash({ type: 'success', msg: 'Member approved and students linked.' });
+        setFlash({ type: 'success', msg: 'Member approved and student connections updated.' });
         setTimeout(() => setFlash(null), 3000);
       } else {
-        setFlash({ type: 'info', msg: 'Membership updated.' });
-        setTimeout(() => setFlash(null), 2000);
+        setFlash({ type: 'info', msg: 'Membership request updated.' });
+        setTimeout(() => setFlash(null), 2500);
       }
     } catch (err) {
-      alert(err.response?.data?.error || 'Action failed');
+      alert(err.response?.data?.error || 'Action configuration execution failed');
     } finally {
       setActionLoading(null);
     }
@@ -109,233 +216,284 @@ export default function ClassroomDetailPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-20">
-        <div className="text-slate-500">Loading classroom…</div>
+      <div style={{
+        display: 'flex', flexDirection: 'column', alignItems: 'center',
+        justifyContent: 'center', padding: '64px 0', gap: 14, width: '100%'
+      }}>
+        <div style={{
+          width: 36, height: 36, borderRadius: '50%',
+          border: `3px solid ${C.teacher.accentLight}`,
+          borderTop: `3px solid ${C.teacher.accent}`,
+          animation: 'classroomDetailSpin 0.8s linear infinite',
+        }} />
+        <p style={{ fontSize: 13, fontWeight: 700, color: C.textSecondary, margin: 0 }}>
+          Loading classroom roster details…
+        </p>
+        <style>{`@keyframes classroomDetailSpin { to { transform: rotate(360deg); } }`}</style>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div>
-        <button onClick={() => navigate('/teacher/classrooms')} className="text-sky font-medium mb-4 flex items-center gap-1">
-          <ArrowLeft size={16} /> Back to Classrooms
-        </button>
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700">{error}</div>
+      <div style={{ fontFamily: 'Nunito, sans-serif', display: 'flex', flexDirection: 'column', gap: 16, width: '100%' }}>
+        <div>
+          <SoftButton onClick={() => navigate('/teacher/classrooms')} outline color="var(--accent)">
+            <ArrowLeft size={14} /> Back to Classrooms
+          </SoftButton>
+        </div>
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 10, padding: '14px 16px', borderRadius: 14,
+          background: '#FEF0F0', border: '1.5px solid #F8C8C8', color: '#C03030', fontSize: 13, fontWeight: 700
+        }}>
+          <AlertCircle size={16} /> {error}
+        </div>
       </div>
     );
   }
 
-  if (!classroom) return null;
-
   return (
-    <div>
+    <div style={{
+      fontFamily: '"Nunito", sans-serif',
+      color: C.textPrimary,
+      maxWidth: 900,
+      display: 'flex', flexDirection: 'column', gap: 30,
+      width: '100%',
+    }}>
+      <style>{`
+        @keyframes toastSlide { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+        @media (max-width: 600px) {
+          .detail-header-row { flex-direction: column !important; align-items: stretch !important; gap: 20px !important; }
+          .code-box-wrapper { justify-content: center !important; }
+          .member-card-wrapper { flex-direction: column !important; align-items: flex-start !important; gap: 12px !important; }
+          .member-card-actions { width: 100% !important; justify-content: flex-end !important; }
+        }
+      `}</style>
+
+      {/* ── Toast Messages ──────────────────────────────────── */}
       {flash && (
-        <div className={`mb-4 p-3 rounded ${flash.type === 'success' ? 'bg-green-50 border border-green-200 text-green-700' : 'bg-sky-50 border border-sky-200 text-sky-700'}`}>
+        <div style={{
+          position: 'fixed', bottom: 24, right: 24, zIndex: 9999,
+          display: 'flex', alignItems: 'center', gap: 10, padding: '12px 18px', borderRadius: 14,
+          background: flash.type === 'success' ? 'rgba(34, 197, 94, 0.15)' : 'var(--bg-sidebar)',
+          border: `1.5px solid ${flash.type === 'success' ? 'var(--border-interactive)' : 'var(--border-color)'}`,
+          boxShadow: '0 8px 24px rgba(0,0,0,0.2)', fontSize: 13, fontWeight: 700, color: 'var(--text-primary)',
+          animation: 'toastSlide 0.22s ease-out'
+        }}>
+          {flash.type === 'success' ? <CheckCircle2 size={15} style={{ color: 'green' }} /> : <Info size={15} style={{ color: 'var(--accent)' }} />}
           {flash.msg}
         </div>
       )}
-      {/* ── Back ────────────────────────────────────────────── */}
-      <button
-        onClick={() => navigate('/teacher/classrooms')}
-        className="flex items-center gap-1.5 text-sky hover:text-sky/80 font-medium text-sm mb-6 transition-colors"
-      >
-        <ArrowLeft size={16} /> Back to Classrooms
-      </button>
 
-      {/* ── Header card ─────────────────────────────────────── */}
-      <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm mb-6">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold text-slate-900">{classroom.name}</h1>
-            <p className="text-sm text-slate-500 mt-1">
-              Created {new Date(classroom.created_at).toLocaleDateString()}
-            </p>
-          </div>
+      {/* ── Navigation Trigger ──────────────────────────────── */}
+      <div>
+        <SoftButton onClick={() => navigate('/teacher/classrooms')} outline color="var(--text-muted)" small>
+          <ArrowLeft size={14} /> Back to Classrooms
+        </SoftButton>
+      </div>
 
-          {/* Code display */}
-          <div className="flex items-center gap-3">
-            <div className="text-center">
-              <p className="text-xs text-slate-400 font-medium mb-1 uppercase tracking-wide">Join Code</p>
-              <div className="flex items-center gap-2 bg-slate-50 border-2 border-dashed border-slate-300 rounded-lg px-4 py-2">
-                <span className="font-mono font-black text-2xl tracking-[0.3em] text-slate-800">
-                  {classroom.code}
-                </span>
-                <button
-                  onClick={copyCode}
-                  className="ml-2 p-1 rounded text-slate-400 hover:text-sky transition-colors"
-                  title="Copy code"
-                >
-                  {copied ? <Check size={18} className="text-green-600" /> : <Copy size={18} />}
-                </button>
-              </div>
-              <p className="text-xs text-slate-400 mt-1">Share with parents</p>
+      {/* ── Header Surface Panel ────────────────────────────── */}
+      <div className="detail-header-row" style={{
+        borderRadius: 22, background: C.teacher.pageBg, border: `1.5px solid ${C.teacher.border}`,
+        padding: '28px 28px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 20,
+        boxShadow: C.shadowSm,
+      }}>
+        <div>
+          <SectionLabel icon={<GraduationCap size={12} />} text="Class Management" />
+          <SectionTitle style={{ fontSize: 'clamp(20px, 3vw, 25px)' }}>{classroom.name}</SectionTitle>
+          <p style={{ fontSize: 12, color: C.textSecondary, margin: '4px 0 0', display: 'flex', alignItems: 'center', gap: 4 }}>
+            <CalendarDays size={12} /> Established {new Date(classroom.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+          </p>
+        </div>
+
+        {/* Sync code structure with system preferences layout standard */}
+        <div className="code-box-wrapper" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ textAlign: 'center' }}>
+            <p style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em', margin: '0 0 6px' }}>Join Code</p>
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 10, background: 'var(--bg-card)',
+              border: '2px dashed var(--border-color)', borderRadius: 14, padding: '8px 16px', height: 44, boxSizing: 'border-box'
+            }}>
+              <span style={{ fontFamily: '"Courier New", monospace', fontWeight: 900, color: 'var(--text-primary)', letterSpacing: '0.15em', fontSize: 18 }}>
+                {classroom.code}
+              </span>
+              <button onClick={copyCode} title="Copy Code" style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', padding: 2, color: copied ? 'green' : 'var(--text-muted)' }}>
+                {copied ? <Check size={15} /> : <Copy size={15} />}
+              </button>
             </div>
           </div>
         </div>
-
-        {/* Stats row */}
-        <div className="mt-4 pt-4 border-t border-slate-100 flex flex-wrap gap-6 text-sm">
-          <span className="text-slate-600">
-            <span className="font-bold text-slate-900">{members.length}</span> total requests
-          </span>
-          <span className="text-green-700">
-            <span className="font-bold">{approved.length}</span> approved
-          </span>
-          {pending.length > 0 && (
-            <span className="text-amber-700 animate-pulse">
-              <span className="font-bold">{pending.length}</span> pending approval
-            </span>
-          )}
-          <button
-            onClick={fetchData}
-            className="ml-auto flex items-center gap-1 text-slate-400 hover:text-sky text-xs transition-colors"
-          >
-            <RefreshCw size={12} /> Refresh
-          </button>
-        </div>
       </div>
 
-      {/* ── Pending requests (prominent) ────────────────────── */}
-      {pending.length > 0 && (
-        <section className="mb-6">
-          <h2 className="text-base font-semibold text-amber-700 flex items-center gap-2 mb-3">
-            <Clock size={16} />
-            Pending Requests ({pending.length})
-          </h2>
-          <div className="space-y-2">
-            {pending.map((m) => (
-              <MemberRow
-                key={m.id}
-                member={m}
-                onAction={handleAction}
-                isLoading={actionLoading === m.user_id}
-                showActions
-              />
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* ── Approved members ────────────────────────────────── */}
-      {approved.length > 0 && (
-        <section className="mb-6">
-          <h2 className="text-base font-semibold text-slate-700 flex items-center gap-2 mb-3">
-            <Users size={16} />
-            Approved Members ({approved.length})
-          </h2>
-          <div className="space-y-2">
-            {approved.map((m) => (
-              <MemberRow key={m.id} member={m} onAction={handleAction} isLoading={false} />
-            ))}
-          </div>
-        </section>
-      )}
-
-          {/* ── Students linked to this classroom (parents' children) ───────────────── */}
-          <section className="mb-6">
-            <h2 className="text-base font-semibold text-slate-700 flex items-center gap-2 mb-3">
-              <Users size={16} />
-              Students in Classroom ({students.length})
-            </h2>
-            {students.length === 0 ? (
-              <div className="text-slate-500 text-sm">No students yet. Approving parents will link their children here.</div>
-            ) : (
-              <div className="space-y-2">
-                {students.map((s) => (
-                  <div key={s.id} className="bg-white border border-slate-200 rounded-lg px-4 py-3 flex items-center justify-between">
-                    <div>
-                      <div className="font-semibold text-slate-900">{s.first_name} {s.last_name}</div>
-                      <div className="text-xs text-slate-500">Parent: {s.parent_name || '—'}</div>
-                    </div>
-                    <div className="text-xs text-slate-400">{new Date(s.created_at).toLocaleDateString()}</div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </section>
-
-      {/* ── Rejected ────────────────────────────────────────── */}
-      {rejected.length > 0 && (
-        <section>
-          <h2 className="text-base font-semibold text-slate-400 flex items-center gap-2 mb-3">
-            Rejected ({rejected.length})
-          </h2>
-          <div className="space-y-2">
-            {rejected.map((m) => (
-              <MemberRow key={m.id} member={m} onAction={handleAction} isLoading={false} />
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* ── No members yet ──────────────────────────────────── */}
-      {members.length === 0 && (
-        <div className="text-center py-16 bg-white rounded-xl border border-slate-200">
-          <Users size={40} className="mx-auto text-slate-300 mb-3" />
-          <h3 className="font-semibold text-slate-500 mb-1">No join requests yet</h3>
-          <p className="text-sm text-slate-400">
-            Share the code <strong className="font-mono text-slate-600">{classroom.code}</strong> with parents.
-            They'll enter it in their <em>Classroom</em> page to request access.
-          </p>
+      {/* ── Statistics Summary Bar ──────────────────────────── */}
+      <div style={{
+        display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 16,
+        padding: '14px 20px', borderRadius: 16, background: 'var(--bg-card)', border: '1.5px solid var(--border-color)', boxShadow: C.shadowSm, fontSize: 13
+      }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 20, fontWeight: 700 }}>
+          <span style={{ color: C.textPrimary }}><span style={{ fontSize: 15, fontFamily: '"Fredoka One", cursive' }}>{members.length}</span> Total Requests</span>
+          <span style={{ color: 'var(--text-muted)' }}><span style={{ fontSize: 15, fontFamily: '"Fredoka One", cursive', color: 'green' }}>{approved.length}</span> Active Connections</span>
+          {pending.length > 0 && (
+            <span style={{ color: C.amber.accent, display: 'inline-flex', alignItems: 'center', gap: 4 }}><span style={{ fontSize: 15, fontFamily: '"Fredoka One", cursive' }}>{pending.length}</span> Pending Approval</span>
+          )}
         </div>
+        <button onClick={fetchData} style={{
+          background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)',
+          display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 800, textTransform: 'uppercase'
+        }}>
+          <RefreshCw size={12} /> Refresh
+        </button>
+      </div>
+
+      {/* ── Section: Pending Enrollment Requests ────────────── */}
+      {pending.length > 0 && (
+        <section style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <SectionLabel icon={<Clock size={12} />} text="Requests" />
+            <SectionTitle style={{ fontSize: 16 }}>Pending Roster Verifications ({pending.length})</SectionTitle>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {pending.map((m) => (
+              <MemberRow key={m.user_id} member={m} onAction={handleAction} isLoading={actionLoading === m.user_id} showActions />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* ── Section: Classroom Students ─────────────────────── */}
+      <section style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <SectionLabel icon={<Baby size={12} />} text="Students" />
+          <SectionTitle style={{ fontSize: 16 }}>Enrolled Students ({students.length})</SectionTitle>
+        </div>
+        {students.length === 0 ? (
+          <div style={{
+            background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: 16,
+            padding: '32px 20px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 13, fontWeight: 600
+          }}>
+            No students are currently linked to this classroom container dashboard workspace. Approving linked family units will display student profiles here.
+          </div>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 12 }}>
+            {students.map((s) => (
+              <div key={s.id} style={{
+                background: 'var(--bg-card)', border: '1.5px solid var(--border-color)', borderRadius: 16,
+                padding: '16px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, boxShadow: C.shadowSm
+              }}>
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <p style={{ fontSize: 14, fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 4px', truncate: true }}>
+                    {s.first_name} {s.last_name}
+                  </p>
+                  <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: 0, display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <User size={12} /> Parent: {s.parent_name || '—'}
+                  </p>
+                </div>
+                <span style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 700, flexShrink: 0 }}>
+                  {s.created_at ? new Date(s.created_at).toLocaleDateString() : '—'}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* ── Section: Verified Active Members ────────────────── */}
+      {approved.length > 0 && (
+        <section style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <SectionLabel icon={<Users size={12} />} text="Roster" />
+            <SectionTitle style={{ fontSize: 16 }}>Approved Family Guardians ({approved.length})</SectionTitle>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {approved.map((m) => (
+              <MemberRow key={m.user_id} member={m} onAction={handleAction} isLoading={false} />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* ── Section: Denied / Archived Requests ─────────────── */}
+      {rejected.length > 0 && (
+        <section style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <SectionLabel icon={<UserX size={12} />} text="Archived" />
+            <SectionTitle style={{ fontSize: 16, color: 'var(--text-muted)' }}>Rejected Profiles ({rejected.length})</SectionTitle>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, opacity: 0.75 }}>
+            {rejected.map((m) => (
+              <MemberRow key={m.user_id} member={m} onAction={handleAction} isLoading={false} />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* ── Workspace Empty State Container Fallback ─────────── */}
+      {members.length === 0 && (
+        <Panel style={{ textAlign: 'center', padding: '48px 24px' }}>
+          <div style={{
+            width: 52, height: 52, borderRadius: 16, background: 'var(--bg-sidebar)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px'
+          }}>
+            <ClipboardList size={24} style={{ color: 'var(--accent)' }} />
+          </div>
+          <SectionTitle style={{ fontSize: 18, marginBottom: 6 }}>No join requests received yet</SectionTitle>
+          <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: 0, lineHeight: 1.5 }}>
+            Provide the specialized 6-digit identification structural string <strong style={{ fontFamily: 'monospace', color: 'var(--text-primary)' }}>{classroom.code}</strong> directly to student parents to handle remote enrollment routing requests.
+          </p>
+        </Panel>
       )}
     </div>
   );
 }
 
-// ── Member row component ──────────────────────────────────────
+// ── Embedded Sub-Component Component Row ──────────────────────
 function MemberRow({ member, onAction, isLoading, showActions }) {
   const initials = `${(member.first_name || '?')[0]}${(member.last_name || '?')[0]}`.toUpperCase();
+  const theme = STATUS_THEMES[member.status] || STATUS_THEMES.pending;
+
   return (
-    <div className="bg-white border border-slate-200 rounded-lg px-4 py-3 flex items-center gap-4">
-      {/* Avatar */}
-      <div className="w-9 h-9 rounded-full bg-sky/20 text-sky flex items-center justify-center font-bold text-sm flex-shrink-0">
-        {initials}
+    <div className="member-card-wrapper" style={{
+      background: 'var(--bg-card)', border: '1.5px solid var(--border-color)', borderRadius: 16,
+      padding: '14px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16,
+      boxShadow: 'var(--shadow)'
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 14, minWidth: 0, flex: 1 }}>
+        <div style={{
+          width: 38, height: 38, borderRadius: 12, background: 'var(--bg-sidebar)',
+          color: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontFamily: '"Fredoka One", cursive', fontSize: 14, flexShrink: 0, border: '1.5px solid var(--border-color)'
+        }}>
+          {initials}
+        </div>
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <p style={{ fontSize: 14, fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 2px', truncate: true }}>
+            {member.first_name} {member.last_name}
+          </p>
+          <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: 0, truncate: true }}>{member.email}</p>
+        </div>
       </div>
 
-      {/* Info */}
-      <div className="flex-1 min-w-0">
-        <p className="font-semibold text-slate-900 text-sm truncate">
-          {member.first_name} {member.last_name}
-        </p>
-        <p className="text-xs text-slate-400 truncate">{member.email}</p>
-      </div>
-
-      {/* Requested date */}
-      <span className="text-xs text-slate-400 hidden sm:block flex-shrink-0">
-        {new Date(member.requested_at).toLocaleDateString()}
+      <span style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600, display: 'none' }} className="sm:block">
+        {member.requested_at ? new Date(member.requested_at).toLocaleDateString() : '—'}
       </span>
 
-      {/* Status badge / actions */}
       {showActions && member.status === 'pending' ? (
-        <div className="flex items-center gap-2 flex-shrink-0">
-          <button
-            onClick={() => onAction(member.user_id, 'approve')}
-            disabled={isLoading}
-            title="Approve"
-            className="flex items-center gap-1 px-3 py-1.5 bg-green-500 hover:bg-green-600 text-white rounded-lg text-xs font-semibold disabled:opacity-50 transition-colors"
-          >
+        <div className="member-card-actions" style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+          <SoftButton onClick={() => onAction(member.user_id, 'approve')} disabled={isLoading} color="var(--accent)" small>
             <UserCheck size={14} />
             {isLoading ? '…' : 'Approve'}
-          </button>
-          <button
-            onClick={() => onAction(member.user_id, 'reject')}
-            disabled={isLoading}
-            title="Reject"
-            className="flex items-center gap-1 px-3 py-1.5 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg text-xs font-semibold disabled:opacity-50 transition-colors"
-          >
+          </SoftButton>
+          <SoftButton onClick={() => onAction(member.user_id, 'reject')} disabled={isLoading} color="#E83060" outline small>
             <UserX size={14} />
             Reject
-          </button>
+          </SoftButton>
         </div>
       ) : (
-        <span
-          className={`text-xs font-semibold px-2.5 py-1 rounded-full border flex-shrink-0 ${
-            STATUS_STYLES[member.status] || STATUS_STYLES.pending
-          }`}
-        >
-          {STATUS_LABEL[member.status] || member.status}
+        <span style={{
+          fontSize: 11, fontWeight: 800, padding: '4px 12px', borderRadius: 20,
+          background: theme.bg, border: `1.5px solid ${theme.border}`, color: theme.text, flexShrink: 0
+        }}>
+          {theme.label}
         </span>
       )}
     </div>

@@ -1,6 +1,7 @@
 // ============================================================
-// ClassroomsListPage — Teacher creates and manages classrooms
+// ClassroomsListPage.jsx — Teacher creates and manages classrooms
 // Parents join via a 6-character code shown here.
+// Design-synced with TeacherDashboard (Soft pastels, CSS variables)
 // ============================================================
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -8,8 +9,113 @@ import api from '../../utils/api';
 import {
   Plus, Users, Copy, Check,
   BookOpen, ChevronRight, X, Bell,
+  Sparkles, Info, AlertCircle
 } from 'lucide-react';
 
+// ─── Design tokens linked to Global CSS Variables ────────────
+const C = {
+  page: 'var(--bg-primary, #F2F0FA)',
+  white: 'var(--bg-card, #FFFFFF)',
+  border: 'var(--border-color, #DDD8F2)',
+  shadowSm: 'var(--shadow, 0 1px 8px rgba(80,60,160,0.07))',
+  shadowMd: '0 4px 24px rgba(80,60,160,0.10)',
+
+  teacher: {
+    pageBg:      'var(--bg-sidebar, #EBF4EF)',
+    border:      'var(--border-color, #B8D8C4)',
+    accent:      'var(--accent, #3A7A5C)',
+    accentLight: 'var(--bg-primary, #CCEADB)',
+    textDark:    'var(--text-primary, #1A4A38)',
+    iconBg:      'var(--bg-sidebar, #D0EDE0)',
+  },
+
+  student: {
+    pageBg:      'var(--bg-sidebar, #EBF0FF)',
+    border:      'var(--border-interactive, #B8C8F0)',
+    accent:      'var(--accent, #4058C0)',
+    accentLight: 'var(--bg-primary, #D0D8F8)',
+    textDark:    'var(--text-primary, #1A2870)',
+    iconBg:      'var(--bg-sidebar, #D0D8F8)',
+  },
+
+  amber: {
+    pageBg:      'rgba(245, 158, 11, 0.12)',
+    border:      'rgba(245, 158, 11, 0.35)',
+    accent:      '#B45309',
+    textDark:    'var(--text-primary, #78350F)',
+  },
+
+  textPrimary: 'var(--text-primary, #28264A)',
+  textSecondary: 'var(--text-muted, #6A6898)',
+  textMuted: 'var(--text-muted, #9A98C0)',
+  primary: 'var(--accent, #5A50A0)',
+};
+
+// ─── Shared primitives ────────────────────────────────────────
+function SectionLabel({ icon, text }) {
+  return (
+    <div style={{
+      display: 'inline-flex', alignItems: 'center', gap: 6,
+      padding: '5px 12px', borderRadius: 20,
+      background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)', marginBottom: 10,
+    }}>
+      <span style={{ color: 'var(--accent)', display: 'flex' }}>{icon}</span>
+      <span style={{ fontSize: 11, fontWeight: 800, color: 'var(--accent)', textTransform: 'uppercase' }}>
+        {text}
+      </span>
+    </div>
+  );
+}
+
+function SectionTitle({ children, style = {} }) {
+  return (
+    <h2 style={{
+      fontFamily: '"Fredoka One", cursive',
+      fontSize: 'clamp(20px, 3vw, 26px)',
+      color: C.textPrimary, margin: '0 0 4px', lineHeight: 1.2,
+      ...style,
+    }}>
+      {children}
+    </h2>
+  );
+}
+
+function SoftButton({ children, onClick, color, outline, small, disabled, type = 'button', style: extra = {} }) {
+  const [hov, setHov] = useState(false);
+  const col = color || C.primary;
+  const base = {
+    display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+    padding: small ? '7px 16px' : '10px 22px',
+    borderRadius: 12, fontSize: small ? 13 : 14, fontWeight: 700,
+    fontFamily: 'Nunito, sans-serif', cursor: disabled ? 'not-allowed' : 'pointer',
+    border: `2px solid ${col}`, transition: 'all 0.15s',
+    opacity: disabled ? 0.5 : 1, ...extra,
+  };
+  const filled  = { ...base, background: hov && !disabled ? 'var(--border-focus)' : col, color: '#FFF' };
+  const outline_ = { ...base, background: hov && !disabled ? 'rgba(128,128,128,0.12)' : 'transparent', color: col };
+  return (
+    <button type={type} onClick={onClick} disabled={disabled} style={outline ? outline_ : filled}
+      onMouseEnter={() => setHov(true)} onMouseLeave={() => setHov(false)}>
+      {children}
+    </button>
+  );
+}
+
+function Panel({ children, scheme = null, style: extra = {} }) {
+  const bg    = scheme ? scheme.pageBg  : C.white;
+  const bdr   = scheme ? scheme.border  : C.border;
+  return (
+    <div style={{
+      background: bg, border: `1.5px solid ${bdr}`,
+      borderRadius: 20, padding: '24px 26px',
+      boxShadow: C.shadowSm, ...extra,
+    }}>
+      {children}
+    </div>
+  );
+}
+
+// ─── Main component ───────────────────────────────────────────
 export default function ClassroomsListPage() {
   const navigate = useNavigate();
   const [classrooms, setClassrooms] = useState([]);
@@ -19,6 +125,7 @@ export default function ClassroomsListPage() {
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState('');
   const [copied, setCopied] = useState(null);
+  const [inputFocused, setInputFocused] = useState(false);
 
   useEffect(() => {
     fetchClassrooms();
@@ -31,7 +138,7 @@ export default function ClassroomsListPage() {
       setClassrooms(res.data.classrooms || []);
     } catch (err) {
       console.error('[Classrooms]', err);
-    } finally {
+    } file: {
       setLoading(false);
     }
   };
@@ -63,45 +170,92 @@ export default function ClassroomsListPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-20">
-        <div className="text-slate-500">Loading classrooms…</div>
+      <div style={{
+        display: 'flex', flexDirection: 'column', alignItems: 'center',
+        justifyContent: 'center', padding: '64px 0', gap: 14, width: '100%'
+      }}>
+        <div style={{
+          width: 36, height: 36, borderRadius: '50%',
+          border: `3px solid ${C.teacher.accentLight}`,
+          borderTop: `3px solid ${C.teacher.accent}`,
+          animation: 'classroomListSpin 0.8s linear infinite',
+        }} />
+        <p style={{ fontSize: 13, fontWeight: 700, color: C.textSecondary, margin: 0 }}>
+          Loading classrooms…
+        </p>
+        <style>{`@keyframes classroomListSpin { to { transform: rotate(360deg); } }`}</style>
       </div>
     );
   }
 
   return (
-    <div>
+    <div style={{
+      fontFamily: '"Nunito", sans-serif',
+      color: C.textPrimary,
+      maxWidth: 900,
+      display: 'flex', flexDirection: 'column', gap: 32,
+      width: '100%',
+    }}>
+      <style>{`
+        @keyframes modalPop  { from { opacity:0; transform:scale(0.93) translateY(10px);} to { opacity:1; transform:none;} }
+        @media (max-width: 560px) {
+          .list-page-header { flex-direction: column !important; align-items: stretch !important; gap: 16px !important; }
+          .list-page-header button { width: 100% !important; }
+          .classroom-card-row { flex-direction: column !important; align-items: stretch !important; gap: 16px !important; }
+          .classroom-card-actions { width: 100% !important; justify-content: space-between !important; }
+          .classroom-card-actions button { flex: 1 !important; }
+          .classroom-card-actions > div { flex: 1 !important; width: 100% !important; justify-content: center !important; }
+        }
+      `}</style>
+
       {/* ── Header ─────────────────────────────────────────── */}
-      <div className="flex items-start justify-between mb-6">
+      <div className="list-page-header" style={{
+        borderRadius: 22,
+        background: C.teacher.pageBg,
+        border: `1.5px solid ${C.teacher.border}`,
+        padding: '28px 28px 24px',
+        boxShadow: C.shadowSm,
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 20,
+      }}>
         <div>
-          <div className="flex items-center gap-3">
-            <h1 className="text-3xl font-bold text-slate-900">Classrooms</h1>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+            <SectionLabel icon={<Sparkles size={12} />} text="Classrooms" />
             {totalPending > 0 && (
-              <span className="flex items-center gap-1 px-2.5 py-1 bg-amber-100 text-amber-700 text-xs font-bold rounded-full animate-pulse">
+              <span style={{
+                display: 'inline-flex', alignItems: 'center', gap: 5,
+                padding: '4px 10px', borderRadius: 20,
+                background: C.amber.pageBg, border: `1px solid ${C.amber.border}`,
+                fontSize: 11, fontWeight: 800, color: C.amber.accent,
+                marginBottom: 10,
+              }}>
                 <Bell size={11} />
                 {totalPending} pending
               </span>
             )}
           </div>
-          <p className="text-slate-500 mt-1">
+          <SectionTitle>Classrooms</SectionTitle>
+          <p style={{ fontSize: 14, color: C.textSecondary, margin: '6px 0 0', lineHeight: 1.6, maxWidth: 540 }}>
             Create classrooms and share the code with parents so their students can join.
           </p>
         </div>
-        <button
+        <SoftButton
+          color="var(--accent)"
           onClick={() => { setShowCreate(true); setCreateError(''); }}
-          className="flex items-center gap-2 px-4 py-2 bg-sky text-white rounded-lg hover:bg-sky/80 font-medium text-sm transition-colors"
+          style={{ flexShrink: 0 }}
         >
-          <Plus size={16} />
-          New Classroom
-        </button>
+          <Plus size={16} /> New Classroom
+        </SoftButton>
       </div>
 
       {/* ── How it works banner ────────────────────────────── */}
-      <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg flex gap-3">
-        <span className="text-2xl flex-shrink-0">💡</span>
-        <div className="text-sm text-blue-800">
+      <div style={{
+        padding: '16px 20px', background: 'var(--bg-sidebar)', border: '1.5px solid var(--border-color)',
+        borderRadius: 16, display: 'flex', gap: 12, boxShadow: C.shadowSm
+      }}>
+        <Info size={20} style={{ color: 'var(--accent)', flexShrink: 0, marginTop: 2 }} />
+        <div style={{ fontSize: 13, color: 'var(--text-primary)', lineHeight: 1.6 }}>
           <strong>How it works:</strong>
-          <ol className="mt-1 list-decimal list-inside space-y-0.5 text-blue-700">
+          <ol style={{ margin: '4px 0 0', paddingLeft: '16px', listStyleType: 'decimal' }}>
             <li>Create a classroom and get a unique 6-character code</li>
             <li>Share the code with parents (via email or verbally)</li>
             <li>Parents enter the code on their <em>Classroom</em> page to request access</li>
@@ -113,149 +267,192 @@ export default function ClassroomsListPage() {
       {/* ── Create modal ───────────────────────────────────── */}
       {showCreate && (
         <div
-          className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50"
           onClick={(e) => e.target === e.currentTarget && setShowCreate(false)}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 9999,
+            background: 'rgba(0,0,0,0.5)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: 16,
+          }}
         >
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md animate-pop">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">
-              <h2 className="text-lg font-semibold text-slate-900">Create Classroom</h2>
+          <div style={{
+            width: '100%', maxWidth: 400,
+            borderRadius: 20, background: 'var(--bg-card)',
+            border: '1.5px solid var(--border-color)',
+            boxShadow: '0 8px 40px rgba(0,0,0,0.3)',
+            overflow: 'hidden',
+            animation: 'modalPop 0.22s ease-out',
+          }}>
+            <div style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              padding: '16px 22px', borderBottom: '1.5px solid var(--border-color)',
+            }}>
+              <p style={{ fontFamily: '"Fredoka One", cursive', fontSize: 18, color: 'var(--text-primary)', margin: 0 }}>
+                Create Classroom
+              </p>
               <button
                 onClick={() => setShowCreate(false)}
-                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+                style={{
+                  background: 'none', border: 'none', cursor: 'pointer',
+                  color: 'var(--text-muted)', display: 'flex', padding: 4,
+                }}
               >
                 <X size={18} />
               </button>
             </div>
-            <form onSubmit={createClassroom} className="p-6">
-              <label className="block text-sm font-medium text-slate-700 mb-2">
-                Classroom Name <span className="text-red-500">*</span>
+            <form onSubmit={createClassroom} style={{ padding: '22px' }}>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 800, color: 'var(--text-muted)', marginBottom: 8, textTransform: 'uppercase' }}>
+                Classroom Name <span style={{ color: '#E83060' }}>*</span>
               </label>
               <input
                 type="text"
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
+                onFocus={() => setInputFocused(true)}
+                onBlur={() => setInputFocused(false)}
                 placeholder="e.g. Room 3B — Reading Group"
-                className="w-full px-3 py-2.5 border border-slate-300 rounded-lg text-sm
-                           focus:outline-none focus:ring-2 focus:ring-sky focus:border-sky mb-1"
                 autoFocus
                 maxLength={100}
                 required
+                style={{
+                  width: '100%', boxSizing: 'border-box',
+                  padding: '11px 14px', borderRadius: 12,
+                  border: `1.5px solid ${inputFocused ? 'var(--border-focus)' : 'var(--border-color)'}`,
+                  background: 'var(--bg-sidebar)',
+                  color: 'var(--text-primary)', fontSize: 14,
+                  fontFamily: 'Nunito, sans-serif', outline: 'none',
+                  transition: 'border-color 0.15s', mb: 4
+                }}
               />
               {createError && (
-                <p className="text-red-600 text-xs mt-1 mb-3">{createError}</p>
+                <p style={{ color: '#E83060', fontSize: 12, fontWeight: 700, marginTop: 6, margin: '6px 0 0' }}>{createError}</p>
               )}
-              <p className="text-xs text-slate-400 mb-5">
+              <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 8, marginBottom: 20 }}>
                 A unique 6-character join code will be generated automatically.
               </p>
-              <div className="flex gap-3">
-                <button
-                  type="button"
-                  onClick={() => setShowCreate(false)}
-                  className="flex-1 py-2.5 rounded-lg border border-slate-300 text-slate-700
-                             text-sm hover:bg-slate-50 transition-colors font-medium"
-                >
+              <div style={{ display: 'flex', gap: 10 }}>
+                <SoftButton type="button" onClick={() => setShowCreate(false)} outline color="var(--text-primary)" style={{ flex: 1 }}>
                   Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={creating || !newName.trim()}
-                  className="flex-1 py-2.5 rounded-lg bg-sky text-white text-sm font-semibold
-                             hover:bg-sky/80 disabled:opacity-50 transition-colors"
-                >
-                  {creating ? 'Creating…' : 'Create Classroom'}
-                </button>
+                </SoftButton>
+                <SoftButton type="submit" disabled={creating || !newName.trim()} color="var(--accent)" style={{ flex: 1 }}>
+                  {creating ? 'Creating…' : 'Create'}
+                </SoftButton>
               </div>
             </form>
           </div>
         </div>
       )}
 
-      {/* ── Empty state ────────────────────────────────────── */}
-      {classrooms.length === 0 ? (
-        <div className="text-center py-20 bg-white rounded-xl border border-slate-200">
-          <BookOpen size={48} className="mx-auto text-slate-300 mb-4" />
-          <h2 className="text-xl font-semibold text-slate-600 mb-2">No classrooms yet</h2>
-          <p className="text-slate-400 text-sm mb-6">
-            Create your first classroom to start managing students.
-          </p>
-          <button
-            onClick={() => setShowCreate(true)}
-            className="px-5 py-2.5 bg-sky text-white rounded-lg font-medium hover:bg-sky/80 transition-colors"
-          >
-            Create Your First Classroom
-          </button>
-        </div>
-      ) : (
-        <div className="grid gap-4">
-          {classrooms.map((classroom) => {
-            const memberCount  = parseInt(classroom.member_count)  || 0;
-            const pendingCount = parseInt(classroom.pending_count) || 0;
+      {/* ── Classrooms List Grid/Rows Container ────────────── */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        {classrooms.length === 0 ? (
+          <div style={{
+            background: 'var(--bg-card)', border: '1.5px solid var(--border-color)',
+            borderRadius: 22, padding: '48px 24px', textAlign: 'center', boxShadow: C.shadowSm,
+          }}>
+            <div style={{
+              width: 56, height: 56, borderRadius: 16, background: 'var(--bg-sidebar)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px',
+            }}>
+              <BookOpen size={26} style={{ color: 'var(--accent)' }} />
+            </div>
+            <p style={{ fontFamily: '"Fredoka One", cursive', fontSize: 19, color: 'var(--text-primary)', margin: '0 0 6px' }}>
+              No classrooms yet
+            </p>
+            <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: '0 0 20px', lineHeight: 1.5 }}>
+              Create your first classroom to start managing students and sharing paths.
+            </p>
+            <SoftButton onClick={() => setShowCreate(true)} color="var(--accent)">
+              Create Your First Classroom
+            </SoftButton>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            {classrooms.map((classroom) => {
+              const memberCount  = parseInt(classroom.member_count)  || 0;
+              const pendingCount = parseInt(classroom.pending_count) || 0;
 
-            return (
-              <div
-                key={classroom.id}
-                className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm hover:shadow-md transition-shadow"
-              >
-                <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-                  {/* Left: info */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="text-lg font-bold text-slate-900 truncate">{classroom.name}</h3>
-                      {pendingCount > 0 && (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-100 text-amber-700
-                                         text-xs font-bold rounded-full">
-                          <Bell size={10} />
-                          {pendingCount} pending
+              return (
+                <div
+                  key={classroom.id}
+                  style={{
+                    background: 'var(--bg-card)', border: '1.5px solid var(--border-color)',
+                    borderRadius: 20, padding: '20px 24px', boxShadow: C.shadowSm,
+                  }}
+                >
+                  <div className="classroom-card-row" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
+                    {/* Left: Info details layout */}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                        <h3 style={{ fontSize: 17, fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
+                          {classroom.name}
+                        </h3>
+                        {pendingCount > 0 && (
+                          <span style={{
+                            display: 'inline-flex', alignItems: 'center', gap: 4,
+                            padding: '3px 9px', borderRadius: 20,
+                            background: C.amber.pageBg, border: `1px solid ${C.amber.border}`,
+                            fontSize: 11, fontWeight: 800, color: C.amber.accent,
+                          }}>
+                            <Bell size={10} />
+                            {pendingCount} pending
+                          </span>
+                        )}
+                      </div>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 10, marginTop: 6 }}>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 13, color: 'var(--text-muted)' }}>
+                          <Users size={14} style={{ color: 'var(--text-muted)' }} />
+                          {memberCount} approved member{memberCount !== 1 ? 's' : ''}
                         </span>
-                      )}
+                        <span style={{ color: 'var(--border-color)' }}>·</span>
+                        <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                          Created {new Date(classroom.created_at).toLocaleDateString()}
+                        </span>
+                      </div>
                     </div>
-                    <div className="flex flex-wrap items-center gap-3 mt-1.5">
-                      <span className="inline-flex items-center gap-1.5 text-sm text-slate-500">
-                        <Users size={14} />
-                        {memberCount} approved member{memberCount !== 1 ? 's' : ''}
-                      </span>
-                      <span className="text-slate-300">·</span>
-                      <span className="text-xs text-slate-400">
-                        Created {new Date(classroom.created_at).toLocaleDateString()}
-                      </span>
-                    </div>
-                  </div>
 
-                  {/* Right: code chip + actions */}
-                  <div className="flex flex-wrap items-center gap-2">
-                    {/* Code chip */}
-                    <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
-                      <span className="text-xs text-slate-400 font-medium uppercase tracking-wide">Code</span>
-                      <span className="font-mono font-black text-slate-800 tracking-widest text-sm">
-                        {classroom.code}
-                      </span>
-                      <button
-                        onClick={() => copyCode(classroom.code)}
-                        title="Copy code"
-                        className="ml-1 p-0.5 rounded text-slate-400 hover:text-sky transition-colors"
+                    {/* Right: Code chips & Action elements */}
+                    <div className="classroom-card-actions" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 12 }}>
+                      {/* Token code display chip alignment synced with Join page mockup */}
+                      <div style={{
+                        display: 'flex', alignItems: 'center', gap: 8,
+                        background: 'var(--bg-sidebar)', border: '1.5px solid var(--border-color)',
+                        borderRadius: 12, padding: '8px 14px', height: 42, boxSizing: 'border-box'
+                      }}>
+                        <span style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Code</span>
+                        <span style={{ fontFamily: '"Courier New", monospace', fontWeight: 900, color: 'var(--text-primary)', trackingWidest: '0.1em', fontSize: 15 }}>
+                          {classroom.code}
+                        </span>
+                        <button
+                          onClick={() => copyCode(classroom.code)}
+                          title="Copy code"
+                          style={{
+                            background: 'none', border: 'none', cursor: 'pointer',
+                            display: 'flex', padding: 2, marginLeft: 2,
+                            color: copied === classroom.code ? 'green' : 'var(--text-muted)',
+                            transition: 'color 0.12s'
+                          }}
+                        >
+                          {copied === classroom.code ? <Check size={14} /> : <Copy size={14} />}
+                        </button>
+                      </div>
+
+                      <SoftButton
+                        onClick={() => navigate(`/teacher/classrooms/${classroom.id}`)}
+                        color="var(--accent)"
+                        style={{ height: 42, minWidth: 110 }}
                       >
-                        {copied === classroom.code
-                          ? <Check size={14} className="text-green-600" />
-                          : <Copy size={14} />}
-                      </button>
+                        Manage
+                        <ChevronRight size={14} />
+                      </SoftButton>
                     </div>
-
-                    {/* Manage button */}
-                    <button
-                      onClick={() => navigate(`/teacher/classrooms/${classroom.id}`)}
-                      className="flex items-center gap-1.5 px-4 py-2 bg-sky text-white rounded-lg
-                                 text-sm font-semibold hover:bg-sky/80 transition-colors"
-                    >
-                      Manage
-                      <ChevronRight size={14} />
-                    </button>
                   </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
+              );
+            })}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
