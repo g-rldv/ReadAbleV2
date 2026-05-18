@@ -137,13 +137,109 @@ function IconBtn({ onClick, children, title, danger }) {
   );
 }
 
+// ─── Logout Confirmation Modal ────────────────────────────────
+function LogoutConfirmModal({ onConfirm, onCancel }) {
+  return (
+    <div
+      onClick={e => e.target === e.currentTarget && onCancel()}
+      style={{
+        position: 'fixed',
+        inset: 0,
+        zIndex: 9999,
+        background: 'rgba(20, 16, 40, 0.55)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 18,
+      }}
+    >
+      <div
+        style={{
+          width: '100%',
+          maxWidth: 360,
+          borderRadius: 20,
+          background: 'var(--bg-card, #FFFFFF)',
+          border: '1.5px solid var(--border-color, #DDD8F2)',
+          boxShadow: '0 18px 60px rgba(0,0,0,0.22)',
+          padding: 22,
+          fontFamily: '"Nunito", sans-serif',
+        }}
+      >
+        <h3
+          style={{
+            fontFamily: '"Fredoka One", cursive',
+            fontSize: 22,
+            color: 'var(--text-primary, #28264A)',
+            margin: '0 0 6px',
+          }}
+        >
+          Sign out?
+        </h3>
+        <p
+          style={{
+            fontSize: 13,
+            color: 'var(--text-muted, #6A6898)',
+            lineHeight: 1.55,
+            margin: '0 0 20px',
+          }}
+        >
+          Your progress is saved. You can sign back in anytime.
+        </p>
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button
+            type="button"
+            onClick={onCancel}
+            style={{
+              flex: 1,
+              minHeight: 42,
+              borderRadius: 12,
+              border: '1.5px solid var(--border-color, #DDD8F2)',
+              background: 'transparent',
+              color: 'var(--text-muted, #6A6898)',
+              fontFamily: 'inherit',
+              fontWeight: 800,
+              cursor: 'pointer',
+            }}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            style={{
+              flex: 1,
+              minHeight: 42,
+              borderRadius: 12,
+              border: '1.5px solid #C03030',
+              background: '#C03030',
+              color: '#FFFFFF',
+              fontFamily: 'inherit',
+              fontWeight: 900,
+              cursor: 'pointer',
+            }}
+          >
+            Sign Out
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Main layout ──────────────────────────────────────────────
 export default function ParentLayout() {
   const { logout, user } = useAuth();
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
+
+  const requestLogout = () => {
+    setMobileOpen(false);
+    setShowLogoutModal(true);
+  };
 
   const handleLogout = () => {
+    setShowLogoutModal(false);
     logout();
     navigate('/', { replace: true });
   };
@@ -159,6 +255,12 @@ export default function ParentLayout() {
           from { opacity: 0; transform: translateY(-8px); }
           to   { opacity: 1; transform: none; }
         }
+        @media (min-width: 768px) {
+          .desktop-nav   { display: flex !important; }
+          .desk-divider  { display: block !important; }
+          .user-pill     { display: flex !important; }
+          .parent-topbar { display: none !important; }
+        }
       `}</style>
 
       <div style={{
@@ -169,7 +271,7 @@ export default function ParentLayout() {
       }}>
 
         {/* ══ Header ══════════════════════════════════════════ */}
-        <header style={{
+        <header className="parent-topbar" style={{
           position:     'sticky', top: 0, zIndex: 100,
           background:   C.white,
           borderBottom: `1px solid ${C.border}`,
@@ -256,7 +358,7 @@ export default function ParentLayout() {
               </div>
 
               {/* Logout */}
-              <IconBtn onClick={handleLogout} title="Log out" danger>
+              <IconBtn onClick={requestLogout} title="Log out" danger>
                 <LogOut size={17} />
               </IconBtn>
 
@@ -308,7 +410,7 @@ export default function ParentLayout() {
                 {NAV_LINKS.map(link => (
                   <MobileLink
                     key={link.to}
-                    {...link}
+                    {link}
                     onClick={() => setMobileOpen(false)}
                   />
                 ))}
@@ -316,7 +418,7 @@ export default function ParentLayout() {
 
               {/* Logout */}
               <button
-                onClick={handleLogout}
+                onClick={requestLogout}
                 style={{
                   display: 'flex', alignItems: 'center', gap: 12,
                   width: '100%', marginTop: 10, padding: '13px 18px',
@@ -344,16 +446,14 @@ export default function ParentLayout() {
         <main style={{ maxWidth: 1100, margin: '0 auto', padding: '32px 24px' }}>
           <Outlet />
         </main>
-
-        {/* ── Responsive overrides ─────────────────────────── */}
-        <style>{`
-          @media (min-width: 768px) {
-            .desktop-nav   { display: flex !important; }
-            .desk-divider  { display: block !important; }
-            .user-pill     { display: flex !important; }
-          }
-        `}</style>
       </div>
+
+      {showLogoutModal && (
+        <LogoutConfirmModal
+          onCancel={() => setShowLogoutModal(false)}
+          onConfirm={handleLogout}
+        />
+      )}
     </>
   );
 }
