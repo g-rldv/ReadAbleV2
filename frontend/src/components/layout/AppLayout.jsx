@@ -294,7 +294,6 @@ function BottomControls({ soundOn, settings, toggleSound, updateSettings,
       )}
 
       {/* Fullscreen */}
-     {/* ← WRAP WITH !isPWA */}
       {!isPWA && (
         <button onClick={toggleFullscreen}
           className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm font-medium
@@ -407,12 +406,17 @@ export default function AppLayout() {
     };
     check();
 
-  const mq = window.matchMedia('(display-mode: standalone)');
-  mq.addEventListener('change', check);
-  return () => mq.removeEventListener('change', check);
-}, []);
+    const mq = window.matchMedia('(display-mode: standalone)');
+    mq.addEventListener('change', check);
+    return () => mq.removeEventListener('change', check);
+  }, []);
 
-  const handleLogout = () => { logout(); navigate('/'); };
+  const handleLogout = () => {
+    setShowLogoutModal(false);
+    logout();
+    navigate('/');
+  };
+
   const soundOn = settings.tts_enabled || settings.bg_music_enabled;
   const toggleSound = () => updateSettings({
     tts_enabled: !soundOn,
@@ -500,7 +504,7 @@ export default function AppLayout() {
                   Lv {user?.level || 1}
                 </span>
               </div>
-              {/* ← WRAP WITH !isPWA */}
+              
               {!isPWA && (
                 <button
                   onClick={toggleFullscreen}
