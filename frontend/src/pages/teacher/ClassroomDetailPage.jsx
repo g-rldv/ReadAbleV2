@@ -202,7 +202,7 @@ function MemberRow({ member, onAction, isLoading, showActions }) {
 }
 
 // ─── Student card ─────────────────────────────────────────────
-function StudentCard({ student }) {
+function StudentCard({ student, onRemove, isRemoving }) {
   const [hov, setHov] = useState(false);
   return (
     <div
@@ -234,14 +234,29 @@ function StudentCard({ student }) {
           <User size={10} /> {student.parent_name || '—'}
         </p>
       </div>
-      {student.created_at && (
-        <span style={{
-          fontSize: 10, fontWeight: 700, color: C.textMuted,
-          flexShrink: 0, whiteSpace: 'nowrap',
-        }}>
-          {new Date(student.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-        </span>
-      )}
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
+        {student.created_at && (
+          <span style={{
+            fontSize: 10, fontWeight: 700, color: C.textMuted,
+            whiteSpace: 'nowrap',
+          }}>
+            {new Date(student.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+          </span>
+        )}
+        <button
+          onClick={() => onRemove(student.id)}
+          disabled={isRemoving}
+          style={{
+            background: 'none', border: 'none', cursor: 'pointer',
+            fontSize: 11, fontWeight: 800, color: C.rose.accent,
+            padding: 0, display: 'inline-flex', alignItems: 'center', gap: 2,
+          }}
+          onMouseEnter={e => e.currentTarget.style.color = C.rose.textDark}
+          onMouseLeave={e => e.currentTarget.style.color = C.rose.accent}
+        >
+          <UserX size={12} /> {isRemoving ? 'Removing...' : 'Remove'}
+        </button>
+      </div>
     </div>
   );
 }
@@ -309,6 +324,21 @@ export default function ClassroomDetailPage() {
       setTimeout(() => setFlash(null), 3000);
     } catch (err) {
       alert(err.response?.data?.error || 'Action failed');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleRemoveStudent = async (childId) => {
+    if (!window.confirm('Are you sure you want to remove this student from the classroom?')) return;
+    setActionLoading(`student-${childId}`);
+    try {
+      await api.delete(`/classrooms/${id}/children/${childId}`);
+      setStudents(prev => prev.filter(s => s.id !== childId));
+      setFlash({ type: 'success', msg: 'Student removed from classroom.' });
+      setTimeout(() => setFlash(null), 3000);
+    } catch (err) {
+      alert(err.response?.data?.error || 'Failed to remove student');
     } finally {
       setActionLoading(null);
     }
@@ -539,7 +569,14 @@ export default function ClassroomDetailPage() {
             gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
             gap: 12,
           }}>
-            {students.map(s => <StudentCard key={s.id} student={s} />)}
+            {students.map(s => (
+              <StudentCard
+                key={s.id}
+                student={s}
+                onRemove={handleRemoveStudent}
+                isRemoving={actionLoading === `student-${s.id}`}
+              />
+            ))}
           </div>
         )}
       </section>

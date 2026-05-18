@@ -213,9 +213,14 @@ export default function JoinClassroomPage() {
   const [classrooms, setClassrooms] = useState([]);
   const [loading, setLoading] = useState(true);
   const [inputFocused, setInputFocused] = useState(false);
+  const [children, setChildren] = useState([]);
+  const [selectedChildId, setSelectedChildId] = useState('');
   const inputRef = useRef(null);
 
-  useEffect(() => { fetchMyClassrooms(); }, []);
+  useEffect(() => {
+    fetchMyClassrooms();
+    fetchChildren();
+  }, []);
 
   const fetchMyClassrooms = async () => {
     try {
@@ -228,16 +233,33 @@ export default function JoinClassroomPage() {
     }
   };
 
+  const fetchChildren = async () => {
+    try {
+      const res = await api.get('/parent/children');
+      setChildren(res.data.children || []);
+      if (res.data.children?.length === 1) {
+        setSelectedChildId(res.data.children[0].id);
+      }
+    } catch (err) {
+      console.error('[JoinClassroom/FetchChildren]', err);
+    }
+  };
+
   const joinClassroom = async (e) => {
     e.preventDefault();
     const trimmed = code.trim().toUpperCase();
     if (trimmed.length !== 6) return;
+    if (!selectedChildId) {
+      setFlash({ type: 'error', msg: 'Please select a child to enroll.' });
+      return;
+    }
     setJoining(true);
     setFlash(null);
     try {
-      await api.post('/classrooms/join', { code: trimmed });
+      await api.post('/classrooms/join', { code: trimmed, childId: selectedChildId });
       setFlash({ type: 'success', msg: 'Request sent! The teacher will approve your access shortly.' });
       setCode('');
+      if (children.length > 1) setSelectedChildId('');
       fetchMyClassrooms();
     } catch (err) {
       setFlash({ type: 'error', msg: err.response?.data?.error || 'Failed to join classroom' });
@@ -247,7 +269,7 @@ export default function JoinClassroomPage() {
     }
   };
 
-  const isReady = code.length === 6;
+  const isReady = code.length === 6 && selectedChildId;
 
   return (
     <div style={{
@@ -337,6 +359,38 @@ export default function JoinClassroomPage() {
                     transition: 'border-color 0.15s, background 0.15s',
                   }}
                 />
+                
+                <label style={{
+                  display: 'block', fontSize: 11, fontWeight: 800,
+                  color: C.textSecondary, marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.05em',
+                  marginTop: 14,
+                }}>
+                  Select Child
+                </label>
+                <select
+                  value={selectedChildId}
+                  onChange={(e) => setSelectedChildId(e.target.value)}
+                  style={{
+                    width: '100%',
+                    boxSizing: 'border-box',
+                    padding: '12px 14px',
+                    borderRadius: 14,
+                    border: `1.5px solid ${C.border}`,
+                    background: '#FAFAF8',
+                    fontFamily: 'Nunito, sans-serif',
+                    fontSize: 14,
+                    outline: 'none',
+                    color: C.textPrimary,
+                  }}
+                >
+                  <option value="">Select a child...</option>
+                  {children.map(child => (
+                    <option key={child.id} value={child.id}>
+                      {child.first_name} {child.last_name}
+                    </option>
+                  ))}
+                </select>
+              </div>
                 
                 {/* Character count progress indicators */}
                 <div style={{

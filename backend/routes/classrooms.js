@@ -42,8 +42,9 @@ router.get('/my', requireAuth, requireRole('parent'), async (req, res) => {
 
 // ── Parent: Join classroom by code (MUST be before /:id) ─────
 router.post('/join', requireAuth, requireRole('parent'), async (req, res) => {
-  const { code } = req.body;
+  const { code, childId } = req.body;
   if (!code?.trim()) return res.status(400).json({ error: 'Classroom code is required' });
+  if (!childId) return res.status(400).json({ error: 'childId is required to enroll a child' });
 
   try {
     const classroomRes = await pool.query(
@@ -55,22 +56,40 @@ router.post('/join', requireAuth, requireRole('parent'), async (req, res) => {
     }
     const classroom = classroomRes.rows[0];
 
+    // Verify the child belongs to this parent
+    const childRes = await pool.query(
+      'SELECT id FROM children WHERE id = $1 AND parent_id = $2',
+      [childId, req.user.id]
+    );
+    if (childRes.rows.length === 0) return res.status(404).json({ error: 'Child not found or does not belong to you' });
+
     const existing = await pool.query(
       'SELECT status FROM class_memberships WHERE classroom_id = $1 AND user_id = $2',
       [classroom.id, req.user.id]
     );
+    
+    let isApproved = false;
     if (existing.rows.length > 0) {
       const status = existing.rows[0].status;
-      if (status === 'approved') return res.status(400).json({ error: 'You are already a member of this classroom.' });
-      if (status === 'pending')  return res.status(400).json({ error: 'Your request is already pending approval.' });
       if (status === 'rejected') return res.status(400).json({ error: 'Your request was rejected. Contact the teacher.' });
+      if (status === 'approved') isApproved = true;
+    } else {
+      // If not a member, create a pending membership
+      await pool.query(
+        'INSERT INTO class_memberships (classroom_id, user_id, status, requested_at) VALUES ($1, $2, $3, NOW())',
+        [classroom.id, req.user.id, 'pending']
+      );
     }
 
+    // Insert assignment, avoid duplicates
     await pool.query(
-      'INSERT INTO class_memberships (classroom_id, user_id, status, requested_at) VALUES ($1, $2, $3, NOW())',
-      [classroom.id, req.user.id, 'pending']
+      `INSERT INTO classroom_child_assignments (classroom_id, parent_id, child_id)
+       VALUES ($1, $2, $3)
+       ON CONFLICT (classroom_id, child_id) DO NOTHING`,
+      [classroom.id, req.user.id, childId]
     );
-    res.json({ success: true, classroom });
+
+    res.json({ success: true, classroom, message: isApproved ? 'Child enrolled successfully' : 'Enrollment pending teacher approval' });
   } catch (err) {
     console.error('[Classrooms/Join]', err.message);
     res.status(500).json({ error: 'Failed to join classroom' });
@@ -190,6 +209,31 @@ router.get('/:id/children', requireAuth, requireRole('teacher'), async (req, res
   } catch (err) {
     console.error('[Classrooms/Children]', err.message);
     res.status(500).json({ error: 'Failed to fetch classroom students' });
+  }
+});
+
+// ── Teacher: Remove student from classroom ───────────────────
+router.delete('/:id/children/:childId', requireAuth, requireRole('teacher'), async (req, res) => {
+  const { id, childId } = req.params;
+  try {
+    // Verify classroom ownership
+    const classroom = await pool.query(
+      'SELECT id FROM classrooms WHERE id = $1 AND teacher_id = $2',
+      [id, req.user.id]
+    );
+    if (classroom.rows.length === 0) return res.status(404).json({ error: 'Classroom not found' });
+
+    // Delete assignment
+    const result = await pool.query(
+      'DELETE FROM classroom_child_assignments WHERE classroom_id = $1 AND child_id = $2 RETURNING id',
+      [id, childId]
+    );
+    if (result.rowCount === 0) return res.status(404).json({ error: 'Student not found in this classroom' });
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error('[Classrooms/RemoveStudent]', err.message);
+    res.status(500).json({ error: 'Failed to remove student' });
   }
 });
 
