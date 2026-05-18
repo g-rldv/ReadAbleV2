@@ -66,6 +66,11 @@ async function ensureRuntimeSchema(pool) {
         ALTER TABLE classroom_child_assignments ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'pending';
 
         ALTER TABLE assessments ADD COLUMN IF NOT EXISTS classroom_id INTEGER REFERENCES classrooms(id) ON DELETE SET NULL;
+        ALTER TABLE assessments ADD COLUMN IF NOT EXISTS difficulty_level INTEGER DEFAULT 1;
+        ALTER TABLE assessments ADD COLUMN IF NOT EXISTS autism_focus_areas JSONB DEFAULT '[]';
+        ALTER TABLE assessments ADD COLUMN IF NOT EXISTS recommended_age_min INTEGER;
+        ALTER TABLE assessments ADD COLUMN IF NOT EXISTS recommended_age_max INTEGER;
+        ALTER TABLE assessments ADD COLUMN IF NOT EXISTS break_interval INTEGER DEFAULT 10;
 
         ALTER TABLE assessment_sessions ADD COLUMN IF NOT EXISTS assessment_id INTEGER REFERENCES assessments(id) ON DELETE SET NULL;
         ALTER TABLE assessment_sessions ADD COLUMN IF NOT EXISTS child_id INTEGER REFERENCES children(id) ON DELETE SET NULL;
@@ -81,6 +86,12 @@ async function ensureRuntimeSchema(pool) {
 
         CREATE INDEX IF NOT EXISTS idx_assessment_sessions_teacher_id ON assessment_sessions(teacher_id);
         CREATE INDEX IF NOT EXISTS idx_assessment_sessions_child_id ON assessment_sessions(child_id);
+      `);
+
+      await client.query(`
+        ALTER TABLE assessment_questions ADD COLUMN IF NOT EXISTS question_category VARCHAR(50);
+        ALTER TABLE assessment_questions ADD COLUMN IF NOT EXISTS difficulty_score INTEGER DEFAULT 1;
+        ALTER TABLE assessment_questions ADD COLUMN IF NOT EXISTS time_estimate INTEGER DEFAULT 30;
       `);
 
       await client.query(`
