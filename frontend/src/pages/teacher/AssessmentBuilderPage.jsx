@@ -8,9 +8,8 @@ import api from '../../utils/api';
 import {
   Plus, Trash2, Edit2, Save, X, ArrowLeft,
   BookOpen, ClipboardList, BarChart2, Brain,
-  Hash, Clock, Tag, CheckCircle2, Eye, EyeOff,
-  FileText, Image, Mic, ChevronDown, ChevronUp,
-  AlertCircle,
+  Hash, Clock, CheckCircle2, Eye, EyeOff,
+  FileText, AlertCircle,
 } from 'lucide-react';
 
 // ─── Design tokens ────────────────────────────────────────────
@@ -59,11 +58,11 @@ const DIFFICULTY_LEVELS = [
 ];
 
 const AUTISM_FOCUS_AREAS = [
-  { id: 'literal',    label: 'Literal Comprehension',  icon: BookOpen  },
-  { id: 'inference',  label: 'Inferential Thinking',   icon: Brain     },
-  { id: 'vocabulary', label: 'Vocabulary Recognition', icon: FileText  },
-  { id: 'sequence',   label: 'Sequence Understanding', icon: Hash      },
-  { id: 'emotion',    label: 'Emotion / Social Skills',icon: CircleCheck2 },
+  { id: 'literal',    label: 'Literal Comprehension',  icon: BookOpen     },
+  { id: 'inference',  label: 'Inferential Thinking',   icon: Brain        },
+  { id: 'vocabulary', label: 'Vocabulary Recognition', icon: FileText     },
+  { id: 'sequence',   label: 'Sequence Understanding', icon: Hash         },
+  { id: 'emotion',    label: 'Emotion / Social Skills',icon: CheckCircle2 },
 ];
 
 const QUESTION_CATEGORIES = [
@@ -631,7 +630,6 @@ export default function AssessmentBuilderPage() {
     }
   };
 
-  // ── Loading ─────────────────────────────────────────────────
   if (loading && !assessment.title) {
     return (
       <div style={{
@@ -655,7 +653,6 @@ export default function AssessmentBuilderPage() {
 
   const canSave = assessment.title && assessment.description && assessment.story_theme;
 
-  // ── Builder UI ──────────────────────────────────────────────
   return (
     <div style={{
       fontFamily: '"Nunito", sans-serif',
@@ -704,7 +701,7 @@ export default function AssessmentBuilderPage() {
       {/* ── Error / success banners ──────────────────────────── */}
       {error && (
         <div style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          display: 'flex', alignItems: 'center', justifycontent: 'space-between',
           padding: '12px 16px', borderRadius: 12,
           background: '#FEF0F0', border: '1.5px solid #F8C8C8',
           color: '#C03030', fontSize: 13, fontWeight: 700,
