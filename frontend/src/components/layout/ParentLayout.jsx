@@ -259,10 +259,10 @@ export default function ParentLayout() {
           to   { opacity: 1; transform: none; }
         }
         @media (min-width: 768px) {
-          .desktop-nav   { display: flex !important; }
-          .desk-divider  { display: block !important; }
-          .user-pill     { display: flex !important; }
-          .parent-topbar { display: none !important; }
+          .desktop-nav    { display: flex !important; }
+          .desk-divider   { display: block !important; }
+          .user-pill      { display: flex !important; }
+          .mobile-hamburger { display: none !important; }
         }
       `}</style>
 
@@ -273,8 +273,8 @@ export default function ParentLayout() {
         color:       C.textPrimary,
       }}>
 
-        {/* ══ Header (mobile only) ════════════════════════════ */}
-        <header className="parent-topbar" style={{
+        {/* ══ Header ══════════════════════════════════════════ */}
+        <header style={{
           position:     'sticky', top: 0, zIndex: 100,
           background:   C.white,
           borderBottom: `1px solid ${C.border}`,
@@ -361,12 +361,14 @@ export default function ParentLayout() {
               </IconBtn>
 
               {/* Mobile hamburger */}
-              <IconBtn
-                onClick={() => setMobileOpen(o => !o)}
-                title={mobileOpen ? 'Close menu' : 'Open menu'}
-              >
-                {mobileOpen ? <X size={18} /> : <Menu size={18} />}
-              </IconBtn>
+              <span className="mobile-hamburger">
+                <IconBtn
+                  onClick={() => setMobileOpen(o => !o)}
+                  title={mobileOpen ? 'Close menu' : 'Open menu'}
+                >
+                  {mobileOpen ? <X size={18} /> : <Menu size={18} />}
+                </IconBtn>
+              </span>
             </div>
           </div>
 
