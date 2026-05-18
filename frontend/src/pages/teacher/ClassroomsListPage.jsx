@@ -8,7 +8,7 @@ import api from '../../utils/api';
 import {
   Users, PlusCircle, BookOpen, Copy, Check,
   ChevronRight, Bell, Info, X, Sparkles,
-  CheckCircle2, Clock, Hash, UserCheck,
+  CheckCircle2, Clock, Hash, UserCheck, Baby,
 } from 'lucide-react';
 
 // ─── Design tokens (exact mirror of AssessmentsListPage) ─────
