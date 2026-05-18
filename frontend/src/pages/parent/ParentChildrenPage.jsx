@@ -71,6 +71,13 @@ const C = {
   primary: 'var(--accent, #5A50A0)',
 };
 
+function SectionLabel({ icon, text }) {
+  return (
+    <div className="children-section-label">
+    </div>
+  );
+}
+
 function SectionTitle({ children }) {
   return <h2 className="children-section-title">{children}</h2>;
 }
