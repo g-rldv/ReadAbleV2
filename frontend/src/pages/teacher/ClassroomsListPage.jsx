@@ -1,34 +1,32 @@
 // ============================================================
-// ClassroomsListPage.jsx — Teacher creates and manages classrooms
-// Parents join via a 6-character code shown here.
-// Design-synced with TeacherDashboard (Sage green accent hierarchy)
+// ClassroomsListPage.jsx — Redesigned to match AssessmentsListPage
+// Soft pastels · Lucide icons · No emojis · Nunito + Fredoka One
 // ============================================================
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../utils/api';
 import {
-  Plus, Users, Copy, Check,
-  BookOpen, ChevronRight, X, Bell,
-  Sparkles, Info, AlertCircle
+  Users, PlusCircle, BookOpen, Copy, Check,
+  ChevronRight, Bell, Info, X, Sparkles,
+  CheckCircle2, Clock, Hash, UserCheck,
 } from 'lucide-react';
 
-// ─── Design tokens linked to Global CSS Variables ────────────
+// ─── Design tokens (exact mirror of AssessmentsListPage) ─────
 const C = {
-  page: 'var(--bg-primary, #F2F0FA)',
-  white: 'var(--bg-card, #FFFFFF)',
-  border: 'var(--border-color, #DDD8F2)',
-  shadowSm: 'var(--shadow, 0 1px 8px rgba(80,60,160,0.07))',
+  page:  '#F2F0FA',
+  white: '#FFFFFF',
+  border:'#DDD8F2',
+  shadowSm: '0 1px 8px rgba(80,60,160,0.07)',
   shadowMd: '0 4px 24px rgba(80,60,160,0.10)',
 
   teacher: {
-    pageBg:      'var(--bg-sidebar, #EBF4EF)',
-    border:      'var(--border-color, #B8D8C4)',
-    accent:      'var(--accent, #3A7A5C)',
-    accentLight: 'var(--bg-primary, #CCEADB)',
-    textDark:    'var(--text-primary, #1A4A38)',
-    iconBg:      'var(--bg-sidebar, #D0EDE0)',
+    pageBg:      '#EBF4EF',
+    border:      '#B8D8C4',
+    accent:      '#3A7A5C',
+    accentLight: '#CCEADB',
+    textDark:    '#1A4A38',
+    iconBg:      '#D0EDE0',
   },
-
   student: {
     pageBg:      '#EBF0FF',
     border:      '#B8C8F0',
@@ -37,28 +35,19 @@ const C = {
     textDark:    '#1A2870',
     iconBg:      '#D0D8F8',
   },
-
-  // ── Added missing parent scheme ──────────────────────────
   parent: {
-    pageBg:      '#EEF3FF',
-    border:      '#C0CEFA',
-    accent:      '#3D55C4',
-    accentLight: '#D4DCFA',
-    textDark:    '#1B2B80',
-    iconBg:      '#D4DCFA',
+    pageBg:      '#FDF0E8',
+    border:      '#F0C8A8',
+    accent:      '#C06038',
+    accentLight: '#FAE0C8',
+    textDark:    '#6A2810',
+    iconBg:      '#FAD8C0',
   },
 
-  amber: {
-    pageBg:      'rgba(245, 158, 11, 0.12)',
-    border:      'rgba(245, 158, 11, 0.35)',
-    accent:      '#B45309',
-    textDark:    'var(--text-primary, #78350F)',
-  },
-
-  textPrimary: 'var(--text-primary, #28264A)',
-  textSecondary: 'var(--text-muted, #6A6898)',
-  textMuted: 'var(--text-muted, #9A98C0)',
-  primary: 'var(--accent, #3A7A5C)', 
+  textPrimary:   '#28264A',
+  textSecondary: '#6A6898',
+  textMuted:     '#9A98C0',
+  primary:       '#5A50A0',
 };
 
 // ─── Shared primitives ────────────────────────────────────────
@@ -90,57 +79,188 @@ function SectionTitle({ children, style = {} }) {
   );
 }
 
-// ─── Custom Soft Button Primitives ───────────────────────────
 function SoftButton({ children, onClick, color, outline, small, disabled, type = 'button', style: extra = {} }) {
   const [hov, setHov] = useState(false);
   const col = color || C.primary;
   const base = {
     display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-    padding: small ? '7px 16px' : '10px 22px',
+    padding: small ? '7px 16px' : '10px 20px',
     borderRadius: 12, fontSize: small ? 13 : 14, fontWeight: 700,
     fontFamily: 'Nunito, sans-serif', cursor: disabled ? 'not-allowed' : 'pointer',
     border: `2px solid ${col}`, transition: 'all 0.15s',
     opacity: disabled ? 0.5 : 1, ...extra,
   };
   const filled  = { ...base, background: hov && !disabled ? `${col}DD` : col, color: '#FFF' };
-  const outline_ = { ...base, background: hov && !disabled ? `${col}12` : 'transparent', color: col };
+  const outlined = { ...base, background: hov && !disabled ? `${col}12` : 'transparent', color: col };
   return (
-    <button type={type} onClick={onClick} disabled={disabled} style={outline ? outline_ : filled}
-      onMouseEnter={() => setHov(true)} onMouseLeave={() => setHov(false)}>
+    <button
+      type={type} onClick={onClick} disabled={disabled}
+      style={outline ? outlined : filled}
+      onMouseEnter={() => setHov(true)}
+      onMouseLeave={() => setHov(false)}
+    >
       {children}
     </button>
   );
 }
 
-// ─── Panel Layout Primitives ─────────────────────────────────
-function Panel({ children, scheme = null, style: extra = {} }) {
-  const bg    = scheme ? scheme.pageBg  : C.white;
-  const bdr   = scheme ? scheme.border  : C.border;
+// ─── Classroom card ───────────────────────────────────────────
+function ClassroomCard({ classroom, onCopy, copied, onManage }) {
+  const [hov, setHov] = useState(false);
+  const memberCount  = parseInt(classroom.member_count)  || 0;
+  const pendingCount = parseInt(classroom.pending_count) || 0;
+  const hasPending   = pendingCount > 0;
+  const scheme       = hasPending ? C.parent : C.teacher;
+
   return (
-    <div style={{
-      background: bg, border: `1.5px solid ${bdr}`,
-      borderRadius: 20, padding: '24px 26px',
-      boxShadow: C.shadowSm, ...extra,
-    }}>
-      {children}
+    <div
+      onMouseEnter={() => setHov(true)}
+      onMouseLeave={() => setHov(false)}
+      style={{
+        background: hov ? scheme.pageBg : C.white,
+        border: `1.5px solid ${hov ? scheme.border : C.border}`,
+        borderRadius: 18,
+        padding: '22px 22px 18px',
+        boxShadow: hov ? C.shadowMd : C.shadowSm,
+        transition: 'all 0.18s',
+        transform: hov ? 'translateY(-2px)' : 'none',
+        display: 'flex', flexDirection: 'column', gap: 14,
+      }}
+    >
+      {/* Header row: icon + status badge */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
+        <div style={{
+          width: 42, height: 42, borderRadius: 13, flexShrink: 0,
+          background: scheme.iconBg,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <BookOpen size={20} style={{ color: scheme.accent }} />
+        </div>
+        {hasPending ? (
+          <span style={{
+            display: 'inline-flex', alignItems: 'center', gap: 4,
+            padding: '4px 10px', borderRadius: 20,
+            background: C.parent.accentLight,
+            border: `1px solid ${C.parent.border}`,
+            fontSize: 11, fontWeight: 800, color: C.parent.textDark,
+            whiteSpace: 'nowrap',
+          }}>
+            <Bell size={11} /> {pendingCount} pending
+          </span>
+        ) : (
+          <span style={{
+            display: 'inline-flex', alignItems: 'center', gap: 4,
+            padding: '4px 10px', borderRadius: 20,
+            background: C.teacher.accentLight,
+            border: `1px solid ${C.teacher.border}`,
+            fontSize: 11, fontWeight: 800, color: C.teacher.textDark,
+            whiteSpace: 'nowrap',
+          }}>
+            <CheckCircle2 size={11} /> Active
+          </span>
+        )}
+      </div>
+
+      {/* Name + created date */}
+      <div>
+        <p style={{ fontSize: 16, fontWeight: 800, color: C.textPrimary, margin: '0 0 5px', lineHeight: 1.3 }}>
+          {classroom.name}
+        </p>
+        {classroom.created_at && (
+          <p style={{ fontSize: 12, color: C.textSecondary, margin: 0, lineHeight: 1.6 }}>
+            Created {new Date(classroom.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
+          </p>
+        )}
+      </div>
+
+      {/* Meta chips */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+        <div style={{
+          display: 'inline-flex', alignItems: 'center', gap: 5,
+          padding: '3px 10px', borderRadius: 20,
+          background: C.student.accentLight, border: `1px solid ${C.student.border}`,
+          fontSize: 11, fontWeight: 700, color: C.student.textDark,
+        }}>
+          <Users size={10} /> {memberCount} member{memberCount !== 1 ? 's' : ''}
+        </div>
+        {/* Clickable join code chip */}
+        <button
+          onClick={() => onCopy(classroom.code)}
+          title="Click to copy join code"
+          style={{
+            display: 'inline-flex', alignItems: 'center', gap: 5,
+            padding: '3px 10px', borderRadius: 20,
+            background: '#F0EDF8', border: `1px solid ${C.border}`,
+            fontSize: 11, fontWeight: 700, color: C.textSecondary,
+            cursor: 'pointer', transition: 'all 0.12s',
+          }}
+          onMouseEnter={e => { e.currentTarget.style.background = '#E8E4F4'; e.currentTarget.style.borderColor = '#C8C0F0'; }}
+          onMouseLeave={e => { e.currentTarget.style.background = '#F0EDF8'; e.currentTarget.style.borderColor = C.border; }}
+        >
+          <Hash size={10} />
+          <span style={{ fontFamily: '"Courier New", monospace', letterSpacing: '0.04em' }}>
+            {classroom.code}
+          </span>
+          {copied === classroom.code
+            ? <Check size={10} style={{ color: C.teacher.accent }} />
+            : <Copy size={10} />}
+        </button>
+      </div>
+
+      {/* Actions */}
+      <div style={{ display: 'flex', gap: 8, marginTop: 2 }}>
+        <button
+          onClick={() => onManage(classroom.id)}
+          style={{
+            flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+            padding: '8px 14px', borderRadius: 10,
+            background: scheme.accent, color: '#FFFFFF',
+            fontFamily: 'Nunito, sans-serif', fontWeight: 700,
+            fontSize: 13, cursor: 'pointer',
+            border: `2px solid ${scheme.accent}`,
+            transition: 'opacity 0.15s',
+          }}
+          onMouseEnter={e => e.currentTarget.style.opacity = '0.85'}
+          onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+        >
+          <UserCheck size={13} /> Manage
+        </button>
+        <button
+          onClick={() => onCopy(classroom.code)}
+          title="Copy join code"
+          style={{
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+            padding: '8px 14px', borderRadius: 10,
+            background: 'transparent', color: C.textSecondary,
+            fontFamily: 'Nunito, sans-serif', fontWeight: 700,
+            fontSize: 13, cursor: 'pointer',
+            border: `2px solid ${C.border}`,
+            transition: 'all 0.15s',
+          }}
+          onMouseEnter={e => { e.currentTarget.style.background = C.page; e.currentTarget.style.borderColor = scheme.border; }}
+          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = C.border; }}
+        >
+          {copied === classroom.code ? <Check size={13} /> : <Copy size={13} />}
+          {copied === classroom.code ? 'Copied!' : 'Copy Code'}
+        </button>
+      </div>
     </div>
   );
 }
 
+// ─── Main component ───────────────────────────────────────────
 export default function ClassroomsListPage() {
   const navigate = useNavigate();
   const [classrooms, setClassrooms] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading]       = useState(true);
   const [showCreate, setShowCreate] = useState(false);
-  const [newName, setNewName] = useState('');
-  const [creating, setCreating] = useState(false);
+  const [newName, setNewName]       = useState('');
+  const [creating, setCreating]     = useState(false);
   const [createError, setCreateError] = useState('');
-  const [copied, setCopied] = useState(null);
+  const [copied, setCopied]         = useState(null);
   const [inputFocused, setInputFocused] = useState(false);
 
-  useEffect(() => {
-    fetchClassrooms();
-  }, []);
+  useEffect(() => { fetchClassrooms(); }, []);
 
   const fetchClassrooms = async () => {
     setLoading(true);
@@ -177,76 +297,56 @@ export default function ClassroomsListPage() {
     setTimeout(() => setCopied(null), 2000);
   };
 
-  const totalPending = classrooms.reduce((sum, c) => sum + (parseInt(c.pending_count) || 0), 0);
+  const totalMembers = classrooms.reduce((s, c) => s + (parseInt(c.member_count)  || 0), 0);
+  const totalPending = classrooms.reduce((s, c) => s + (parseInt(c.pending_count) || 0), 0);
 
+  // ── Loading ─────────────────────────────────────────────────
   if (loading) {
     return (
       <div style={{
         display: 'flex', flexDirection: 'column', alignItems: 'center',
-        justifyContent: 'center', padding: '64px 0', gap: 14, width: '100%'
+        justifyContent: 'center', padding: '64px 0', gap: 14,
+        fontFamily: 'Nunito, sans-serif',
       }}>
         <div style={{
           width: 36, height: 36, borderRadius: '50%',
           border: `3px solid ${C.teacher.accentLight}`,
           borderTop: `3px solid ${C.teacher.accent}`,
-          animation: 'classroomListSpin 0.8s linear infinite',
+          animation: 'spin 0.8s linear infinite',
         }} />
         <p style={{ fontSize: 13, fontWeight: 700, color: C.textSecondary, margin: 0 }}>
           Loading classrooms…
         </p>
-        <style>{`@keyframes classroomListSpin { to { transform: rotate(360deg); } }`}</style>
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       </div>
     );
   }
 
+  // ── Dashboard ───────────────────────────────────────────────
   return (
     <div style={{
       fontFamily: '"Nunito", sans-serif',
       color: C.textPrimary,
       maxWidth: 900,
-      display: 'flex', flexDirection: 'column', gap: 32,
-      width: '100%',
+      display: 'flex', flexDirection: 'column', gap: 36,
     }}>
-      <style>{`
-        @keyframes modalPop  { from { opacity:0; transform:scale(0.93) translateY(10px);} to { opacity:1; transform:none;} }
-        @media (max-width: 560px) {
-          .list-page-header { flex-direction: column !important; align-items: stretch !important; gap: 16px !important; }
-          .list-page-header button { width: 100% !important; }
-          .classroom-card-row { flex-direction: column !important; align-items: stretch !important; gap: 16px !important; }
-          .classroom-card-actions { width: 100% !important; justify-content: space-between !important; }
-          .classroom-card-actions button { flex: 1 !important; }
-          .classroom-card-actions > div { flex: 1 !important; width: 100% !important; justify-content: center !important; }
-        }
-      `}</style>
+      <style>{`@keyframes modalPop { from { opacity:0; transform:scale(0.93) translateY(10px);} to { opacity:1; transform:none;} }`}</style>
 
-      {/* ── Header ─────────────────────────────────────────── */}
-      <div className="list-page-header" style={{
+      {/* ── Header ──────────────────────────────────────────── */}
+      <div style={{
         borderRadius: 22,
         background: C.teacher.pageBg,
         border: `1.5px solid ${C.teacher.border}`,
         padding: '28px 28px 24px',
+        display: 'flex', flexWrap: 'wrap', alignItems: 'center',
+        justifyContent: 'space-between', gap: 18,
         boxShadow: C.shadowSm,
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 20,
       }}>
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-            <SectionLabel icon={<Users size={12} />} text="Classrooms" />
-            {totalPending > 0 && (
-              <span style={{
-                display: 'inline-flex', alignItems: 'center', gap: 5,
-                padding: '4px 10px', borderRadius: 20,
-                background: C.amber.pageBg, border: `1px solid ${C.amber.border}`,
-                fontSize: 11, fontWeight: 800, color: C.amber.accent,
-                marginBottom: 10,
-              }}>
-                <Bell size={11} />
-                {totalPending} pending
-              </span>
-            )}
-          </div>
-          <SectionTitle>Classrooms</SectionTitle>
-          <p style={{ fontSize: 14, color: C.textSecondary, margin: '6px 0 0', lineHeight: 1.6, maxWidth: 540 }}>
-            Create classrooms and share the code with parents so their students can join.
+          <SectionLabel icon={<Users size={12} />} text="Classrooms" />
+          <SectionTitle>Your classrooms</SectionTitle>
+          <p style={{ fontSize: 14, color: C.textSecondary, margin: '6px 0 0', lineHeight: 1.6, maxWidth: 460 }}>
+            Create classrooms and share the join code with parents so their students can join.
           </p>
         </div>
         <SoftButton
@@ -254,34 +354,123 @@ export default function ClassroomsListPage() {
           onClick={() => { setShowCreate(true); setCreateError(''); }}
           style={{ flexShrink: 0 }}
         >
-          <Plus size={16} /> New Classroom
+          <PlusCircle size={16} /> Create Classroom
         </SoftButton>
       </div>
 
-      {/* ── How it works banner ────────────────────────────── */}
+      {/* ── Stats strip ─────────────────────────────────────── */}
       <div style={{
-        padding: '16px 20px', background: C.parent.pageBg, border: `1.5px solid ${C.parent.border}`,
-        borderRadius: 16, display: 'flex', gap: 12, boxShadow: C.shadowSm
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
+        gap: 12,
       }}>
-        <Info size={20} style={{ color: C.parent.accent, flexShrink: 0, marginTop: 2 }} />
-        <div style={{ fontSize: 13, color: C.textPrimary, lineHeight: 1.6 }}>
+        {[
+          { icon: BookOpen, label: 'Total',   value: classrooms.length, scheme: C.teacher },
+          { icon: Users,    label: 'Members', value: totalMembers,      scheme: C.student },
+          { icon: Clock,    label: 'Pending', value: totalPending,      scheme: C.parent  },
+        ].map(({ icon: Icon, label, value, scheme }) => (
+          <div key={label} style={{
+            background: C.white, border: `1.5px solid ${C.border}`,
+            borderRadius: 16, padding: '16px 18px',
+            boxShadow: C.shadowSm,
+            display: 'flex', alignItems: 'center', gap: 12,
+          }}>
+            <div style={{
+              width: 38, height: 38, borderRadius: 11,
+              background: scheme.iconBg,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+            }}>
+              <Icon size={18} style={{ color: scheme.accent }} />
+            </div>
+            <div>
+              <p style={{ fontSize: 11, fontWeight: 700, color: C.textSecondary, margin: 0 }}>{label}</p>
+              <p style={{
+                fontFamily: '"Fredoka One", cursive',
+                fontSize: 26, color: scheme.accent, margin: 0, lineHeight: 1,
+              }}>{value}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* ── How it works info banner ─────────────────────────── */}
+      <div style={{
+        padding: '16px 20px',
+        background: C.student.pageBg,
+        border: `1.5px solid ${C.student.border}`,
+        borderRadius: 16, display: 'flex', gap: 12, boxShadow: C.shadowSm,
+      }}>
+        <Info size={20} style={{ color: C.student.accent, flexShrink: 0, marginTop: 2 }} />
+        <div style={{ fontSize: 13, color: C.textPrimary, lineHeight: 1.7 }}>
           <strong>How it works:</strong>
-          <ol style={{ margin: '4px 0 0', paddingLeft: '16px', listStyleType: 'decimal' }}>
-            <li>Create a classroom and get a unique 6-character code</li>
-            <li>Share the code with parents (via email or verbally)</li>
-            <li>Parents enter the code on their <em>Classroom</em> page to request access</li>
-            <li>Click <strong>Manage</strong> to approve or reject their requests</li>
+          <ol style={{ margin: '4px 0 0', paddingLeft: 16, listStyleType: 'decimal' }}>
+            <li>Create a classroom to get a unique 6-character join code.</li>
+            <li>Share that code with parents via email or verbally.</li>
+            <li>Parents enter the code on their Classroom page to request access.</li>
+            <li>Click <strong>Manage</strong> on any classroom to approve or reject requests.</li>
           </ol>
         </div>
       </div>
 
-      {/* ── Create modal ───────────────────────────────────── */}
+      {/* ── Classrooms grid ──────────────────────────────────── */}
+      <section>
+        <SectionLabel icon={<Sparkles size={13} />} text="All Classrooms" />
+        <SectionTitle style={{ marginBottom: 16 }}>Browse your classrooms</SectionTitle>
+
+        {classrooms.length === 0 ? (
+          <div style={{
+            background: C.teacher.pageBg,
+            border: `1.5px solid ${C.teacher.border}`,
+            borderRadius: 20, padding: '40px 28px',
+            textAlign: 'center', boxShadow: C.shadowSm,
+          }}>
+            <div style={{
+              width: 56, height: 56, borderRadius: 18,
+              background: C.teacher.iconBg,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              margin: '0 auto 14px',
+            }}>
+              <BookOpen size={28} style={{ color: C.teacher.accent }} />
+            </div>
+            <p style={{
+              fontFamily: '"Fredoka One", cursive',
+              fontSize: 20, color: C.teacher.textDark, margin: '0 0 6px',
+            }}>
+              No classrooms yet
+            </p>
+            <p style={{ fontSize: 13, color: C.textSecondary, margin: '0 0 20px', lineHeight: 1.6 }}>
+              Create your first classroom to start managing students and sharing paths.
+            </p>
+            <SoftButton color={C.teacher.accent} onClick={() => setShowCreate(true)}>
+              Create Classroom <ChevronRight size={14} />
+            </SoftButton>
+          </div>
+        ) : (
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(270px, 1fr))',
+            gap: 16,
+          }}>
+            {classrooms.map(classroom => (
+              <ClassroomCard
+                key={classroom.id}
+                classroom={classroom}
+                onCopy={copyCode}
+                copied={copied}
+                onManage={(id) => navigate(`/teacher/classrooms/${id}`)}
+              />
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* ── Create classroom modal ───────────────────────────── */}
       {showCreate && (
         <div
           onClick={(e) => e.target === e.currentTarget && setShowCreate(false)}
           style={{
             position: 'fixed', inset: 0, zIndex: 9999,
-            background: 'rgba(0,0,0,0.5)',
+            background: 'rgba(0,0,0,0.45)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             padding: 16,
           }}
@@ -290,7 +479,7 @@ export default function ClassroomsListPage() {
             width: '100%', maxWidth: 400,
             borderRadius: 20, background: C.white,
             border: `1.5px solid ${C.border}`,
-            boxShadow: '0 8px 40px rgba(0,0,0,0.3)',
+            boxShadow: '0 8px 40px rgba(0,0,0,0.25)',
             overflow: 'hidden',
             animation: 'modalPop 0.22s ease-out',
           }}>
@@ -303,16 +492,16 @@ export default function ClassroomsListPage() {
               </p>
               <button
                 onClick={() => setShowCreate(false)}
-                style={{
-                  background: 'none', border: 'none', cursor: 'pointer',
-                  color: C.textMuted, display: 'flex', padding: 4,
-                }}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.textMuted, display: 'flex', padding: 4 }}
               >
                 <X size={18} />
               </button>
             </div>
-            <form onSubmit={createClassroom} style={{ padding: '22px' }}>
-              <label style={{ display: 'block', fontSize: 12, fontWeight: 800, color: C.textSecondary, marginBottom: 8, textTransform: 'uppercase' }}>
+            <form onSubmit={createClassroom} style={{ padding: 22 }}>
+              <label style={{
+                display: 'block', fontSize: 12, fontWeight: 800,
+                color: C.textSecondary, marginBottom: 8, textTransform: 'uppercase',
+              }}>
                 Classroom Name <span style={{ color: '#C03030' }}>*</span>
               </label>
               <input
@@ -329,20 +518,19 @@ export default function ClassroomsListPage() {
                   width: '100%', boxSizing: 'border-box',
                   padding: '11px 14px', borderRadius: 12,
                   border: `1.5px solid ${inputFocused ? C.teacher.accent : C.border}`,
-                  background: '#FAFAF8',
-                  color: C.textPrimary, fontSize: 14,
-                  fontFamily: 'Nunito, sans-serif', outline: 'none',
-                  transition: 'border-color 0.15s', marginBottom: 4
+                  background: '#FAFAF8', color: C.textPrimary,
+                  fontSize: 14, fontFamily: 'Nunito, sans-serif',
+                  outline: 'none', transition: 'border-color 0.15s',
                 }}
               />
               {createError && (
-                <p style={{ color: '#C03030', fontSize: 12, fontWeight: 700, marginTop: 6, margin: '6px 0 0' }}>{createError}</p>
+                <p style={{ color: '#C03030', fontSize: 12, fontWeight: 700, margin: '6px 0 0' }}>{createError}</p>
               )}
-              <p style={{ fontSize: 11, color: C.textMuted, marginTop: 8, marginBottom: 20 }}>
+              <p style={{ fontSize: 11, color: C.textMuted, margin: '8px 0 20px' }}>
                 A unique 6-character join code will be generated automatically.
               </p>
               <div style={{ display: 'flex', gap: 10 }}>
-                <SoftButton type="button" onClick={() => setShowCreate(false)} outline color={C.textPrimary} style={{ flex: 1 }}>
+                <SoftButton type="button" onClick={() => setShowCreate(false)} outline color={C.textSecondary} style={{ flex: 1 }}>
                   Cancel
                 </SoftButton>
                 <SoftButton type="submit" disabled={creating || !newName.trim()} color={C.teacher.accent} style={{ flex: 1 }}>
@@ -353,114 +541,6 @@ export default function ClassroomsListPage() {
           </div>
         </div>
       )}
-
-      {/* ── Classrooms List Rows Container ────────────────── */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-        {classrooms.length === 0 ? (
-          <Panel scheme={C.teacher} style={{ textAlign: 'center', padding: '48px 24px' }}>
-            <div style={{
-              width: 56, height: 56, borderRadius: 16, background: C.white,
-              display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px',
-              border: `1px solid ${C.teacher.border}`
-            }}>
-              <BookOpen size={26} style={{ color: C.teacher.accent }} />
-            </div>
-            <p style={{ fontFamily: '"Fredoka One", cursive', fontSize: 19, color: C.textPrimary, margin: '0 0 6px' }}>
-              No classrooms yet
-            </p>
-            <p style={{ fontSize: 13, color: C.textMuted, margin: '0 0 20px', lineHeight: 1.5 }}>
-              Create your first classroom to start managing students and sharing paths.
-            </p>
-            <SoftButton onClick={() => setShowCreate(true)} color={C.teacher.accent}>
-              Create Your First Classroom
-            </SoftButton>
-          </Panel>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            {classrooms.map((classroom) => {
-              const memberCount  = parseInt(classroom.member_count)  || 0;
-              const pendingCount = parseInt(classroom.pending_count) || 0;
-
-              return (
-                <div
-                  key={classroom.id}
-                  style={{
-                    background: C.white, border: `1.5px solid ${C.border}`,
-                    borderRadius: 20, padding: '20px 24px', boxShadow: C.shadowSm,
-                  }}
-                >
-                  <div className="classroom-card-row" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
-                    {/* Left Side Info */}
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                        <h3 style={{ fontSize: 17, fontWeight: 800, color: C.textPrimary, margin: 0 }}>
-                          {classroom.name}
-                        </h3>
-                        {pendingCount > 0 && (
-                          <span style={{
-                            display: 'inline-flex', alignItems: 'center', gap: 4,
-                            padding: '3px 9px', borderRadius: 20,
-                            background: C.amber.pageBg, border: `1px solid ${C.amber.border}`,
-                            fontSize: 11, fontWeight: 800, color: C.amber.accent,
-                          }}>
-                            <Bell size={10} />
-                            {pendingCount} pending
-                          </span>
-                        )}
-                      </div>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 10, marginTop: 6 }}>
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 13, color: C.textSecondary }}>
-                          <Users size={14} style={{ color: C.textMuted }} />
-                          {memberCount} approved member{memberCount !== 1 ? 's' : ''}
-                        </span>
-                        <span style={{ color: C.border }}>·</span>
-                        <span style={{ fontSize: 11, color: C.textMuted }}>
-                          Created {new Date(classroom.created_at).toLocaleDateString()}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Right Side Code Chip & View Details Action */}
-                    <div className="classroom-card-actions" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 12 }}>
-                      <div style={{
-                        display: 'flex', alignItems: 'center', gap: 8,
-                        background: C.parent.pageBg, border: `1.5px solid ${C.parent.border}`,
-                        borderRadius: 12, padding: '8px 14px', height: 42, boxSizing: 'border-box'
-                      }}>
-                        <span style={{ fontSize: 10, color: C.parent.textDark, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Code</span>
-                        <span style={{ fontFamily: '"Courier New", monospace', fontWeight: 900, color: C.textPrimary, letterSpacing: '0.05em', fontSize: 15 }}>
-                          {classroom.code}
-                        </span>
-                        <button
-                          onClick={() => copyCode(classroom.code)}
-                          title="Copy code"
-                          style={{
-                            background: 'none', border: 'none', cursor: 'pointer',
-                            display: 'flex', padding: 2, marginLeft: 2,
-                            color: copied === classroom.code ? C.teacher.accent : C.textMuted,
-                            transition: 'color 0.12s'
-                          }}
-                        >
-                          {copied === classroom.code ? <Check size={14} /> : <Copy size={14} />}
-                        </button>
-                      </div>
-
-                      <SoftButton
-                        onClick={() => navigate(`/teacher/classrooms/${classroom.id}`)}
-                        color={C.parent.accent}
-                        style={{ height: 42, minWidth: 110 }}
-                      >
-                        Manage
-                        <ChevronRight size={14} />
-                      </SoftButton>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
     </div>
   );
 }
