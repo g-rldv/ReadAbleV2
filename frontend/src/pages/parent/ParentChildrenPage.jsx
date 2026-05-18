@@ -74,7 +74,8 @@ const C = {
 function SectionLabel({ icon, text }) {
   return (
     <div className="children-section-label">
-      
+      <span style={{ display: 'flex' }}>{icon}</span>
+      <span>{text}</span>
     </div>
   );
 }
