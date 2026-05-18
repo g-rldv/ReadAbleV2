@@ -641,8 +641,6 @@ export default function ParentSettings() {
             <Settings size={26} style={{ color: C.parent.accent }} />
           </div>
           <div>
-            <SectionLabel icon={<Settings size={12} />} text="Preferences" />
-            <SectionTitle>Settings</SectionTitle>
             <p style={{ fontSize: 13, color: C.textSecondary, margin: '4px 0 0', lineHeight: 1.5 }}>
               Customise how ReadAble looks and sounds for your family.
             </p>
