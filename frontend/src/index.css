@@ -119,15 +119,15 @@
 
 /* ── MIDNIGHT — deep navy, soft neon glow ───────────────── */
 [data-theme="night"] {
-  --bg-primary:    #0C0A20;
-  --bg-card:       #181430;
-  --bg-card-grad:  linear-gradient(145deg, #1E1840 0%, #141030 100%);
-  --bg-sidebar:    #0A0818;
-  --text-primary:  #F0ECFF;
-  --text-muted:    #A890E0;
-  --border-color:  #3C2E80;
-  --shadow:        0 4px 22px rgba(0,0,0,0.55);
-  --accent:        #9060F0;
+  --bg-primary:    #0B0820;
+  --bg-card:       #181334;
+  --bg-card-grad:  linear-gradient(145deg, #201944 0%, #15102E 100%);
+  --bg-sidebar:    #100C26;
+  --text-primary:  #F7F3FF;
+  --text-muted:    #C8BFF0;
+  --border-color:  #4E4278;
+  --shadow:        0 8px 28px rgba(0,0,0,0.45);
+  --accent:        #9B7CFF;
 }
 /* ── Global resets ───────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; }

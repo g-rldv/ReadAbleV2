@@ -16,9 +16,13 @@ import api from '../utils/api';
 
 // ─── Design tokens (exact mirror of LandingPage) ─────────────
 const C = {
-  page: '#F2F0FA',
-  white: '#FFFFFF',
-  border: '#DDD8F2',
+  page: 'var(--bg-primary, #F2F0FA)',
+  white: 'var(--bg-card, #FFFFFF)',
+  border: 'var(--border-color, #DDD8F2)',
+  textPrimary: 'var(--text-primary, #28264A)',
+  textSecondary: 'var(--text-muted, #6A6898)',
+  textMuted: 'var(--text-muted, #9A98C0)',
+  primary: 'var(--accent, #5A50A0)',
   shadowSm: '0 1px 8px rgba(80,60,160,0.07)',
   shadowMd: '0 4px 24px rgba(80,60,160,0.10)',
 
@@ -44,9 +48,6 @@ const C = {
     textDark: '#800000', iconBg: '#FDDADA',
   },
 
-  textPrimary: '#28264A',
-  textSecondary: '#6A6898',
-  textMuted: '#9A98C0',
   primary: '#5A50A0',
   primaryH: '#4A4090',
 };
@@ -75,12 +76,22 @@ const TEXT_SIZES = [
 function SectionLabel({ icon, text }) {
   return (
     <div style={{
-      display: 'inline-flex', alignItems: 'center', gap: 6,
-      padding: '5px 12px', borderRadius: 20,
-      background: '#EDE8FF', border: '1px solid #C8C0F0', marginBottom: 10,
+      display: 'inline-flex',
+      alignItems: 'center',
+      gap: 6,
+      padding: '5px 12px',
+      borderRadius: 20,
+      background: 'rgba(144, 96, 240, 0.16)',
+      border: '1px solid rgba(144, 96, 240, 0.35)',
+      marginBottom: 10,
     }}>
-      <span style={{ color: '#6050B0', display: 'flex' }}>{icon}</span>
-      <span style={{ fontSize: 11, fontWeight: 800, color: '#6050B0', textTransform: 'uppercase' }}>
+      <span style={{ color: 'var(--accent, #6050B0)', display: 'flex' }}>{icon}</span>
+      <span style={{
+        fontSize: 11,
+        fontWeight: 800,
+        color: 'var(--accent, #6050B0)',
+        textTransform: 'uppercase',
+      }}>
         {text}
       </span>
     </div>
@@ -92,7 +103,9 @@ function SectionTitle({ children }) {
     <h2 style={{
       fontFamily: '"Fredoka One", cursive',
       fontSize: 'clamp(19px, 2.5vw, 24px)',
-      color: C.textPrimary, margin: '0 0 4px', lineHeight: 1.2,
+      color: 'var(--text-primary, #28264A)',
+      margin: '0 0 4px',
+      lineHeight: 1.2,
     }}>
       {children}
     </h2>
@@ -126,13 +139,17 @@ function SoftButton({ children, onClick, color, outline, small, danger, disabled
 
 // ─── Panel wrapper ────────────────────────────────────────────
 function Panel({ children, scheme = null, style: extra = {} }) {
-  const bg    = scheme ? scheme.pageBg  : C.white;
-  const bdr   = scheme ? scheme.border  : C.border;
+  const bg = scheme ? scheme.pageBg : 'var(--bg-card, #FFFFFF)';
+  const bdr = scheme ? scheme.border : 'var(--border-color, #DDD8F2)';
+
   return (
     <div style={{
-      background: bg, border: `1.5px solid ${bdr}`,
-      borderRadius: 20, padding: '24px 26px',
-      boxShadow: C.shadowSm, ...extra,
+      background: bg,
+      border: `1.5px solid ${bdr}`,
+      borderRadius: 20,
+      padding: '24px 26px',
+      boxShadow: C.shadowSm,
+      ...extra,
     }}>
       {children}
     </div>
@@ -619,7 +636,7 @@ export default function ParentSettings() {
 
       <div className="settings-page" style={{
         fontFamily: '"Nunito", sans-serif',
-        color: C.textPrimary,
+        color: 'var(--text-primary, #28264A)',
         maxWidth: 760,
         display: 'flex', flexDirection: 'column', gap: 32,
       }}>
