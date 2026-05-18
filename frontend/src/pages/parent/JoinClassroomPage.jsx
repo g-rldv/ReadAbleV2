@@ -348,9 +348,7 @@ export default function JoinClassroomPage() {
                     background: inputFocused ? C.parent.pageBg : '#FAFAF8',
                     fontFamily: '"Courier New", monospace',
                     fontSize: 26,
-                    defaultValue: 'A B 1 2 X Y',
-                    placeholderColor: '#C8C0E0',
-                    color: i => i < code.length ? C.parent.accent : C.textPrimary,
+                    color: C.textPrimary,
                     fontWeight: 700,
                     letterSpacing: '0.25em',
                     textAlign: 'center',
@@ -390,7 +388,6 @@ export default function JoinClassroomPage() {
                     </option>
                   ))}
                 </select>
-              </div>
                 
                 {/* Character count progress indicators */}
                 <div style={{
