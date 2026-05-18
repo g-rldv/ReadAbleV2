@@ -48,7 +48,7 @@ const C = {
   textPrimary: 'var(--text-primary, #28264A)',
   textSecondary: 'var(--text-muted, #6A6898)',
   textMuted: 'var(--text-muted, #9A98C0)',
-  primary: 'var(--accent, #3A7A5C)', // Matches teacher dashboard main palette
+  primary: 'var(--accent, #3A7A5C)', 
 };
 
 // ─── Shared primitives ────────────────────────────────────────
@@ -80,6 +80,7 @@ function SectionTitle({ children, style = {} }) {
   );
 }
 
+// ─── Custom Soft Button Primitives ───────────────────────────
 function SoftButton({ children, onClick, color, outline, small, disabled, type = 'button', style: extra = {} }) {
   const [hov, setHov] = useState(false);
   const col = color || C.primary;
@@ -101,7 +102,6 @@ function SoftButton({ children, onClick, color, outline, small, disabled, type =
   );
 }
 
-// ─── Main component ───────────────────────────────────────────
 export default function ClassroomsListPage() {
   const navigate = useNavigate();
   const [classrooms, setClassrooms] = useState([]);
@@ -201,7 +201,7 @@ export default function ClassroomsListPage() {
         border: `1.5px solid ${C.teacher.border}`,
         padding: '28px 28px 24px',
         boxShadow: C.shadowSm,
-        display: 'flex', alignItems: 'center', justifycontent: 'space-between', gap: 20,
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 20,
       }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
@@ -399,13 +399,12 @@ export default function ClassroomsListPage() {
 
                     {/* Right Side Code Chip & View Details Action */}
                     <div className="classroom-card-actions" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 12 }}>
-                      {/* Synchronized input theme styling */}
                       <div style={{
                         display: 'flex', alignItems: 'center', gap: 8,
                         background: C.parent.pageBg, border: `1.5px solid ${C.parent.border}`,
                         borderRadius: 12, padding: '8px 14px', height: 42, boxSizing: 'border-box'
                       }}>
-                        <span style={{ fontSize: 10, color: C.parent.textDark, Pioneers: 800, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Code</span>
+                        <span style={{ fontSize: 10, color: C.parent.textDark, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Code</span>
                         <span style={{ fontFamily: '"Courier New", monospace', fontWeight: 900, color: C.textPrimary, letterSpacing: '0.05em', fontSize: 15 }}>
                           {classroom.code}
                         </span>
