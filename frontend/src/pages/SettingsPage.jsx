@@ -1,11 +1,11 @@
 // ============================================================
-// ParentSettings.jsx — Full settings page for parents
+// SettingsPage.jsx — Full settings page for parents
 // Theme · Text Size · TTS (pitch + speed) · Delete Account
 // Design-synced with LandingPage.jsx
 // ============================================================
-import { useState, useRef, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
-  Palette, Type, Volume2, Trash2,
+  Palette, Type, Volume2, VolumeX, Trash2, Headphones,
   Sun, Moon, Heart, Leaf, Music, Sparkles,
   Check, ChevronRight, AlertTriangle, X,
   Mic, Gauge, Play, Settings, Info,
@@ -217,10 +217,65 @@ function TTSPreviewBtn({ pitch, speed, disabled, onPlay }) {
         color: C.student.accent, cursor: disabled ? 'not-allowed' : 'pointer',
         fontFamily: 'Nunito, sans-serif', fontSize: 14, fontWeight: 700,
         transition: 'all 0.15s', opacity: disabled ? 0.5 : 1,
+        width: '100%', flex: 1,
       }}
     >
       <Play size={15} /> Preview voice
     </button>
+  );
+}
+
+// ─── Text confirmation modal ──────────────────────────────────
+function TextSizeConfirm({ currentSize, nextSize, onCancel, onConfirm }) {
+  const current = TEXT_SIZES.find(s => s.key === currentSize)?.label || 'Current';
+  const next = TEXT_SIZES.find(s => s.key === nextSize)?.label || 'Selected';
+  return (
+    <div
+      onClick={e => e.target === e.currentTarget && onCancel()}
+      style={{
+        position: 'fixed', inset: 0, zIndex: 9999,
+        background: 'rgba(40,38,74,0.48)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: 16,
+      }}
+    >
+      <div style={{
+        width: '100%', maxWidth: 380,
+        borderRadius: 20, background: C.white,
+        boxShadow: '0 8px 40px rgba(60,50,120,0.18)',
+        padding: 22,
+        animation: 'modalPop 0.22s ease-out',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+          <div style={{
+            width: 42, height: 42, borderRadius: 14,
+            background: C.student.iconBg,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            flexShrink: 0,          }}>
+            <Type size={22} style={{ color: C.student.accent }} />
+          </div>
+          <div>
+            <p style={{
+              fontFamily: '"Fredoka One", cursive',
+              fontSize: 19, color: C.textPrimary, margin: '0 0 4px',
+            }}>
+              Apply text size?
+            </p>
+            <p style={{ fontSize: 13, color: C.textSecondary, lineHeight: 1.55, margin: 0 }}>
+              This will change text size across the whole system from <strong>{current}</strong> to <strong>{next}</strong>.
+            </p>
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
+          <SoftButton onClick={onCancel} outline color={C.primary} style={{ flex: 1 }}>
+            Cancel
+          </SoftButton>
+          <SoftButton onClick={onConfirm} color={C.student.accent} style={{ flex: 1 }}>
+            <Check size={14} /> Apply
+          </SoftButton>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -340,15 +395,10 @@ function Toast({ msg, type = 'success', onDone }) {
   const bg    = type === 'success' ? C.teacher.pageBg : C.danger.pageBg;
   const bdr   = type === 'success' ? C.teacher.border : C.danger.border;
 
-  useRef(() => {
+  useEffect(() => {
     const t = setTimeout(onDone, 2800);
     return () => clearTimeout(t);
-  });
-
-  useState(() => {
-    const t = setTimeout(onDone, 2800);
-    return () => clearTimeout(t);
-  });
+  }, [onDone]);
 
   return (
     <div style={{
@@ -369,20 +419,40 @@ function Toast({ msg, type = 'success', onDone }) {
 
 // ─── Main page ────────────────────────────────────────────────
 export default function ParentSettings() {
-  const { settings, setTheme, setTextSize, setTtsEnabled } = useSettings();
+  const {
+    settings,
+    setTheme,
+    setTextSize,
+    setTtsEnabled,
+    setTtsVoice,
+    updateSettings,
+    voices = [],
+  } = useSettings();
   const { user, logout } = useAuth();
 
   // TTS local state (saved to settings context / api on apply)
   const [ttsPitch, setTtsPitch] = useState(settings?.tts_pitch ?? 1.0);
-  const [ttsSpeed, setTtsSpeed] = useState(settings?.tts_speed ?? 1.0);
+  const [ttsSpeed, setTtsSpeed] = useState(settings?.tts_rate ?? 0.9);
   const [ttsChanged, setTtsChanged] = useState(false);
   const [ttsSaving, setTtsSaving] = useState(false);
+
+  const [pendingTextSize, setPendingTextSize] = useState(settings?.text_size ?? 'medium');
+  const [showTextConfirm, setShowTextConfirm] = useState(false);
+  const [selectedVoice, setSelectedVoice] = useState(settings?.tts_voice ?? '');
 
   const [showDelete, setShowDelete] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [toast, setToast] = useState(null);
 
   const showToast = (msg, type = 'success') => setToast({ msg, type });
+
+  // ── Sync Effect ───────────────────────────────────────────
+  useEffect(() => {
+    setPendingTextSize(settings?.text_size ?? 'medium');
+    setSelectedVoice(settings?.tts_voice ?? '');
+    setTtsPitch(settings?.tts_pitch ?? 1.0);
+    setTtsSpeed(settings?.tts_rate ?? 0.9);
+  }, [settings?.text_size, settings?.tts_voice, settings?.tts_pitch, settings?.tts_rate]);
 
   // ── TTS preview ───────────────────────────────────────────
   const previewTTS = useCallback(() => {
@@ -391,14 +461,22 @@ export default function ParentSettings() {
     const utt = new SpeechSynthesisUtterance('The quick brown fox jumps over the lazy dog.');
     utt.pitch = ttsPitch;
     utt.rate  = ttsSpeed;
+    if (selectedVoice) {
+      const foundVoice = window.speechSynthesis.getVoices().find(v => v.name === selectedVoice);
+      if (foundVoice) utt.voice = foundVoice;
+    }
     window.speechSynthesis.speak(utt);
-  }, [ttsPitch, ttsSpeed]);
+  }, [ttsPitch, ttsSpeed, selectedVoice]);
 
   // ── Save TTS ──────────────────────────────────────────────
   const saveTTS = async () => {
     setTtsSaving(true);
     try {
-      await api.patch('/settings', { tts_pitch: ttsPitch, tts_speed: ttsSpeed });
+      await updateSettings({
+        tts_pitch: ttsPitch,
+        tts_rate: ttsSpeed,
+        tts_voice: selectedVoice,
+      });
       setTtsChanged(false);
       showToast('Voice settings saved.');
     } catch {
@@ -423,16 +501,66 @@ export default function ParentSettings() {
 
   return (
     <>
-      {/* ── Global keyframes ─────────────────────────────── */}
+      {/* ── Global keyframes & Responsive Styles ────────────── */}
       <style>{`
         @keyframes modalPop  { from { opacity:0; transform:scale(0.93) translateY(10px);} to { opacity:1; transform:none;} }
         @keyframes slideUp   { from { opacity:0; transform:translateY(14px);} to { opacity:1; transform:none;} }
         @keyframes spin      { to   { transform:rotate(360deg);} }
         input[type=range]    { -webkit-appearance:none; appearance:none; background:transparent; }
         input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; }
+        @media (max-width: 560px) {
+          .settings-page {
+            max-width: 100% !important;
+            gap: 24px !important;
+            padding: 0 4px !important;
+          }
+          .settings-header {
+            padding: 20px 18px !important;
+            border-radius: 18px !important;
+            align-items: flex-start !important;
+          }
+          .settings-header p {
+            font-size: 12px !important;
+          }
+          .voice-model-grid {
+            grid-template-columns: 1fr !important;
+          }
+          .tts-actions {
+            display: grid !important;
+            grid-template-columns: 1fr !important;
+          }
+          .tts-actions button {
+            width: 100% !important;
+            min-height: 46px !important;
+          }
+          .danger-zone-row {
+            display: grid !important;
+            grid-template-columns: 1fr !important;
+            gap: 14px !important;
+          }
+          .danger-zone-icon {
+            display: none !important;
+          }
+          .danger-zone-row p {
+            max-width: 100% !important;
+          }
+          .danger-zone-row button {
+            width: 100% !important;
+          }
+        }
+        @media (max-width: 380px) {
+          .settings-header {
+            padding: 18px 16px !important;
+          }
+          .settings-header > div:first-child {
+            width: 44px !important;
+            height: 44px !important;
+            border-radius: 14px !important;
+          }
+        }
       `}</style>
 
-      <div style={{
+      <div className="settings-page" style={{
         fontFamily: '"Nunito", sans-serif',
         color: C.textPrimary,
         maxWidth: 760,
@@ -440,7 +568,7 @@ export default function ParentSettings() {
       }}>
 
         {/* ── Page header ──────────────────────────────────── */}
-        <div style={{
+        <div className="settings-header" style={{
           borderRadius: 22,
           background: C.parent.pageBg,
           border: `1.5px solid ${C.parent.border}`,
@@ -549,11 +677,12 @@ export default function ParentSettings() {
               gap: 10,
             }}>
               {TEXT_SIZES.map(({ key, label, size }) => {
-                const active = settings?.text_size === key;
+                const active = pendingTextSize === key;
+                const saved = settings?.text_size === key;
                 return (
                   <button
                     key={key}
-                    onClick={() => setTextSize(key)}
+                    onClick={() => setPendingTextSize(key)}
                     style={{
                       borderRadius: 16, padding: '18px 12px',
                       border: `2px solid ${active ? C.student.accent : C.border}`,
@@ -591,6 +720,22 @@ export default function ParentSettings() {
                 );
               })}
             </div>
+
+            {pendingTextSize !== settings?.text_size && (
+              <div style={{
+                marginTop: 16,
+                display: 'flex',
+                justifyContent: 'flex-end',
+              }}>
+                <SoftButton
+                  onClick={() => setShowTextConfirm(true)}
+                  color={C.student.accent}
+                  style={{ minWidth: 180 }}
+                >
+                  <Check size={14} /> Apply text size
+                </SoftButton>
+              </div>
+            )}
           </Panel>
         </section>
 
@@ -646,6 +791,73 @@ export default function ParentSettings() {
               </span>
             </button>
 
+            {/* Voice models */}
+            <div>
+              <p style={{ fontSize: 14, fontWeight: 800, color: C.textPrimary, margin: '0 0 8px' }}>
+                Device TTS voice
+              </p>
+              <div className="voice-model-grid" style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
+                gap: 10,
+              }}>
+                {voices.length ? voices.slice(0, 8).map(voice => {
+                  const active = selectedVoice === voice.name;
+                  return (
+                    <button
+                      key={voice.name}
+                      onClick={() => {
+                        setSelectedVoice(voice.name);
+                        setTtsChanged(true);
+                        setTtsVoice?.(voice.name);
+                      }}
+                      style={{
+                        borderRadius: 14,
+                        border: `2px solid ${active ? C.student.accent : C.border}`,
+                        background: active ? C.student.pageBg : C.white,
+                        padding: '12px 14px',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 10,
+                        textAlign: 'left',
+                        fontFamily: 'Nunito, sans-serif',
+                      }}
+                    >
+                      <Headphones size={18} style={{ color: active ? C.student.accent : C.textMuted, flexShrink: 0 }} />
+                      <span style={{ minWidth: 0 }}>
+                        <strong style={{
+                          display: 'block',
+                          fontSize: 12,
+                          color: active ? C.student.accent : C.textPrimary,
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                        }}>
+                          {voice.name}
+                        </strong>
+                        <span style={{ display: 'block', fontSize: 10, color: C.textMuted }}>
+                          {voice.lang || 'System voice'}
+                        </span>
+                      </span>
+                    </button>
+                  );
+                }) : (
+                  <div style={{
+                    gridColumn: '1 / -1',
+                    padding: '12px 14px',
+                    borderRadius: 14,
+                    background: '#FAFAFE',
+                    border: `1px solid ${C.border}`,
+                    fontSize: 12,
+                    color: C.textSecondary,
+                  }}>
+                    No device voices found. Your browser will use its default voice.
+                  </div>
+                )}
+              </div>
+            </div>
+
             {/* Pitch */}
             <SliderRow
               label="Voice pitch"
@@ -681,7 +893,7 @@ export default function ParentSettings() {
             </div>
 
             {/* Action row */}
-            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+            <div className="tts-actions" style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
               <TTSPreviewBtn
                 pitch={ttsPitch} speed={ttsSpeed}
                 disabled={!settings?.tts_enabled}
@@ -708,12 +920,12 @@ export default function ParentSettings() {
           </p>
 
           <Panel scheme={C.danger}>
-            <div style={{
+            <div className="danger-zone-row" style={{
               display: 'flex', alignItems: 'center',
               justifyContent: 'space-between', flexWrap: 'wrap', gap: 16,
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                <div style={{
+                <div className="danger-zone-icon" style={{
                   width: 44, height: 44, borderRadius: 14,
                   background: C.danger.iconBg, flexShrink: 0,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -742,6 +954,23 @@ export default function ParentSettings() {
         </section>
 
       </div>
+
+      {/* ── Text size confirmation modal ─────────────────── */}
+      {showTextConfirm && (
+        <TextSizeConfirm
+          currentSize={settings?.text_size}
+          nextSize={pendingTextSize}
+          onCancel={() => {
+            setPendingTextSize(settings?.text_size ?? 'medium');
+            setShowTextConfirm(false);
+          }}
+          onConfirm={() => {
+            setTextSize(pendingTextSize);
+            setShowTextConfirm(false);
+            showToast('Text size applied.');
+          }}
+        />
+      )}
 
       {/* ── Delete confirmation overlay ───────────────────── */}
       {showDelete && (
