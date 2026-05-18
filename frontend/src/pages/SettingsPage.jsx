@@ -10,9 +10,9 @@ import {
   Check, ChevronRight, AlertTriangle, X,
   Mic, Gauge, Play, Settings, Info,
 } from 'lucide-react';
-import { useSettings } from '../../contexts/SettingsContext';
-import { useAuth } from '../../contexts/AuthContext';
-import api from '../../utils/api';
+import { useSettings } from '../contexts/SettingsContext';
+import { useAuth } from '../contexts/AuthContext';
+import api from '../utils/api';
 
 // ─── Design tokens (exact mirror of LandingPage) ─────────────
 const C = {
