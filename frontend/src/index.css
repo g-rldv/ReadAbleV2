@@ -7,11 +7,6 @@
    Applied via [data-theme="x"] on <html>
    ═══════════════════════════════════════════════════════════ */
 
-/* ═══════════════════════════════════════════════════════════
-   CSS CUSTOM PROPERTIES — one block per theme
-   Applied via [data-theme="x"] on <html>
-   ═══════════════════════════════════════════════════════════ */
-
 /* ── DEFAULT / LIGHT — clean warm white ─────────────────── */
 :root,
 [data-theme="cotton"] {
@@ -21,7 +16,9 @@
   --bg-sidebar:    #FFF4F0;
   --text-primary:  #2C1810;
   --text-muted:    #8C6060;
-  --border-color:  #F0D8D0;
+  --border-color:  #E8C8C0;        /* guaranteed contrast */
+  --border-interactive: #D4A89A;  /* for buttons/cards that need more contrast */
+  --border-focus:  #F07050;        /* accent color for focused/active state */
   --shadow:        0 4px 20px rgba(200,100,80,0.10);
   --accent:        #F07050;
 }
@@ -34,7 +31,9 @@
   --bg-sidebar:    #FFE0EA;
   --text-primary:  #4A0E20;
   --text-muted:    #B05070;
-  --border-color:  #F8B8CC;
+  --border-color:  #F0A8BC;
+  --border-interactive: #E08090;
+  --border-focus:  #E83060;
   --shadow:        0 4px 18px rgba(230,80,120,0.14);
   --accent:        #E83060;
 }
@@ -47,7 +46,9 @@
   --bg-sidebar:    #E0F4E0;
   --text-primary:  #0E2E14;
   --text-muted:    #3A7A46;
-  --border-color:  #98D8A0;
+  --border-color:  #88C890;
+  --border-interactive: #68A870;
+  --border-focus:  #22A845;
   --shadow:        0 4px 18px rgba(40,160,80,0.12);
   --accent:        #22A845;
 }
@@ -60,7 +61,9 @@
   --bg-sidebar:    #FFECC8;
   --text-primary:  #3A2000;
   --text-muted:    #906820;
-  --border-color:  #F0C870;
+  --border-color:  #E8C060;
+  --border-interactive: #C8A040;
+  --border-focus:  #D08010;
   --shadow:        0 4px 18px rgba(220,160,20,0.15);
   --accent:        #D08010;
 }
@@ -73,7 +76,9 @@
   --bg-sidebar:    #EDE0FF;
   --text-primary:  #220850;
   --text-muted:    #7040C0;
-  --border-color:  #C8A8F0;
+  --border-color:  #C0A0E8;
+  --border-interactive: #A080C8;
+  --border-focus:  #8040D8;
   --shadow:        0 4px 18px rgba(120,60,220,0.13);
   --accent:        #8040D8;
 }
@@ -86,7 +91,9 @@
   --bg-sidebar:    #FFE0C0;
   --text-primary:  #3A1200;
   --text-muted:    #B05828;
-  --border-color:  #F0A868;
+  --border-color:  #E8A060;
+  --border-interactive: #C88040;
+  --border-focus:  #E06818;
   --shadow:        0 4px 18px rgba(220,110,40,0.15);
   --accent:        #E06818;
 }
@@ -99,7 +106,9 @@
   --bg-sidebar:    #FFCCEA;
   --text-primary:  #3A0828;
   --text-muted:    #C03888;
-  --border-color:  #F888CC;
+  --border-color:  #F080C0;
+  --border-interactive: #D060A0;
+  --border-focus:  #D82890;
   --shadow:        0 4px 18px rgba(230,50,160,0.14);
   --accent:        #D82890;
 }
@@ -112,7 +121,9 @@
   --bg-sidebar:    #D0EEFC;
   --text-primary:  #04222E;
   --text-muted:    #1878A0;
-  --border-color:  #70CCE8;
+  --border-color:  #60C0D8;
+  --border-interactive: #40A0B8;
+  --border-focus:  #0898C8;
   --shadow:        0 4px 18px rgba(0,160,210,0.15);
   --accent:        #0898C8;
 }
@@ -123,12 +134,15 @@
   --bg-card:       #181334;
   --bg-card-grad:  linear-gradient(145deg, #201944 0%, #15102E 100%);
   --bg-sidebar:    #100C26;
-  --text-primary:  #F7F3FF;
-  --text-muted:    #C8BFF0;
-  --border-color:  #4E4278;
+  --text-primary:  #F8F4FF;
+  --text-muted:    #C9BFF2;
+  --border-color:  #4C3890;        /* stronger purple border in dark mode */
+  --border-interactive: #6848C0;
+  --border-focus:  #9060F0;
   --shadow:        0 8px 28px rgba(0,0,0,0.45);
   --accent:        #9B7CFF;
 }
+
 /* ── Global resets ───────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; }
 
@@ -142,7 +156,6 @@ body {
   color: var(--text-primary, #1A1A2E);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-
 }
 
 /* ── Typography ──────────────────────────────────────────── */
@@ -174,29 +187,118 @@ html.text-xlarge { font-size: 20px; --readable-font-scale: 1.25; }
 }
 
 /* ── Cards / shadows ─────────────────────────────────────── */
-.shadow-card { box-shadow: var(--shadow, 0 4px 20px rgba(0,0,0,0.08)); }
+.shadow-card { box-shadow: var(--shadow, 0 4px 20px rgba(0,0,0,0.08)); border: 1px solid var(--border-color); }
 
 /* ── Buttons ─────────────────────────────────────────────── */
 .btn-game {
   @apply font-display font-bold rounded-2xl px-5 py-3 transition-all duration-150 select-none;
   @apply active:scale-95 focus-visible:outline-none;
+  border: 2px solid var(--border-interactive, rgba(0,0,0,0.15)) !important;
 }
 .btn-game:active  { transform: scale(0.95); }
 .btn-game:hover   { filter: brightness(1.06); }
 .btn-game:disabled{ opacity: 0.55; cursor: not-allowed; }
 
-/* ── Gradient backdrop (gradient theme) ──────────────────── */
+/* Specific color overrides for btn-game variants */
+.btn-game.bg-sky,
+.btn-game[style*="background-color: #60B8F5"],
+.btn-game[style*="background:#60B8F5"] {
+  border-color: rgba(96,184,245,0.7) !important;
+}
 
+.btn-game.bg-coral {
+  border-color: rgba(249,123,107,0.7) !important;
+}
 
-/* ── Drop zones (games) ───────────────────────────────────── */
+/* ── Input fields — always have a defined border ─────────────*/
+input[type="text"],
+input[type="email"],
+input[type="password"],
+select,
+textarea {
+  border: 2px solid var(--border-color) !important;
+  transition: border-color 0.15s ease;
+}
+
+input[type="text"]:focus,
+input[type="email"]:focus,
+input[type="password"]:focus,
+select:focus,
+textarea:focus {
+  border-color: var(--border-focus, #60B8F5) !important;
+  outline: none;
+}
+
+/* ── Drop zones — always bordered ────────────────────────────*/
 .drop-zone {
   @apply border-2 border-dashed rounded-2xl transition-all duration-200;
   min-height: 3rem;
+  border-color: var(--border-interactive) !important;
 }
 .drop-zone.active  { @apply border-sky bg-sky/10 scale-105; }
 .drop-zone.correct { @apply border-mint bg-mint/10; }
 .drop-zone.wrong   { @apply border-coral bg-coral/10; }
 
+/* ── Night mode readability ────────────────────────────────── */
+[data-theme="night"] body,
+[data-theme="night"] #root {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+}
+
+[data-theme="night"] .bg-white,
+[data-theme="night"] .bg-gray-50,
+[data-theme="night"] .bg-slate-50,
+[data-theme="night"] .bg-zinc-50 {
+  background-color: var(--bg-card) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border-color) !important;
+}
+
+[data-theme="night"] .text-gray-900,
+[data-theme="night"] .text-gray-800,
+[data-theme="night"] .text-gray-700,
+[data-theme="night"] .text-slate-900,
+[data-theme="night"] .text-slate-800,
+[data-theme="night"] .text-zinc-900 {
+  color: var(--text-primary) !important;
+}
+
+[data-theme="night"] .text-gray-600,
+[data-theme="night"] .text-gray-500,
+[data-theme="night"] .text-gray-400,
+[data-theme="night"] .text-slate-600,
+[data-theme="night"] .text-slate-500,
+[data-theme="night"] .text-zinc-500 {
+  color: var(--text-muted) !important;
+}
+
+[data-theme="night"] h1,
+[data-theme="night"] h2,
+[data-theme="night"] h3,
+[data-theme="night"] h4 {
+  color: var(--text-primary);
+}
+
+[data-theme="night"] .border,
+[data-theme="night"] .border-gray-100,
+[data-theme="night"] .border-gray-200,
+[data-theme="night"] .border-slate-200 {
+  border-color: var(--border-color) !important;
+}
+
+[data-theme="night"] input,
+[data-theme="night"] textarea,
+[data-theme="night"] select {
+  background-color: #100C26 !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border-color) !important;
+}
+
+[data-theme="night"] input::placeholder,
+[data-theme="night"] textarea::placeholder {
+  color: #9C91C8 !important;
+}
 
 /* ── Confetti ────────────────────────────────────────────── */
 .confetti-piece {
@@ -219,11 +321,7 @@ html.text-xlarge { font-size: 20px; --readable-font-scale: 1.25; }
   border-radius: 4px;
 }
 
-/* ── Smooth theme transition (layout shell only, NOT cards/modals) ─
-   Only the page background and sidebar get the transition.
-   Cards and modals must NOT have it — a transition from the browser
-   default of transparent→color causes every modal to flash invisible
-   on first render (mount-from-transparent bug). ──────────────────── */
+/* ── Smooth theme transition (layout shell only) ─────────── */
 div[style*="var(--bg-primary)"],
 aside[style*="var(--bg-sidebar)"] {
   transition: background-color 0.4s ease, background 0.4s ease;
@@ -236,7 +334,7 @@ aside[style*="var(--bg-sidebar)"] {
 .animate-rise-up  { animation: riseUp  0.35s cubic-bezier(0.175,0.885,0.32,1.275) both; }
 .animate-wiggle   { animation: wiggle  0.4s ease-in-out; }
 .animate-float    { animation: float   3s ease-in-out infinite; }
-.animate-win-pulse   { animation: winPulse 0.8s ease-in-out 3; }
+.animate-win-pulse    { animation: winPulse 0.8s ease-in-out 3; }
 .animate-result-reveal{ animation: resultReveal 0.55s cubic-bezier(0.22,1,0.36,1) both; }
 .animate-icon-spin    { animation: iconSpin 0.7s cubic-bezier(0.34,1.56,0.64,1) both; }
 .animate-glow-ring    { animation: glowRing 0.8s ease-out both; }
@@ -265,55 +363,42 @@ aside[style*="var(--bg-sidebar)"] {
 @keyframes wiggle   { 0%,100%{transform:rotate(0)} 25%{transform:rotate(-6deg)} 75%{transform:rotate(6deg)} }
 @keyframes float    { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-8px)} }
 @keyframes winPulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.06)} }
-
-/* ── Result reveal animations ──────────────────────────────── */
-/* Card slides up cleanly from below */
 @keyframes resultReveal {
   0%   { opacity:0; transform:translateY(28px); }
   60%  { opacity:1; transform:translateY(-4px); }
   100% { opacity:1; transform:translateY(0); }
 }
-/* Trophy/icon spins in with a spring overshoot */
 @keyframes iconSpin {
   0%   { opacity:0; transform:scale(0.3) rotate(-180deg); }
   65%  { opacity:1; transform:scale(1.15) rotate(12deg); }
   82%  { transform:scale(0.93) rotate(-4deg); }
   100% { opacity:1; transform:scale(1) rotate(0deg); }
 }
-/* Glow ring expands outward then fades */
 @keyframes glowRing {
   0%   { transform:scale(0.6); opacity:0.9; }
   100% { transform:scale(2.2); opacity:0; }
 }
-/* Score label sweeps up */
 @keyframes scoreSweep {
   0%   { opacity:0; transform:translateY(10px); }
   100% { opacity:1; transform:translateY(0); }
 }
-/* CTA button shimmer */
 @keyframes shimmer {
   0%   { background-position: -200% center; }
   100% { background-position:  200% center; }
 }
-/* Stars scatter from centre */
 @keyframes starScatter {
   0%   { opacity:1; transform:translate(0,0) scale(1); }
   100% { opacity:0; transform:var(--end-pos) scale(0); }
 }
 @keyframes shake    { 0%,100%{transform:translateX(0)} 20%,60%{transform:translateX(-5px)} 40%,80%{transform:translateX(5px)} }
-@keyframes confettiFall {
-  to { transform: translateY(100vh) rotate(720deg); opacity: 0; }
-}
+@keyframes confettiFall { to { transform: translateY(100vh) rotate(720deg); opacity: 0; } }
 @keyframes xpFloat  { 0%{transform:translateX(-50%) translateY(0);opacity:1} 100%{transform:translateX(-50%) translateY(-70px);opacity:0} }
 @keyframes noteFloat{ 0%{opacity:1;transform:translateY(0) scale(1)} 100%{opacity:0;transform:translateY(-60px) scale(0.6)} }
 
 /* ── Mobile-specific tweaks ──────────────────────────────── */
 @media (max-width: 640px) {
-  /* Larger tap areas for filter pills */
   .filter-pill { min-height: 36px; }
-  /* Prevent horizontal scroll from game boards */
   .game-board  { overflow-x: hidden; }
-  /* Card font slightly tighter on small screens */
   .font-display { letter-spacing: -0.01em; }
 }
 
@@ -323,226 +408,3 @@ aside[style*="var(--bg-sidebar)"] {
 /* Hide scrollbar for filter pill rows */
 .scrollbar-none { scrollbar-width: none; }
 .scrollbar-none::-webkit-scrollbar { display: none; }
-
-/* Ensure border-color is always visible (minimum contrast) */
-:root,
-[data-theme="cotton"] {
-  --border-color: #E8C8C0;        /* slightly stronger than before */
-  --border-interactive: #D4A89A;  /* for buttons/cards that need more contrast */
-  --border-focus: #F07050;        /* accent color for focused/active state */
-}
-
-[data-theme="sky"] {
-  --border-color: #F0A8BC;
-  --border-interactive: #E08090;
-  --border-focus: #E83060;
-}
-
-[data-theme="mint"] {
-  --border-color: #88C890;
-  --border-interactive: #68A870;
-  --border-focus: #22A845;
-}
-
-[data-theme="sunshine"] {
-  --border-color: #E8C060;
-  --border-interactive: #C8A040;
-  --border-focus: #D08010;
-}
-
-[data-theme="lavender"] {
-  --border-color: #C0A0E8;
-  --border-interactive: #A080C8;
-  --border-focus: #8040D8;
-}
-
-[data-theme="peach"] {
-  --border-color: #E8A060;
-  --border-interactive: #C88040;
-  --border-focus: #E06818;
-}
-
-[data-theme="bubblegum"] {
-  --border-color: #F080C0;
-  --border-interactive: #D060A0;
-  --border-focus: #D82890;
-}
-
-[data-theme="ocean"] {
-  --border-color: #60C0D8;
-  --border-interactive: #40A0B8;
-  --border-focus: #0898C8;
-}
-
-[data-theme="night"] {
-  --border-color: #4C3890;        /* stronger purple border in dark mode */
-  --border-interactive: #6848C0;
-  --border-focus: #9060F0;
-}
-
-/* ── Base button border rule ─────────────────────────────────
-   Apply to all .btn-game buttons sitewide so they always
-   have a visible border even on light backgrounds.
-   ─────────────────────────────────────────────────────────── */
-.btn-game {
-  border: 2px solid var(--border-interactive, rgba(0,0,0,0.15)) !important;
-}
-
-/* Specific color overrides for btn-game variants */
-.btn-game.bg-sky,
-.btn-game[style*="background-color: #60B8F5"],
-.btn-game[style*="background:#60B8F5"] {
-  border-color: rgba(96,184,245,0.7) !important;
-}
-
-.btn-game.bg-coral {
-  border-color: rgba(249,123,107,0.7) !important;
-}
-
-/* ── Card borders — ensure all cards have a visible border ───
-   Cards use var(--border-color) which is now guaranteed to
-   have enough contrast against var(--bg-card) in all themes.
-   ─────────────────────────────────────────────────────────── */
-.shadow-card {
-  border: 1px solid var(--border-color);
-}
-
-/* ── Input fields — always have a defined border ─────────────*/
-input[type="text"],
-input[type="email"],
-input[type="password"],
-select,
-textarea {
-  border: 2px solid var(--border-color) !important;
-  transition: border-color 0.15s ease;
-}
-
-input[type="text"]:focus,
-input[type="email"]:focus,
-input[type="password"]:focus,
-select:focus,
-textarea:focus {
-  border-color: var(--border-focus, #60B8F5) !important;
-  outline: none;
-}
-
-/* ── Drop zones — always bordered ────────────────────────────*/
-.drop-zone {
-  border-color: var(--border-interactive) !important;
-}
-
-
-/* ============================================================
-   Night theme visibility patch
-   Makes dark mode readable across parent pages using Tailwind
-   fixed light classes.
-   ============================================================ */
-
-[data-theme="night"] {
-  --bg-primary:    #0B0820;
-  --bg-card:       #181334;
-  --bg-card-grad:  linear-gradient(145deg, #201944 0%, #15102E 100%);
-  --bg-sidebar:    #100C26;
-  --text-primary:  #F8F4FF;
-  --text-muted:    #C9BFF2;
-  --border-color:  #4E4278;
-  --shadow:        0 8px 28px rgba(0,0,0,0.45);
-  --accent:        #9B7CFF;
-}
-
-/* Page background */
-[data-theme="night"] body,
-[data-theme="night"] #root {
-  background: var(--bg-primary) !important;
-  color: var(--text-primary) !important;
-}
-
-/* App surfaces/cards */
-[data-theme="night"] .bg-white,
-[data-theme="night"] .bg-gray-50,
-[data-theme="night"] .bg-slate-50,
-[data-theme="night"] .bg-zinc-50 {
-  background-color: var(--bg-card) !important;
-  color: var(--text-primary) !important;
-  border-color: var(--border-color) !important;
-}
-
-/* Light gradient/card helpers */
-[data-theme="night"] [style*="background: C.white"],
-[data-theme="night"] [style*="background: #FFFFFF"],
-[data-theme="night"] [style*="background:#FFFFFF"] {
-  background: var(--bg-card) !important;
-}
-
-/* Text colors commonly used on parent pages */
-[data-theme="night"] .text-gray-900,
-[data-theme="night"] .text-gray-800,
-[data-theme="night"] .text-gray-700,
-[data-theme="night"] .text-slate-900,
-[data-theme="night"] .text-slate-800,
-[data-theme="night"] .text-zinc-900 {
-  color: var(--text-primary) !important;
-}
-
-[data-theme="night"] .text-gray-600,
-[data-theme="night"] .text-gray-500,
-[data-theme="night"] .text-gray-400,
-[data-theme="night"] .text-slate-600,
-[data-theme="night"] .text-slate-500,
-[data-theme="night"] .text-zinc-500 {
-  color: var(--text-muted) !important;
-}
-
-/* Plain headings/paragraphs inside dark pages */
-[data-theme="night"] h1,
-[data-theme="night"] h2,
-[data-theme="night"] h3,
-[data-theme="night"] h4 {
-  color: var(--text-primary);
-}
-
-[data-theme="night"] p,
-[data-theme="night"] label {
-  color: inherit;
-}
-
-/* Borders */
-[data-theme="night"] .border,
-[data-theme="night"] .border-gray-100,
-[data-theme="night"] .border-gray-200,
-[data-theme="night"] .border-slate-200 {
-  border-color: var(--border-color) !important;
-}
-
-/* Inputs */
-[data-theme="night"] input,
-[data-theme="night"] textarea,
-[data-theme="night"] select {
-  background: #100C26 !important;
-  color: var(--text-primary) !important;
-  border-color: var(--border-color) !important;
-}
-
-[data-theme="night"] input::placeholder,
-[data-theme="night"] textarea::placeholder {
-  color: #8F85BE !important;
-}
-
-/* Keep success/warning cards readable */
-[data-theme="night"] .bg-green-50,
-[data-theme="night"] .bg-emerald-50 {
-  background-color: rgba(34, 197, 94, 0.12) !important;
-  border-color: rgba(34, 197, 94, 0.35) !important;
-}
-
-[data-theme="night"] .bg-orange-50,
-[data-theme="night"] .bg-amber-50 {
-  background-color: rgba(249, 115, 22, 0.14) !important;
-  border-color: rgba(249, 115, 22, 0.35) !important;
-}
-
-[data-theme="night"] .bg-blue-50,
-[data-theme="night"] .bg-sky-50 {
-  background-color: rgba(96, 165, 250, 0.14) !important;
-  border-color: rgba(96, 165, 250, 0.35) !important;
-}
