@@ -1,213 +1,449 @@
 // ============================================================
-// TeacherReportsPage — Reports scoped by classroom → student
+// TeacherReportsPage.jsx — Redesigned to match AssessmentsListPage
+// Soft pastels · Lucide icons · No emojis · Nunito + Fredoka One
 // ============================================================
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Users, BookOpen, ChevronDown, ChevronRight, FileText, Clock, CheckCircle, AlertCircle } from 'lucide-react';
+import {
+  Users, BookOpen, ChevronDown, ChevronRight, FileText,
+  Clock, CheckCircle2, AlertCircle, BarChart2, Baby,
+  Sparkles, GraduationCap, CalendarDays, Hash, ArrowRight,
+} from 'lucide-react';
 import api from '../../utils/api';
 
+// ─── Design tokens (exact mirror of AssessmentsListPage) ─────
+const C = {
+  page:  '#F2F0FA',
+  white: '#FFFFFF',
+  border:'#DDD8F2',
+  shadowSm: '0 1px 8px rgba(80,60,160,0.07)',
+  shadowMd: '0 4px 24px rgba(80,60,160,0.10)',
+
+  teacher: {
+    pageBg:      '#EBF4EF',
+    border:      '#B8D8C4',
+    accent:      '#3A7A5C',
+    accentLight: '#CCEADB',
+    textDark:    '#1A4A38',
+    iconBg:      '#D0EDE0',
+  },
+  student: {
+    pageBg:      '#EBF0FF',
+    border:      '#B8C8F0',
+    accent:      '#4058C0',
+    accentLight: '#D0D8F8',
+    textDark:    '#1A2870',
+    iconBg:      '#D0D8F8',
+  },
+  parent: {
+    pageBg:      '#FDF0E8',
+    border:      '#F0C8A8',
+    accent:      '#C06038',
+    accentLight: '#FAE0C8',
+    textDark:    '#6A2810',
+    iconBg:      '#FAD8C0',
+  },
+  rose: {
+    pageBg:      '#FEF0F3',
+    border:      '#FECDD3',
+    accent:      '#E83060',
+    accentLight: '#FDD8E0',
+    textDark:    '#881337',
+    iconBg:      '#FDDDE4',
+  },
+
+  textPrimary:   '#28264A',
+  textSecondary: '#6A6898',
+  textMuted:     '#9A98C0',
+  primary:       '#5A50A0',
+};
+
+// ─── Shared primitives ────────────────────────────────────────
+function SectionLabel({ icon, text }) {
+  return (
+    <div style={{
+      display: 'inline-flex', alignItems: 'center', gap: 6,
+      padding: '5px 12px', borderRadius: 20,
+      background: '#EDE8FF', border: '1px solid #C8C0F0', marginBottom: 10,
+    }}>
+      <span style={{ color: '#6050B0', display: 'flex' }}>{icon}</span>
+      <span style={{ fontSize: 11, fontWeight: 800, color: '#6050B0', textTransform: 'uppercase' }}>
+        {text}
+      </span>
+    </div>
+  );
+}
+
+function SectionTitle({ children, style = {} }) {
+  return (
+    <h2 style={{
+      fontFamily: '"Fredoka One", cursive',
+      fontSize: 'clamp(20px, 3vw, 26px)',
+      color: C.textPrimary, margin: '0 0 4px', lineHeight: 1.2,
+      ...style,
+    }}>
+      {children}
+    </h2>
+  );
+}
+
+function SoftButton({ children, onClick, to, color, outline, small, disabled, style: extra = {} }) {
+  const [hov, setHov] = useState(false);
+  const col = color || C.primary;
+  const base = {
+    display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+    padding: small ? '7px 16px' : '10px 20px',
+    borderRadius: 12, fontSize: small ? 13 : 14, fontWeight: 700,
+    fontFamily: 'Nunito, sans-serif', cursor: disabled ? 'not-allowed' : 'pointer',
+    border: `2px solid ${col}`, transition: 'all 0.15s', textDecoration: 'none',
+    opacity: disabled ? 0.5 : 1, ...extra,
+  };
+  const filled  = { ...base, background: hov && !disabled ? `${col}DD` : col, color: '#FFF' };
+  const outlined = { ...base, background: hov && !disabled ? `${col}12` : 'transparent', color: col };
+  const s = outline ? outlined : filled;
+  if (to) return <Link to={to} style={s} onMouseEnter={() => setHov(true)} onMouseLeave={() => setHov(false)}>{children}</Link>;
+  return <button onClick={onClick} disabled={disabled} style={s} onMouseEnter={() => setHov(true)} onMouseLeave={() => setHov(false)}>{children}</button>;
+}
+
+// ─── Stat tile (stats strip pattern) ─────────────────────────
+function StatTile({ icon: Icon, label, value, scheme }) {
+  return (
+    <div style={{
+      background: C.white, border: `1.5px solid ${C.border}`,
+      borderRadius: 16, padding: '16px 18px',
+      boxShadow: C.shadowSm,
+      display: 'flex', alignItems: 'center', gap: 12,
+    }}>
+      <div style={{
+        width: 38, height: 38, borderRadius: 11,
+        background: scheme.iconBg,
+        display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+      }}>
+        <Icon size={18} style={{ color: scheme.accent }} />
+      </div>
+      <div>
+        <p style={{ fontSize: 11, fontWeight: 700, color: C.textSecondary, margin: 0 }}>{label}</p>
+        <p style={{ fontFamily: '"Fredoka One", cursive', fontSize: 26, color: scheme.accent, margin: 0, lineHeight: 1 }}>
+          {value}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// ─── Score badge ──────────────────────────────────────────────
+function ScoreBadge({ pct }) {
+  if (pct == null) return <span style={{ fontSize: 12, color: C.textMuted, fontWeight: 700 }}>—</span>;
+  const good = pct >= 70;
+  return (
+    <span style={{
+      fontSize: 13, fontWeight: 800,
+      color: good ? C.teacher.accent : C.parent.accent,
+    }}>
+      {Math.round(pct)}%
+    </span>
+  );
+}
+
+// ─── Status chip ─────────────────────────────────────────────
+function StatusChip({ status }) {
+  const map = {
+    completed:   { label: 'Done',        bg: C.teacher.accentLight, border: C.teacher.border, color: C.teacher.textDark, icon: CheckCircle2 },
+    in_progress: { label: 'In Progress', bg: C.parent.accentLight,  border: C.parent.border,  color: C.parent.textDark,  icon: Clock },
+  };
+  const t = map[status] || { label: status, bg: '#F0EDF8', border: C.border, color: C.textMuted, icon: Clock };
+  const Icon = t.icon;
+  return (
+    <span style={{
+      display: 'inline-flex', alignItems: 'center', gap: 4,
+      padding: '3px 9px', borderRadius: 20,
+      background: t.bg, border: `1px solid ${t.border}`,
+      fontSize: 11, fontWeight: 800, color: t.color, whiteSpace: 'nowrap',
+    }}>
+      <Icon size={10} /> {t.label}
+    </span>
+  );
+}
+
+// ─── Main component ───────────────────────────────────────────
 export default function TeacherReportsPage() {
-  const [classrooms, setClassrooms] = useState([]);
-  const [reports, setReports] = useState([]);
-  const [sessions, setSessions] = useState([]);
-  const [children, setChildren] = useState([]);
-  const [selectedClassroom, setSelectedClassroom] = useState(null);
-  const [selectedChild, setSelectedChild] = useState(null);
-  const [expandedClassrooms, setExpandedClassrooms] = useState({});
-  const [classroomStudents, setClassroomStudents] = useState({});
+  const [classrooms,             setClassrooms]             = useState([]);
+  const [reports,                setReports]                = useState([]);
+  const [sessions,               setSessions]               = useState([]);
+  const [children,               setChildren]               = useState([]);
+  const [selectedClassroom,      setSelectedClassroom]      = useState(null);
+  const [selectedChild,          setSelectedChild]          = useState(null);
+  const [expandedClassrooms,     setExpandedClassrooms]     = useState({});
+  const [classroomStudents,      setClassroomStudents]      = useState({});
   const [loadingClassroomStudents, setLoadingClassroomStudents] = useState({});
-  const [loading, setLoading] = useState(true);
-  const [reportsLoading, setReportsLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const [loading,                setLoading]                = useState(true);
+  const [error,                  setError]                  = useState(null);
 
   const fetchClassroomChildren = async (classroomId) => {
     if (classroomStudents[classroomId] != null) return;
-    setLoadingClassroomStudents((prev) => ({ ...prev, [classroomId]: true }));
+    setLoadingClassroomStudents(p => ({ ...p, [classroomId]: true }));
     try {
       const res = await api.get(`/classrooms/${classroomId}/children`);
-      setClassroomStudents((prev) => ({ ...prev, [classroomId]: res.data.children || [] }));
-    } catch (err) {
-      console.error('[TeacherReports/FetchClassroomChildren]', err);
-      setClassroomStudents((prev) => ({ ...prev, [classroomId]: [] }));
+      setClassroomStudents(p => ({ ...p, [classroomId]: res.data.children || [] }));
+    } catch {
+      setClassroomStudents(p => ({ ...p, [classroomId]: [] }));
     } finally {
-      setLoadingClassroomStudents((prev) => {
-        const next = { ...prev };
-        delete next[classroomId];
-        return next;
-      });
+      setLoadingClassroomStudents(p => { const n = { ...p }; delete n[classroomId]; return n; });
     }
   };
 
   useEffect(() => {
-    const fetchInitial = async () => {
+    const init = async () => {
       try {
-        const [classroomsRes, childrenRes, reportsRes, sessionsRes] = await Promise.all([
+        const [clsRes, kidRes, repRes, sesRes] = await Promise.all([
           api.get('/classrooms'),
           api.get('/teacher/children'),
           api.get('/reports'),
           api.get('/sessions'),
         ]);
-        setClassrooms(classroomsRes.data.classrooms || []);
-        setChildren(childrenRes.data.children || []);
-        setReports(reportsRes.data.reports || []);
-        setSessions(sessionsRes.data.sessions || []);
+        setClassrooms(clsRes.data.classrooms || []);
+        setChildren(kidRes.data.children || []);
+        setReports(repRes.data.reports || []);
+        setSessions(sesRes.data.sessions || []);
 
-        const cls = classroomsRes.data.classrooms || [];
+        const cls = clsRes.data.classrooms || [];
         if (cls.length > 0) {
           setExpandedClassrooms({ [cls[0].id]: true });
           fetchClassroomChildren(cls[0].id);
         }
       } catch (err) {
-        console.error('[TeacherReports]', err);
         setError(err.message || 'Failed to load data');
       } finally {
         setLoading(false);
       }
     };
-    fetchInitial();
+    init();
   }, []);
 
   const toggleClassroom = (id) => {
-    const isOpening = !expandedClassrooms[id];
-    setExpandedClassrooms((prev) => ({ ...prev, [id]: !prev[id] }));
+    const opening = !expandedClassrooms[id];
+    setExpandedClassrooms(p => ({ ...p, [id]: !p[id] }));
     if (selectedClassroom?.id !== id) {
-      setSelectedClassroom(classrooms.find((c) => c.id === id) || null);
+      setSelectedClassroom(classrooms.find(c => c.id === id) || null);
       setSelectedChild(null);
     }
-    if (isOpening) {
-      fetchClassroomChildren(id);
-    }
+    if (opening) fetchClassroomChildren(id);
   };
 
-  const formatDate = (date) => {
-    if (!date) return '—';
-    return new Date(date).toLocaleDateString('en-US', {
-      year: 'numeric', month: 'short', day: 'numeric',
-    });
+  const formatDate = (d) => {
+    if (!d) return '—';
+    return new Date(d).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
   };
 
-  // Children who belong to a classroom (via teacher_id assigned when parent approved)
-  const getChildrenForClassroom = (classroom) => {
-    const assignedChildren = classroomStudents[classroom.id];
-    if (assignedChildren !== undefined) {
-      return assignedChildren;
-    }
-    return [];
-  };
+  const getChildrenForClassroom = (classroom) => classroomStudents[classroom.id] || [];
+  const getReportsForChild  = (id) => reports.filter(r => r.child_id === id);
+  const getSessionsForChild = (id) => sessions.filter(s => s.child_id === id);
 
-  // Reports for a specific child
-  const getReportsForChild = (childId) =>
-    reports.filter((r) => r.child_id === childId);
-
-  // Sessions for a specific child
-  const getSessionsForChild = (childId) =>
-    sessions.filter((s) => s.child_id === childId);
-
-  // All children across ALL classrooms (teacher-scoped)
-  const allChildren = children;
-
+  // ── Loading ─────────────────────────────────────────────────
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-16">
-        <div className="text-slate-500">Loading reports…</div>
+      <div style={{
+        display: 'flex', flexDirection: 'column', alignItems: 'center',
+        justifyContent: 'center', padding: '64px 0', gap: 14,
+        fontFamily: 'Nunito, sans-serif',
+      }}>
+        <div style={{
+          width: 36, height: 36, borderRadius: '50%',
+          border: `3px solid ${C.teacher.accentLight}`,
+          borderTop: `3px solid ${C.teacher.accent}`,
+          animation: 'spin 0.8s linear infinite',
+        }} />
+        <p style={{ fontSize: 13, fontWeight: 700, color: C.textSecondary, margin: 0 }}>Loading reports…</p>
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       </div>
     );
   }
 
+  // ── Error ───────────────────────────────────────────────────
   if (error) {
     return (
-      <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-3">
-        <AlertCircle size={18} className="text-red-500 flex-shrink-0 mt-0.5" />
-        <p className="text-red-700">{error}</p>
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 10,
+        padding: '14px 18px', borderRadius: 14,
+        background: C.rose.pageBg, border: `1.5px solid ${C.rose.border}`,
+        color: C.rose.textDark, fontSize: 13, fontWeight: 700,
+        fontFamily: 'Nunito, sans-serif',
+      }}>
+        <AlertCircle size={16} /> {error}
       </div>
     );
   }
 
+  // ── Dashboard ───────────────────────────────────────────────
   return (
-    <div>
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold text-slate-900">Progress Reports</h1>
-        <p className="text-slate-500 mt-1">
-          View reports and session results per classroom and student.
+    <div style={{
+      fontFamily: '"Nunito", sans-serif',
+      color: C.textPrimary,
+      maxWidth: 1100,
+      display: 'flex', flexDirection: 'column', gap: 36,
+    }}>
+
+      {/* ── Header ──────────────────────────────────────────── */}
+      <div style={{
+        borderRadius: 22,
+        background: C.teacher.pageBg,
+        border: `1.5px solid ${C.teacher.border}`,
+        padding: '28px 28px 24px',
+        boxShadow: C.shadowSm,
+      }}>
+        <SectionLabel icon={<FileText size={12} />} text="Reports" />
+        <SectionTitle>Progress Reports</SectionTitle>
+        <p style={{ fontSize: 14, color: C.textSecondary, margin: '6px 0 0', lineHeight: 1.6 }}>
+          View assessment sessions and reports per classroom and student.
         </p>
       </div>
 
+      {/* ── No classrooms ───────────────────────────────────── */}
       {classrooms.length === 0 ? (
-        <NoClassroomsState />
+        <div style={{
+          background: C.teacher.pageBg,
+          border: `1.5px solid ${C.teacher.border}`,
+          borderRadius: 20, padding: '48px 28px',
+          textAlign: 'center', boxShadow: C.shadowSm,
+        }}>
+          <div style={{
+            width: 56, height: 56, borderRadius: 18,
+            background: C.teacher.iconBg,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            margin: '0 auto 14px',
+          }}>
+            <BookOpen size={28} style={{ color: C.teacher.accent }} />
+          </div>
+          <p style={{ fontFamily: '"Fredoka One", cursive', fontSize: 20, color: C.teacher.textDark, margin: '0 0 6px' }}>
+            No classrooms yet
+          </p>
+          <p style={{ fontSize: 13, color: C.textSecondary, margin: '0 0 20px', lineHeight: 1.6 }}>
+            Create a classroom and add students to start generating reports.
+          </p>
+          <SoftButton to="/teacher/classrooms" color={C.teacher.accent}>
+            <BookOpen size={15} /> Manage Classrooms
+          </SoftButton>
+        </div>
       ) : (
-        <div className="flex gap-6 min-h-[600px]">
-          {/* ── Left: Classroom + Student Tree ─────────────────── */}
-          <aside className="w-72 flex-shrink-0">
-            <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-              <div className="px-4 py-3 border-b border-slate-100 bg-slate-50">
-                <h2 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+        <div style={{ display: 'flex', gap: 20, alignItems: 'flex-start' }}>
+
+          {/* ── Left sidebar: classroom + student tree ─────────── */}
+          <aside style={{ width: 264, flexShrink: 0 }}>
+            <div style={{
+              background: C.white,
+              border: `1.5px solid ${C.border}`,
+              borderRadius: 20, overflow: 'hidden',
+              boxShadow: C.shadowSm,
+            }}>
+              {/* Sidebar header */}
+              <div style={{
+                padding: '14px 18px',
+                background: C.teacher.pageBg,
+                borderBottom: `1.5px solid ${C.teacher.border}`,
+                display: 'flex', alignItems: 'center', gap: 7,
+              }}>
+                <GraduationCap size={14} style={{ color: C.teacher.accent }} />
+                <span style={{ fontSize: 11, fontWeight: 800, color: C.teacher.textDark, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                   Classrooms
-                </h2>
+                </span>
               </div>
-              <div className="divide-y divide-slate-100">
-                {classrooms.map((classroom) => {
+
+              {/* Tree */}
+              <div>
+                {classrooms.map((classroom, idx) => {
                   const classroomChildren = getChildrenForClassroom(classroom);
                   const isExpanded = expandedClassrooms[classroom.id];
+                  const isActive   = selectedClassroom?.id === classroom.id && !selectedChild;
+                  const isLoading  = loadingClassroomStudents[classroom.id];
 
                   return (
-                    <div key={classroom.id}>
+                    <div
+                      key={classroom.id}
+                      style={{ borderBottom: idx < classrooms.length - 1 ? `1px solid ${C.border}` : 'none' }}
+                    >
                       {/* Classroom row */}
                       <button
                         onClick={() => toggleClassroom(classroom.id)}
-                        className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-slate-50 transition-colors ${
-                          selectedClassroom?.id === classroom.id && !selectedChild
-                            ? 'bg-sky/5'
-                            : ''
-                        }`}
+                        style={{
+                          width: '100%', display: 'flex', alignItems: 'center', gap: 10,
+                          padding: '12px 16px', textAlign: 'left', cursor: 'pointer',
+                          background: isActive ? C.teacher.pageBg : 'transparent',
+                          border: 'none', borderLeft: isActive ? `3px solid ${C.teacher.accent}` : '3px solid transparent',
+                          transition: 'all 0.15s', fontFamily: 'Nunito, sans-serif',
+                        }}
+                        onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = '#F6F4FD'; }}
+                        onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = 'transparent'; }}
                       >
-                        {isExpanded
-                          ? <ChevronDown size={14} className="text-slate-400 flex-shrink-0" />
-                          : <ChevronRight size={14} className="text-slate-400 flex-shrink-0" />}
-                        <BookOpen size={15} className="text-sky flex-shrink-0" />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-semibold text-slate-800 truncate">
+                        <span style={{ color: C.textMuted, display: 'flex', flexShrink: 0 }}>
+                          {isExpanded ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
+                        </span>
+                        <div style={{
+                          width: 28, height: 28, borderRadius: 8, flexShrink: 0,
+                          background: C.teacher.iconBg,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        }}>
+                          <BookOpen size={13} style={{ color: C.teacher.accent }} />
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <p style={{ fontSize: 13, fontWeight: 800, color: C.textPrimary, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             {classroom.name}
                           </p>
-                          <p className="text-xs text-slate-400 font-mono">{classroom.code}</p>
+                          <p style={{ fontSize: 10, color: C.textMuted, margin: 0, fontFamily: '"Courier New", monospace' }}>
+                            {classroom.code}
+                          </p>
                         </div>
-                        <span className="text-xs text-slate-400 flex-shrink-0">
+                        <span style={{
+                          fontSize: 10, fontWeight: 800, color: C.textMuted,
+                          background: '#F0EDF8', border: `1px solid ${C.border}`,
+                          borderRadius: 20, padding: '1px 7px', flexShrink: 0,
+                        }}>
                           {classroom.member_count ?? 0}
                         </span>
                       </button>
 
-                      {/* Children under classroom */}
+                      {/* Student list */}
                       {isExpanded && (
-                        <div className="bg-slate-50/50">
-                          {classroomChildren.length === 0 ? (
-                            <p className="px-9 py-2 text-xs text-slate-400 italic">No students yet</p>
+                        <div style={{ background: '#FAFAF8', borderTop: `1px solid ${C.border}` }}>
+                          {isLoading ? (
+                            <p style={{ padding: '8px 20px 8px 46px', fontSize: 11, color: C.textMuted, margin: 0 }}>Loading…</p>
+                          ) : classroomChildren.length === 0 ? (
+                            <p style={{ padding: '8px 20px 8px 46px', fontSize: 11, color: C.textMuted, fontStyle: 'italic', margin: 0 }}>No students yet</p>
                           ) : (
-                            classroomChildren.map((child) => {
-                              const childReports = getReportsForChild(child.id);
-                              const unread = childReports.filter((r) => !r.is_read).length;
+                            classroomChildren.map(child => {
+                              const unread = getReportsForChild(child.id).filter(r => !r.is_read).length;
+                              const isChildActive = selectedChild?.id === child.id;
                               return (
                                 <button
                                   key={child.id}
-                                  onClick={() => {
-                                    setSelectedClassroom(classroom);
-                                    setSelectedChild(child);
+                                  onClick={() => { setSelectedClassroom(classroom); setSelectedChild(child); }}
+                                  style={{
+                                    width: '100%', display: 'flex', alignItems: 'center', gap: 9,
+                                    padding: '9px 14px 9px 36px', textAlign: 'left', cursor: 'pointer',
+                                    background: isChildActive ? C.student.pageBg : 'transparent',
+                                    border: 'none', borderLeft: isChildActive ? `3px solid ${C.student.accent}` : '3px solid transparent',
+                                    marginLeft: 0, transition: 'all 0.15s', fontFamily: 'Nunito, sans-serif',
                                   }}
-                                  className={`w-full flex items-center gap-3 px-9 py-2.5 text-left hover:bg-slate-100 transition-colors ${
-                                    selectedChild?.id === child.id ? 'bg-sky/10' : ''
-                                  }`}
+                                  onMouseEnter={e => { if (!isChildActive) e.currentTarget.style.background = C.student.pageBg + '88'; }}
+                                  onMouseLeave={e => { if (!isChildActive) e.currentTarget.style.background = 'transparent'; }}
                                 >
-                                  <div
-                                    className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
-                                    style={{ background: 'rgba(77,150,255,0.15)', color: '#4D96FF' }}
-                                  >
-                                    {child.first_name?.[0]}
+                                  <div style={{
+                                    width: 26, height: 26, borderRadius: 8, flexShrink: 0,
+                                    background: C.student.iconBg,
+                                    border: `1.5px solid ${C.student.border}`,
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    fontFamily: '"Fredoka One", cursive', fontSize: 11, color: C.student.accent,
+                                  }}>
+                                    {(child.first_name?.[0] || '?').toUpperCase()}
                                   </div>
-                                  <div className="flex-1 min-w-0">
-                                    <p className="text-xs font-medium text-slate-700 truncate">
-                                      {child.first_name} {child.last_name}
-                                    </p>
-                                  </div>
+                                  <p style={{ fontSize: 12, fontWeight: 700, color: C.textPrimary, margin: 0, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                    {child.first_name} {child.last_name}
+                                  </p>
                                   {unread > 0 && (
-                                    <span className="text-xs bg-orange-400 text-white rounded-full px-1.5 py-0.5 font-bold flex-shrink-0">
+                                    <span style={{
+                                      fontSize: 10, fontWeight: 800,
+                                      background: C.parent.accent, color: '#FFF',
+                                      borderRadius: 20, padding: '1px 7px', flexShrink: 0,
+                                    }}>
                                       {unread}
                                     </span>
                                   )}
@@ -224,8 +460,8 @@ export default function TeacherReportsPage() {
             </div>
           </aside>
 
-          {/* ── Right: Detail Panel ──────────────────────────── */}
-          <div className="flex-1 min-w-0">
+          {/* ── Right: detail panel ─────────────────────────── */}
+          <div style={{ flex: 1, minWidth: 0 }}>
             {!selectedChild && !selectedClassroom ? (
               <SelectPrompt />
             ) : selectedChild ? (
@@ -238,11 +474,11 @@ export default function TeacherReportsPage() {
             ) : (
               <ClassroomOverviewPanel
                 classroom={selectedClassroom}
-                children={allChildren}
+                children={children}
                 reports={reports}
                 sessions={sessions}
                 formatDate={formatDate}
-                onSelectChild={(child) => setSelectedChild(child)}
+                onSelectChild={c => setSelectedChild(c)}
               />
             )}
           </div>
@@ -252,274 +488,420 @@ export default function TeacherReportsPage() {
   );
 }
 
-// ── Sub-components ────────────────────────────────────────────
-
-function NoClassroomsState() {
+// ─── Select prompt ────────────────────────────────────────────
+function SelectPrompt() {
   return (
-    <div className="text-center py-20 bg-white rounded-xl border border-slate-200">
-      <BookOpen size={48} className="mx-auto text-slate-200 mb-4" />
-      <h2 className="text-lg font-semibold text-slate-600 mb-2">No classrooms yet</h2>
-      <p className="text-slate-400 text-sm mb-6">
-        Create a classroom and add students to start generating reports.
+    <div style={{
+      background: C.white,
+      border: `1.5px solid ${C.border}`,
+      borderRadius: 20, padding: '64px 28px',
+      textAlign: 'center', boxShadow: C.shadowSm,
+    }}>
+      <div style={{
+        width: 52, height: 52, borderRadius: 16,
+        background: '#EDE8FF',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        margin: '0 auto 14px',
+      }}>
+        <FileText size={24} style={{ color: C.primary }} />
+      </div>
+      <p style={{ fontFamily: '"Fredoka One", cursive', fontSize: 18, color: C.textPrimary, margin: '0 0 6px' }}>
+        Select a classroom or student
       </p>
+      <p style={{ fontSize: 13, color: C.textSecondary, margin: 0 }}>
+        Choose from the sidebar to view reports and session data.
+      </p>
+    </div>
+  );
+}
+
+// ─── Classroom overview panel ─────────────────────────────────
+function ClassroomOverviewPanel({ classroom, children, reports, sessions, formatDate, onSelectChild }) {
+  const completed = sessions.filter(s => s.status === 'completed');
+  const avgScore  = completed.length > 0
+    ? Math.round(completed.reduce((sum, s) => sum + (s.percentage || 0), 0) / completed.length)
+    : null;
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      {/* Header */}
+      <div style={{
+        background: C.teacher.pageBg,
+        border: `1.5px solid ${C.teacher.border}`,
+        borderRadius: 20, padding: '24px 26px',
+        boxShadow: C.shadowSm,
+        display: 'flex', flexWrap: 'wrap', alignItems: 'flex-start',
+        justifyContent: 'space-between', gap: 16,
+      }}>
+        <div>
+          <SectionLabel icon={<GraduationCap size={12} />} text="Classroom Overview" />
+          <SectionTitle>{classroom.name}</SectionTitle>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 6,
+            padding: '3px 10px', borderRadius: 20,
+            background: C.white, border: `1px solid ${C.teacher.border}`,
+            fontSize: 11, fontWeight: 700, color: C.textMuted,
+          }}>
+            <Hash size={10} />
+            <span style={{ fontFamily: '"Courier New", monospace', letterSpacing: '0.04em' }}>{classroom.code}</span>
+          </div>
+        </div>
+        <Link
+          to={`/teacher/classrooms/${classroom.id}`}
+          style={{
+            display: 'inline-flex', alignItems: 'center', gap: 6,
+            padding: '8px 16px', borderRadius: 12,
+            background: C.teacher.accent, color: '#FFF',
+            fontFamily: 'Nunito, sans-serif', fontWeight: 700, fontSize: 13,
+            textDecoration: 'none', border: `2px solid ${C.teacher.accent}`,
+            transition: 'opacity 0.15s',
+          }}
+          onMouseEnter={e => e.currentTarget.style.opacity = '0.85'}
+          onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+        >
+          Manage <ArrowRight size={13} />
+        </Link>
+      </div>
+
+      {/* Stats strip */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12 }}>
+        <StatTile icon={Baby}        label="Students"  value={children.length}   scheme={C.student} />
+        <StatTile icon={Sparkles}    label="Sessions"  value={sessions.length}   scheme={C.teacher} />
+        <StatTile icon={BarChart2}   label="Avg Score" value={avgScore != null ? `${avgScore}%` : '—'}
+          scheme={avgScore != null ? (avgScore >= 70 ? C.teacher : C.parent) : { accent: C.textMuted, iconBg: '#F0EDF8' }} />
+      </div>
+
+      {/* Per-student rows */}
+      <div style={{
+        background: C.white, border: `1.5px solid ${C.border}`,
+        borderRadius: 20, overflow: 'hidden', boxShadow: C.shadowSm,
+      }}>
+        <div style={{
+          padding: '14px 22px',
+          borderBottom: `1.5px solid ${C.border}`,
+          background: C.teacher.pageBg,
+          display: 'flex', alignItems: 'center', gap: 7,
+        }}>
+          <Baby size={14} style={{ color: C.teacher.accent }} />
+          <span style={{ fontSize: 13, fontWeight: 800, color: C.teacher.textDark }}>
+            Students in this classroom
+          </span>
+        </div>
+        {children.length === 0 ? (
+          <div style={{ padding: '32px 22px', textAlign: 'center' }}>
+            <p style={{ fontSize: 13, color: C.textMuted, margin: 0 }}>No students have joined yet.</p>
+          </div>
+        ) : (
+          children.map((child, idx) => {
+            const childSessions = sessions.filter(s => s.child_id === child.id);
+            const childReports  = reports.filter(r => r.child_id === child.id);
+            const done     = childSessions.filter(s => s.status === 'completed');
+            const childAvg = done.length > 0
+              ? Math.round(done.reduce((sum, s) => sum + (s.percentage || 0), 0) / done.length)
+              : null;
+            const unread = childReports.filter(r => !r.is_read).length;
+
+            return (
+              <StudentRow
+                key={child.id}
+                child={child}
+                completedCount={done.length}
+                avgScore={childAvg}
+                unread={unread}
+                onClick={() => onSelectChild(child)}
+                hasBorder={idx < children.length - 1}
+              />
+            );
+          })
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Student row (inside classroom overview) ──────────────────
+function StudentRow({ child, completedCount, avgScore, unread, onClick, hasBorder }) {
+  const [hov, setHov] = useState(false);
+  return (
+    <button
+      onClick={onClick}
+      onMouseEnter={() => setHov(true)}
+      onMouseLeave={() => setHov(false)}
+      style={{
+        width: '100%', display: 'flex', alignItems: 'center', gap: 14,
+        padding: '14px 22px', textAlign: 'left', cursor: 'pointer',
+        background: hov ? C.student.pageBg : 'transparent',
+        border: 'none',
+        borderBottom: hasBorder ? `1px solid ${C.border}` : 'none',
+        transition: 'background 0.15s', fontFamily: 'Nunito, sans-serif',
+        boxSizing: 'border-box',
+      }}
+    >
+      <div style={{
+        width: 38, height: 38, borderRadius: 12, flexShrink: 0,
+        background: C.student.iconBg, border: `1.5px solid ${C.student.border}`,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        fontFamily: '"Fredoka One", cursive', fontSize: 14, color: C.student.accent,
+      }}>
+        {(child.first_name?.[0] || '?').toUpperCase()}{(child.last_name?.[0] || '').toUpperCase()}
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <p style={{ fontSize: 14, fontWeight: 800, color: C.textPrimary, margin: '0 0 2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {child.first_name} {child.last_name}
+        </p>
+        <p style={{ fontSize: 11, color: C.textMuted, margin: 0 }}>
+          {completedCount} completed session{completedCount !== 1 ? 's' : ''}
+        </p>
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+        <ScoreBadge pct={avgScore} />
+        {unread > 0 && (
+          <span style={{
+            fontSize: 10, fontWeight: 800,
+            background: C.parent.accent, color: '#FFF',
+            borderRadius: 20, padding: '2px 8px',
+          }}>
+            {unread} new
+          </span>
+        )}
+        <ChevronRight size={14} style={{ color: C.textMuted }} />
+      </div>
+    </button>
+  );
+}
+
+// ─── Student report panel ─────────────────────────────────────
+function StudentReportPanel({ child, reports, sessions, formatDate }) {
+  const completed = sessions.filter(s => s.status === 'completed');
+  const avgScore  = completed.length > 0
+    ? Math.round(completed.reduce((sum, s) => sum + (s.percentage || 0), 0) / completed.length)
+    : null;
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      {/* Student header */}
+      <div style={{
+        background: C.student.pageBg,
+        border: `1.5px solid ${C.student.border}`,
+        borderRadius: 20, padding: '24px 26px',
+        boxShadow: C.shadowSm,
+        display: 'flex', flexWrap: 'wrap', alignItems: 'center',
+        justifyContent: 'space-between', gap: 16,
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+          <div style={{
+            width: 52, height: 52, borderRadius: 16, flexShrink: 0,
+            background: C.student.iconBg, border: `1.5px solid ${C.student.border}`,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontFamily: '"Fredoka One", cursive', fontSize: 20, color: C.student.accent,
+          }}>
+            {(child.first_name?.[0] || '?').toUpperCase()}{(child.last_name?.[0] || '').toUpperCase()}
+          </div>
+          <div>
+            <SectionLabel icon={<Baby size={12} />} text="Student" />
+            <SectionTitle style={{ fontSize: 'clamp(18px, 2.5vw, 22px)' }}>
+              {child.first_name} {child.last_name}
+            </SectionTitle>
+            {(child.age || child.gender) && (
+              <p style={{ fontSize: 12, color: C.textSecondary, margin: '2px 0 0' }}>
+                {[child.age ? `Age ${child.age}` : null, child.gender].filter(Boolean).join(' · ')}
+              </p>
+            )}
+          </div>
+        </div>
+        <Link
+          to={`/teacher/children/${child.id}`}
+          style={{
+            display: 'inline-flex', alignItems: 'center', gap: 6,
+            padding: '8px 16px', borderRadius: 12,
+            background: C.student.accent, color: '#FFF',
+            fontFamily: 'Nunito, sans-serif', fontWeight: 700, fontSize: 13,
+            textDecoration: 'none', border: `2px solid ${C.student.accent}`,
+            transition: 'opacity 0.15s',
+          }}
+          onMouseEnter={e => e.currentTarget.style.opacity = '0.85'}
+          onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+        >
+          Full Profile <ArrowRight size={13} />
+        </Link>
+      </div>
+
+      {/* Stats strip */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12 }}>
+        <StatTile icon={Sparkles}    label="Sessions"   value={sessions.length}   scheme={C.teacher} />
+        <StatTile icon={CheckCircle2} label="Completed" value={completed.length}  scheme={C.student} />
+        <StatTile icon={BarChart2}   label="Avg Score"  value={avgScore != null ? `${avgScore}%` : '—'}
+          scheme={avgScore != null ? (avgScore >= 70 ? C.teacher : C.parent) : { accent: C.textMuted, iconBg: '#F0EDF8' }} />
+      </div>
+
+      {/* ASD Notes */}
+      {child.asd_notes && (
+        <div style={{
+          padding: '14px 18px', borderRadius: 14,
+          background: C.student.pageBg, border: `1.5px solid ${C.student.border}`,
+          boxShadow: C.shadowSm,
+        }}>
+          <p style={{ fontSize: 11, fontWeight: 800, color: C.student.textDark, margin: '0 0 5px', textTransform: 'uppercase' }}>
+            ASD Notes
+          </p>
+          <p style={{ fontSize: 13, color: C.textPrimary, margin: 0, lineHeight: 1.6 }}>{child.asd_notes}</p>
+        </div>
+      )}
+
+      {/* Sessions table */}
+      <div style={{
+        background: C.white, border: `1.5px solid ${C.border}`,
+        borderRadius: 20, overflow: 'hidden', boxShadow: C.shadowSm,
+      }}>
+        <div style={{
+          padding: '14px 22px', borderBottom: `1.5px solid ${C.border}`,
+          background: C.teacher.pageBg,
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+            <Sparkles size={14} style={{ color: C.teacher.accent }} />
+            <span style={{ fontSize: 13, fontWeight: 800, color: C.teacher.textDark }}>Assessment Sessions</span>
+          </div>
+          <span style={{
+            fontSize: 11, fontWeight: 700, color: C.textMuted,
+            background: '#F0EDF8', border: `1px solid ${C.border}`,
+            borderRadius: 20, padding: '2px 10px',
+          }}>
+            {sessions.length} total
+          </span>
+        </div>
+        {sessions.length === 0 ? (
+          <div style={{ padding: '32px 22px', textAlign: 'center' }}>
+            <p style={{ fontSize: 13, color: C.textMuted, margin: 0 }}>No sessions yet for this student.</p>
+          </div>
+        ) : (
+          sessions.slice(0, 10).map((session, idx) => (
+            <SessionRow key={session.id} session={session} formatDate={formatDate} hasBorder={idx < sessions.length - 1} />
+          ))
+        )}
+      </div>
+
+      {/* Reports table */}
+      <div style={{
+        background: C.white, border: `1.5px solid ${C.border}`,
+        borderRadius: 20, overflow: 'hidden', boxShadow: C.shadowSm,
+      }}>
+        <div style={{
+          padding: '14px 22px', borderBottom: `1.5px solid ${C.border}`,
+          background: C.student.pageBg,
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+            <FileText size={14} style={{ color: C.student.accent }} />
+            <span style={{ fontSize: 13, fontWeight: 800, color: C.student.textDark }}>Reports Sent</span>
+          </div>
+          <span style={{
+            fontSize: 11, fontWeight: 700, color: C.textMuted,
+            background: '#F0EDF8', border: `1px solid ${C.border}`,
+            borderRadius: 20, padding: '2px 10px',
+          }}>
+            {reports.length} total
+          </span>
+        </div>
+        {reports.length === 0 ? (
+          <div style={{ padding: '32px 22px', textAlign: 'center' }}>
+            <p style={{ fontSize: 13, color: C.textMuted, margin: 0 }}>No reports sent yet for this student.</p>
+          </div>
+        ) : (
+          reports.map((report, idx) => (
+            <ReportRow key={report.id} report={report} formatDate={formatDate} hasBorder={idx < reports.length - 1} />
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Session row ──────────────────────────────────────────────
+function SessionRow({ session, formatDate, hasBorder }) {
+  const [hov, setHov] = useState(false);
+  return (
+    <div
+      onMouseEnter={() => setHov(true)}
+      onMouseLeave={() => setHov(false)}
+      style={{
+        display: 'flex', alignItems: 'center', gap: 14,
+        padding: '13px 22px',
+        background: hov ? C.teacher.pageBg : 'transparent',
+        borderBottom: hasBorder ? `1px solid ${C.border}` : 'none',
+        transition: 'background 0.15s',
+      }}
+    >
+      <StatusChip status={session.status} />
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <p style={{ fontSize: 13, fontWeight: 700, color: C.textPrimary, margin: '0 0 2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {session.assessment_title || 'Assessment'}
+        </p>
+        <p style={{ fontSize: 11, color: C.textMuted, margin: 0, display: 'flex', alignItems: 'center', gap: 4 }}>
+          <CalendarDays size={10} /> {formatDate(session.started_at)}
+        </p>
+      </div>
+      <ScoreBadge pct={session.percentage} />
       <Link
-        to="/teacher/classrooms"
-        className="inline-flex items-center gap-2 px-5 py-2.5 bg-sky text-white rounded-lg font-medium hover:bg-sky/80 transition-colors"
+        to={`/teacher/sessions/${session.id}`}
+        style={{
+          fontSize: 12, fontWeight: 700, color: C.student.accent,
+          textDecoration: 'none', flexShrink: 0,
+          display: 'inline-flex', alignItems: 'center', gap: 3,
+        }}
+        onMouseEnter={e => e.currentTarget.style.opacity = '0.7'}
+        onMouseLeave={e => e.currentTarget.style.opacity = '1'}
       >
-        <BookOpen size={16} /> Manage Classrooms
+        Review <ArrowRight size={11} />
       </Link>
     </div>
   );
 }
 
-function SelectPrompt() {
+// ─── Report row ───────────────────────────────────────────────
+function ReportRow({ report, formatDate, hasBorder }) {
+  const [hov, setHov] = useState(false);
   return (
-    <div className="h-full flex items-center justify-center bg-white rounded-xl border border-slate-200">
-      <div className="text-center py-16">
-        <FileText size={40} className="mx-auto text-slate-200 mb-3" />
-        <p className="text-slate-400 text-sm">Select a classroom or student to view reports</p>
+    <div
+      onMouseEnter={() => setHov(true)}
+      onMouseLeave={() => setHov(false)}
+      style={{
+        display: 'flex', alignItems: 'center', gap: 14,
+        padding: '13px 22px',
+        background: hov ? C.student.pageBg : 'transparent',
+        borderBottom: hasBorder ? `1px solid ${C.border}` : 'none',
+        transition: 'background 0.15s',
+      }}
+    >
+      <div style={{
+        width: 32, height: 32, borderRadius: 9, flexShrink: 0,
+        background: report.is_read ? '#F0EDF8' : C.parent.accentLight,
+        border: `1.5px solid ${report.is_read ? C.border : C.parent.border}`,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}>
+        <FileText size={14} style={{ color: report.is_read ? C.textMuted : C.parent.accent }} />
       </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <p style={{ fontSize: 13, fontWeight: 700, color: C.textPrimary, margin: '0 0 2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {report.title}
+        </p>
+        <p style={{ fontSize: 11, color: C.textMuted, margin: 0 }}>
+          Sent {formatDate(report.sent_at)}
+          {report.parent_first_name && ` · to ${report.parent_first_name} ${report.parent_last_name}`}
+        </p>
+      </div>
+      <span style={{
+        display: 'inline-flex', alignItems: 'center', gap: 4,
+        padding: '3px 10px', borderRadius: 20,
+        background: report.is_read ? C.teacher.accentLight : C.parent.accentLight,
+        border: `1px solid ${report.is_read ? C.teacher.border : C.parent.border}`,
+        fontSize: 11, fontWeight: 800,
+        color: report.is_read ? C.teacher.textDark : C.parent.textDark,
+        flexShrink: 0, whiteSpace: 'nowrap',
+      }}>
+        {report.is_read
+          ? <><CheckCircle2 size={10} /> Read</>
+          : <><Clock size={10} /> Unread</>}
+      </span>
     </div>
-  );
-}
-
-function ClassroomOverviewPanel({ classroom, children, reports, sessions, formatDate, onSelectChild }) {
-  const totalSessions = sessions.length;
-  const completedSessions = sessions.filter((s) => s.status === 'completed').length;
-  const avgScore = completedSessions > 0
-    ? Math.round(sessions.filter((s) => s.status === 'completed').reduce((sum, s) => sum + (s.percentage || 0), 0) / completedSessions)
-    : 0;
-
-  return (
-    <div className="space-y-4">
-      {/* Classroom header */}
-      <div className="bg-white rounded-xl border border-slate-200 p-6">
-        <div className="flex items-start justify-between">
-          <div>
-            <h2 className="text-xl font-bold text-slate-900">{classroom.name}</h2>
-            <p className="text-sm text-slate-500 mt-1">Code: <span className="font-mono font-bold">{classroom.code}</span></p>
-          </div>
-          <Link
-            to={`/teacher/classrooms/${classroom.id}`}
-            className="text-xs text-sky hover:text-sky/80 font-medium"
-          >
-            Manage →
-          </Link>
-        </div>
-
-        <div className="mt-4 grid grid-cols-3 gap-4">
-          <Stat label="Students" value={children.length} />
-          <Stat label="Sessions" value={totalSessions} />
-          <Stat label="Avg Score" value={`${avgScore}%`} color={avgScore >= 70 ? 'text-green-600' : 'text-orange-500'} />
-        </div>
-      </div>
-
-      {/* Per-student summary */}
-      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-        <div className="px-6 py-4 border-b border-slate-100">
-          <h3 className="font-semibold text-slate-800">Students in this classroom</h3>
-        </div>
-        {children.length === 0 ? (
-          <p className="px-6 py-8 text-center text-slate-400 text-sm">No students have joined yet.</p>
-        ) : (
-          <div className="divide-y divide-slate-100">
-            {children.map((child) => {
-              const childSessions = sessions.filter((s) => s.child_id === child.id);
-              const childReports = reports.filter((r) => r.child_id === child.id);
-              const completed = childSessions.filter((s) => s.status === 'completed');
-              const childAvg = completed.length > 0
-                ? Math.round(completed.reduce((sum, s) => sum + (s.percentage || 0), 0) / completed.length)
-                : null;
-              const unread = childReports.filter((r) => !r.is_read).length;
-
-              return (
-                <button
-                  key={child.id}
-                  onClick={() => onSelectChild(child)}
-                  className="w-full flex items-center gap-4 px-6 py-4 hover:bg-slate-50 transition-colors text-left"
-                >
-                  <div
-                    className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0"
-                    style={{ background: 'rgba(77,150,255,0.15)', color: '#4D96FF' }}
-                  >
-                    {child.first_name?.[0]}{child.last_name?.[0]}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-slate-800">{child.first_name} {child.last_name}</p>
-                    <p className="text-xs text-slate-400">{completed.length} completed session{completed.length !== 1 ? 's' : ''}</p>
-                  </div>
-                  <div className="flex items-center gap-3 flex-shrink-0">
-                    {childAvg !== null && (
-                      <span className={`text-sm font-bold ${childAvg >= 70 ? 'text-green-600' : 'text-orange-500'}`}>
-                        {childAvg}%
-                      </span>
-                    )}
-                    {unread > 0 && (
-                      <span className="text-xs bg-orange-400 text-white rounded-full px-2 py-0.5 font-bold">
-                        {unread} new
-                      </span>
-                    )}
-                    <ChevronRight size={14} className="text-slate-300" />
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function StudentReportPanel({ child, reports, sessions, formatDate }) {
-  const completed = sessions.filter((s) => s.status === 'completed');
-  const avgScore = completed.length > 0
-    ? Math.round(completed.reduce((sum, s) => sum + (s.percentage || 0), 0) / completed.length)
-    : null;
-
-  return (
-    <div className="space-y-4">
-      {/* Student header */}
-      <div className="bg-white rounded-xl border border-slate-200 p-6">
-        <div className="flex items-center gap-4">
-          <div
-            className="w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold"
-            style={{ background: 'rgba(77,150,255,0.15)', color: '#4D96FF' }}
-          >
-            {child.first_name?.[0]}{child.last_name?.[0]}
-          </div>
-          <div className="flex-1">
-            <h2 className="text-xl font-bold text-slate-900">{child.first_name} {child.last_name}</h2>
-            <p className="text-sm text-slate-500">
-              {child.age ? `Age ${child.age}` : ''}
-              {child.age && child.gender ? ' · ' : ''}
-              {child.gender || ''}
-            </p>
-          </div>
-          <Link
-            to={`/teacher/children/${child.id}`}
-            className="text-xs text-sky hover:text-sky/80 font-medium"
-          >
-            Full Profile →
-          </Link>
-        </div>
-
-        {/* Quick stats */}
-        <div className="mt-4 grid grid-cols-3 gap-4">
-          <Stat label="Sessions" value={sessions.length} />
-          <Stat label="Completed" value={completed.length} />
-          <Stat
-            label="Avg Score"
-            value={avgScore !== null ? `${avgScore}%` : '—'}
-            color={avgScore !== null ? (avgScore >= 70 ? 'text-green-600' : 'text-orange-500') : 'text-slate-400'}
-          />
-        </div>
-
-        {/* ASD Notes */}
-        {child.asd_notes && (
-          <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-100">
-            <p className="text-xs font-semibold text-blue-700 mb-1">ASD Notes</p>
-            <p className="text-sm text-blue-800">{child.asd_notes}</p>
-          </div>
-        )}
-      </div>
-
-      {/* Sessions */}
-      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-        <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
-          <h3 className="font-semibold text-slate-800">Assessment Sessions</h3>
-          <span className="text-xs text-slate-400">{sessions.length} total</span>
-        </div>
-        {sessions.length === 0 ? (
-          <p className="px-6 py-8 text-center text-slate-400 text-sm">No sessions yet for this student.</p>
-        ) : (
-          <div className="divide-y divide-slate-100">
-            {sessions.slice(0, 10).map((session) => (
-              <div key={session.id} className="flex items-center gap-4 px-6 py-3">
-                <StatusDot status={session.status} />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-slate-800 truncate">
-                    {session.assessment_title || 'Assessment'}
-                  </p>
-                  <p className="text-xs text-slate-400">{formatDate(session.started_at)}</p>
-                </div>
-                <div className="text-right flex-shrink-0">
-                  {session.percentage != null ? (
-                    <span className={`text-sm font-bold ${session.percentage >= 70 ? 'text-green-600' : 'text-orange-500'}`}>
-                      {Math.round(session.percentage)}%
-                    </span>
-                  ) : (
-                    <span className="text-xs text-slate-400">In progress</span>
-                  )}
-                </div>
-                <Link
-                  to={`/teacher/sessions/${session.id}`}
-                  className="text-xs text-sky hover:text-sky/80 font-medium ml-2"
-                >
-                  Review
-                </Link>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Reports */}
-      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-        <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
-          <h3 className="font-semibold text-slate-800">Reports Sent</h3>
-          <span className="text-xs text-slate-400">{reports.length} total</span>
-        </div>
-        {reports.length === 0 ? (
-          <p className="px-6 py-8 text-center text-slate-400 text-sm">No reports sent yet for this student.</p>
-        ) : (
-          <div className="divide-y divide-slate-100">
-            {reports.map((report) => (
-              <div key={report.id} className="flex items-center gap-4 px-6 py-3">
-                <FileText size={15} className={report.is_read ? 'text-slate-300' : 'text-orange-400'} />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-slate-800 truncate">{report.title}</p>
-                  <p className="text-xs text-slate-400">
-                    Sent {formatDate(report.sent_at)}
-                    {report.parent_first_name && ` · to ${report.parent_first_name} ${report.parent_last_name}`}
-                  </p>
-                </div>
-                <div className="flex-shrink-0">
-                  {report.is_read ? (
-                    <span className="inline-flex items-center gap-1 text-xs text-green-600 font-medium">
-                      <CheckCircle size={12} /> Read
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center gap-1 text-xs text-orange-500 font-medium">
-                      <Clock size={12} /> Unread
-                    </span>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function Stat({ label, value, color = 'text-slate-900' }) {
-  return (
-    <div className="bg-slate-50 rounded-lg p-3 text-center">
-      <p className={`text-xl font-bold ${color}`}>{value}</p>
-      <p className="text-xs text-slate-500 mt-0.5">{label}</p>
-    </div>
-  );
-}
-
-function StatusDot({ status }) {
-  const colors = {
-    completed: 'bg-green-400',
-    in_progress: 'bg-orange-400',
-    default: 'bg-slate-300',
-  };
-  return (
-    <div className={`w-2 h-2 rounded-full flex-shrink-0 ${colors[status] || colors.default}`} />
   );
 }
