@@ -190,14 +190,14 @@ router.get('/:id/children', requireAuth, requireRole('teacher'), async (req, res
     if (classroom.rows.length === 0) return res.status(404).json({ error: 'Classroom not found' });
 
     const children = await pool.query(
-      `SELECT c.*, u.first_name AS parent_first_name, u.last_name AS parent_last_name
+      `SELECT c.*, u.first_name AS parent_first_name, u.last_name AS parent_last_name,
+              cca.status, cca.created_at AS assigned_at
        FROM children c
-       JOIN class_memberships cm ON cm.user_id = c.parent_id
-       WHERE cm.classroom_id = $1
-         AND cm.status = 'approved'
-         AND (c.teacher_id = $2 OR c.teacher_id IS NULL)
+       JOIN classroom_child_assignments cca ON cca.child_id = c.id
+       LEFT JOIN users u ON c.parent_id = u.id
+       WHERE cca.classroom_id = $1
        ORDER BY c.first_name, c.last_name`,
-      [id, req.user.id]
+      [id]
     );
 
     const formatted = children.rows.map((child) => ({
@@ -234,6 +234,41 @@ router.delete('/:id/children/:childId', requireAuth, requireRole('teacher'), asy
   } catch (err) {
     console.error('[Classrooms/RemoveStudent]', err.message);
     res.status(500).json({ error: 'Failed to remove student' });
+  }
+});
+
+// ── Teacher: Approve/Reject student enrollment ───────────────
+router.post('/:id/children/:childId/:action', requireAuth, requireRole('teacher'), async (req, res) => {
+  const { id, childId, action } = req.params;
+  if (!['approve', 'reject'].includes(action)) {
+    return res.status(400).json({ error: 'Invalid action' });
+  }
+
+  try {
+    const classroom = await pool.query(
+      'SELECT id FROM classrooms WHERE id = $1 AND teacher_id = $2',
+      [id, req.user.id]
+    );
+    if (classroom.rows.length === 0) return res.status(404).json({ error: 'Classroom not found' });
+
+    const status = action === 'approve' ? 'approved' : 'rejected';
+    
+    const result = await pool.query(
+      `UPDATE classroom_child_assignments 
+       SET status = $1 
+       WHERE classroom_id = $2 AND child_id = $3 
+       RETURNING id`,
+      [status, id, childId]
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: 'Student assignment not found' });
+    }
+
+    res.json({ success: true, status });
+  } catch (err) {
+    console.error('[Classrooms/ChildAction]', err.message);
+    res.status(500).json({ error: 'Failed to update student status' });
   }
 });
 

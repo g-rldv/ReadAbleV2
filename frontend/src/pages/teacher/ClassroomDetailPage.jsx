@@ -202,8 +202,10 @@ function MemberRow({ member, onAction, isLoading, showActions }) {
 }
 
 // ─── Student card ─────────────────────────────────────────────
-function StudentCard({ student, onRemove, isRemoving }) {
+function StudentCard({ student, onRemove, onAction, isRemoving, isActing }) {
   const [hov, setHov] = useState(false);
+  const theme = STATUS_THEMES[student.status] || STATUS_THEMES.pending;
+
   return (
     <div
       onMouseEnter={() => setHov(true)}
@@ -231,31 +233,67 @@ function StudentCard({ student, onRemove, isRemoving }) {
           {student.first_name} {student.last_name}
         </p>
         <p style={{ fontSize: 11, color: C.textMuted, margin: 0, display: 'flex', alignItems: 'center', gap: 4 }}>
-          <User size={10} /> {student.parent_name || '—'}
+          <User size={10} /> Parent: {student.parent_name || '—'}
         </p>
+        <span style={{
+          fontSize: 10, fontWeight: 800, padding: '2px 8px', borderRadius: 10,
+          background: theme.bg, border: `1px solid ${theme.border}`,
+          color: theme.text, display: 'inline-flex', alignItems: 'center', gap: 2,
+          marginTop: 4,
+        }}>
+          {theme.label}
+        </span>
       </div>
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
-        {student.created_at && (
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
+        {student.assigned_at && (
           <span style={{
             fontSize: 10, fontWeight: 700, color: C.textMuted,
             whiteSpace: 'nowrap',
           }}>
-            {new Date(student.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+            Joined {new Date(student.assigned_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
           </span>
         )}
-        <button
-          onClick={() => onRemove(student.id)}
-          disabled={isRemoving}
-          style={{
-            background: 'none', border: 'none', cursor: 'pointer',
-            fontSize: 11, fontWeight: 800, color: C.rose.accent,
-            padding: 0, display: 'inline-flex', alignItems: 'center', gap: 2,
-          }}
-          onMouseEnter={e => e.currentTarget.style.color = C.rose.textDark}
-          onMouseLeave={e => e.currentTarget.style.color = C.rose.accent}
-        >
-          <UserX size={12} /> {isRemoving ? 'Removing...' : 'Remove'}
-        </button>
+        
+        {student.status === 'pending' ? (
+          <div style={{ display: 'flex', gap: 4 }}>
+            <button
+              onClick={() => onAction(student.id, 'approve')}
+              disabled={isActing}
+              style={{
+                background: C.teacher.accent, color: '#FFF', border: 'none',
+                borderRadius: 8, padding: '4px 8px', fontSize: 11, fontWeight: 700,
+                cursor: 'pointer',
+              }}
+            >
+              Approve
+            </button>
+            <button
+              onClick={() => onAction(student.id, 'reject')}
+              disabled={isActing}
+              style={{
+                background: 'none', border: `1.5px solid ${C.rose.accent}`,
+                color: C.rose.accent, borderRadius: 8, padding: '4px 8px',
+                fontSize: 11, fontWeight: 700, cursor: 'pointer',
+              }}
+            >
+              Reject
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={() => onRemove(student.id)}
+            disabled={isRemoving}
+            style={{
+              background: 'none', border: 'none', cursor: 'pointer',
+              fontSize: 11, fontWeight: 800, color: C.rose.accent,
+              padding: 0, display: 'inline-flex', alignItems: 'center', gap: 2,
+            }}
+            onMouseEnter={e => e.currentTarget.style.color = C.rose.textDark}
+            onMouseLeave={e => e.currentTarget.style.color = C.rose.accent}
+          >
+            <UserX size={12} /> {isRemoving ? 'Removing...' : 'Remove'}
+          </button>
+        )}
       </div>
     </div>
   );
@@ -339,6 +377,22 @@ export default function ClassroomDetailPage() {
       setTimeout(() => setFlash(null), 3000);
     } catch (err) {
       alert(err.response?.data?.error || 'Failed to remove student');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleChildAction = async (childId, action) => {
+    setActionLoading(`child-action-${childId}`);
+    try {
+      await api.post(`/classrooms/${id}/children/${childId}/${action}`);
+      setStudents(prev =>
+        prev.map(s => s.id === childId ? { ...s, status: action === 'approve' ? 'approved' : 'rejected' } : s)
+      );
+      setFlash({ type: 'success', msg: `Student enrollment ${action === 'approve' ? 'approved' : 'rejected'}.` });
+      setTimeout(() => setFlash(null), 3000);
+    } catch (err) {
+      alert(err.response?.data?.error || 'Action failed');
     } finally {
       setActionLoading(null);
     }
@@ -574,7 +628,9 @@ export default function ClassroomDetailPage() {
                 key={s.id}
                 student={s}
                 onRemove={handleRemoveStudent}
+                onAction={handleChildAction}
                 isRemoving={actionLoading === `student-${s.id}`}
+                isActing={actionLoading === `child-action-${s.id}`}
               />
             ))}
           </div>
