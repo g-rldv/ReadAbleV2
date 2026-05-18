@@ -144,7 +144,6 @@ function ScoreBadge({ pct }) {
   );
 }
 
-// ─── Status chip ─────────────────────────────────────────────
 function StatusChip({ status }) {
   const map = {
     completed:   { label: 'Done',        bg: C.teacher.accentLight, border: C.teacher.border, color: C.teacher.textDark, icon: CheckCircle2 },
@@ -481,7 +480,7 @@ export default function TeacherReportsPage() {
             ) : (
               <ClassroomOverviewPanel
                 classroom={selectedClassroom}
-                children={children}
+                children={getChildrenForClassroom(selectedClassroom)}
                 reports={reports}
                 sessions={sessions}
                 formatDate={formatDate}
@@ -630,7 +629,7 @@ function ClassroomOverviewPanel({ classroom, children, reports, sessions, format
 function StudentRow({ child, completedCount, avgScore, unread, onClick, hasBorder }) {
   const [hov, setHov] = useState(false);
   return (
-    <button
+    <div
       onClick={onClick}
       onMouseEnter={() => setHov(true)}
       onMouseLeave={() => setHov(false)}
@@ -677,7 +676,7 @@ function StudentRow({ child, completedCount, avgScore, unread, onClick, hasBorde
           <ChevronRight size={14} style={{ color: C.textMuted }} />
         </div>
       </div>
-    </button>
+    </div>
   );
 }
 
