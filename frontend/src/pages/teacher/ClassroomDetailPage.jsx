@@ -3,7 +3,7 @@
 // Soft pastels · Lucide icons · No emojis · Nunito + Fredoka One
 // ============================================================
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import api from '../../utils/api';
 import {
   ArrowLeft, UserCheck, UserX, Users,
@@ -230,7 +230,12 @@ function StudentCard({ student, onRemove, onAction, isRemoving, isActing }) {
       </div>
       <div style={{ minWidth: 0, flex: 1 }}>
         <p style={{ fontSize: 14, fontWeight: 800, color: C.textPrimary, margin: '0 0 3px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {student.first_name} {student.last_name}
+          <Link to={`/teacher/children/${student.id}`} style={{ color: C.student.accent, textDecoration: 'none' }}
+            onMouseEnter={e => e.currentTarget.style.textDecoration = 'underline'}
+            onMouseLeave={e => e.currentTarget.style.textDecoration = 'none'}
+          >
+            {student.first_name} {student.last_name}
+          </Link>
         </p>
         <p style={{ fontSize: 11, color: C.textMuted, margin: 0, display: 'flex', alignItems: 'center', gap: 4 }}>
           <User size={10} /> Parent: {student.parent_name || '—'}
