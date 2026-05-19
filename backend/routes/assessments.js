@@ -80,6 +80,7 @@ router.post('/', requireRole('teacher'), async (req, res) => {
       max_age,
       break_interval,
       classroom_id,
+      is_published,
       pages,
       questions
     } = req.body;
@@ -96,7 +97,7 @@ router.post('/', requireRole('teacher'), async (req, res) => {
     const result = await client.query(
       `INSERT INTO assessments
          (title, description, story_theme, difficulty, difficulty_level, autism_focus_areas, recommended_age_min, recommended_age_max, break_interval, teacher_id, is_published, created_at, updated_at, classroom_id)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,FALSE,NOW(),NOW(),$11)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,NOW(),NOW(),$12)
        RETURNING *`,
       [
         title.trim(),
@@ -109,6 +110,7 @@ router.post('/', requireRole('teacher'), async (req, res) => {
         ageMax,
         break_interval || 10,
         req.user.id,
+        is_published === true || is_published === 'true',
         classroom_id || null
       ]
     );
@@ -226,7 +228,7 @@ router.get('/:id', async (req, res) => {
 router.put('/:id', requireRole('teacher'), async (req, res) => {
   try {
     const { id } = req.params;
-    const { title, description, story_theme, difficulty, difficulty_level, autism_focus_areas, recommended_age_min, recommended_age_max, break_interval, classroom_id } = req.body;
+    const { title, description, story_theme, difficulty, difficulty_level, autism_focus_areas, recommended_age_min, recommended_age_max, break_interval, classroom_id, is_published } = req.body;
     const assessment = await getAssessmentById(id);
     if (!assessment || assessment.teacher_id !== req.user.id) {
       return res.status(404).json({ error: 'Assessment not found' });
@@ -236,7 +238,7 @@ router.put('/:id', requireRole('teacher'), async (req, res) => {
          title=$1, description=$2, story_theme=$3,
          difficulty=$4, difficulty_level=$5, autism_focus_areas=$6,
          recommended_age_min=$7, recommended_age_max=$8, break_interval=$9, updated_at=NOW(),
-         classroom_id=$11
+         classroom_id=$11, is_published=$12
        WHERE id=$10 RETURNING *`,
       [
         title || assessment.title,
@@ -249,7 +251,8 @@ router.put('/:id', requireRole('teacher'), async (req, res) => {
         recommended_age_max !== undefined ? recommended_age_max : assessment.recommended_age_max,
         break_interval || assessment.break_interval,
         id,
-        classroom_id !== undefined ? classroom_id : assessment.classroom_id
+        classroom_id !== undefined ? classroom_id : assessment.classroom_id,
+        is_published !== undefined ? is_published : assessment.is_published
       ]
     );
     res.json({ assessment: result.rows[0] });
