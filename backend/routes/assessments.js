@@ -10,8 +10,26 @@ async function getAssessmentById(id) {
 }
 
 async function childTeacherIdsForParent(parentId) {
-  const result = await pool.query('SELECT DISTINCT teacher_id FROM children WHERE parent_id=$1', [parentId]);
+  const result = await pool.query(
+    `SELECT DISTINCT teacher_id FROM children WHERE parent_id = $1 AND teacher_id IS NOT NULL
+     UNION
+     SELECT DISTINCT cl.teacher_id 
+     FROM classroom_child_assignments cca
+     JOIN classrooms cl ON cca.classroom_id = cl.id
+     WHERE cca.parent_id = $1 AND cca.status = 'approved'`,
+    [parentId]
+  );
   return result.rows.map(r => r.teacher_id);
+}
+
+async function childClassroomIdsForParent(parentId) {
+  const result = await pool.query(
+    `SELECT DISTINCT classroom_id 
+     FROM classroom_child_assignments 
+     WHERE parent_id = $1 AND status = 'approved'`,
+    [parentId]
+  );
+  return result.rows.map(r => r.classroom_id).filter(id => id !== null);
 }
 
 router.use(requireAuth);
@@ -29,27 +47,53 @@ router.get('/', async (req, res) => {
     const teacherIds = await childTeacherIdsForParent(req.user.id);
     if (teacherIds.length === 0) return res.json({ assessments: [] });
 
+    const classroomIds = await childClassroomIdsForParent(req.user.id);
+
     const result = await pool.query(
       `SELECT * FROM assessments
        WHERE is_published = TRUE
          AND teacher_id = ANY($1::int[])
+         AND (classroom_id IS NULL OR classroom_id = ANY($2::int[]))
        ORDER BY created_at DESC`,
-      [teacherIds]
+      [teacherIds, classroomIds]
     );
     res.json({ assessments: result.rows });
   } catch (err) {
     console.error('[Assessments/List]', err.message);
-    res.status(500).json({ error: 'Failed to fetch assessments' });
+    res.status(500).json({ error: 'Failed to fetch assessments: ' + err.message });
   }
 });
 
 router.post('/', requireRole('teacher'), async (req, res) => {
+  const client = await pool.connect();
   try {
-    const { title, description, story_theme, difficulty, difficulty_level, autism_focus_areas, recommended_age_min, recommended_age_max, break_interval, classroom_id } = req.body;
+    const {
+      title,
+      description,
+      story_theme,
+      difficulty,
+      difficulty_level,
+      autism_focus_areas,
+      recommended_age_min,
+      recommended_age_max,
+      min_age,
+      max_age,
+      break_interval,
+      classroom_id,
+      pages,
+      questions
+    } = req.body;
+
     if (!title || !description || !story_theme) {
       return res.status(400).json({ error: 'Title, description, and story theme are required' });
     }
-    const result = await pool.query(
+
+    const ageMin = recommended_age_min !== undefined ? recommended_age_min : (min_age !== undefined ? min_age : null);
+    const ageMax = recommended_age_max !== undefined ? recommended_age_max : (max_age !== undefined ? max_age : null);
+
+    await client.query('BEGIN');
+
+    const result = await client.query(
       `INSERT INTO assessments
          (title, description, story_theme, difficulty, difficulty_level, autism_focus_areas, recommended_age_min, recommended_age_max, break_interval, teacher_id, is_published, created_at, updated_at, classroom_id)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,FALSE,NOW(),NOW(),$11)
@@ -61,17 +105,74 @@ router.post('/', requireRole('teacher'), async (req, res) => {
         difficulty?.trim() || 'easy',
         difficulty_level || 1,
         JSON.stringify(autism_focus_areas || []),
-        recommended_age_min || null,
-        recommended_age_max || null,
+        ageMin,
+        ageMax,
         break_interval || 10,
         req.user.id,
         classroom_id || null
       ]
     );
-    res.status(201).json({ assessment: result.rows[0] });
+
+    const assessment = result.rows[0];
+
+    if (pages && Array.isArray(pages)) {
+      for (const page of pages) {
+        await client.query(
+          `INSERT INTO assessment_pages (assessment_id, page_number, image_url, image_description, audio_hint, page_text, created_at)
+           VALUES ($1, $2, $3, $4, $5, $6, NOW())`,
+          [
+            assessment.id,
+            page.page_number || 1,
+            page.image_url || null,
+            page.image_description || null,
+            page.audio_hint || null,
+            page.page_text || ''
+          ]
+        );
+      }
+    }
+
+    if (questions && Array.isArray(questions)) {
+      for (let i = 0; i < questions.length; i++) {
+        const q = questions[i];
+        let normalizedOptions = q.options;
+        let normalizedAnswer = q.correct_answer;
+        if (q.question_type === 'yes_no') {
+          normalizedOptions = ['Yes', 'No'];
+        }
+        if (q.question_type === 'short_answer') {
+          normalizedOptions = null;
+        }
+
+        await client.query(
+          `INSERT INTO assessment_questions
+             (assessment_id, question_text, question_type, question_category, difficulty_score, time_estimate, options, correct_answer, points, order_index, image_url, created_at)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW())`,
+          [
+            assessment.id,
+            q.question_text || '',
+            q.question_type || 'multiple_choice',
+            q.question_category || 'literal',
+            q.difficulty_score || 5,
+            q.time_estimate || 60,
+            normalizedOptions ? JSON.stringify(normalizedOptions) : null,
+            normalizedAnswer ? JSON.stringify(normalizedAnswer) : null,
+            q.points || 1,
+            q.order_index !== undefined ? q.order_index : i,
+            q.image_url || null
+          ]
+        );
+      }
+    }
+
+    await client.query('COMMIT');
+    res.status(201).json({ assessment });
   } catch (err) {
+    await client.query('ROLLBACK');
     console.error('[Assessments/Create]', err.message);
-    res.status(500).json({ error: 'Failed to create assessment' });
+    res.status(500).json({ error: 'Failed to create assessment: ' + err.message });
+  } finally {
+    client.release();
   }
 });
 
@@ -94,6 +195,12 @@ router.get('/:id', async (req, res) => {
       const teacherIds = await childTeacherIdsForParent(req.user.id);
       if (!teacherIds.includes(assessment.teacher_id)) {
         return res.status(403).json({ error: 'Forbidden' });
+      }
+      if (assessment.classroom_id) {
+        const classroomIds = await childClassroomIdsForParent(req.user.id);
+        if (!classroomIds.includes(assessment.classroom_id)) {
+          return res.status(403).json({ error: 'Forbidden' });
+        }
       }
     }
 

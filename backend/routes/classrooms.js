@@ -354,7 +354,7 @@ router.post('/:id/members/:userId/:action', requireAuth, requireRole('teacher'),
         [status, approved_at, id, userId]
       );
 
-      // If approved, link the parent's children to this teacher
+      // If approved, link the parent's children to this teacher and approve child assignments
       if (action === 'approve') {
         await client.query(
           `UPDATE children SET teacher_id = $1
@@ -362,7 +362,13 @@ router.post('/:id/members/:userId/:action', requireAuth, requireRole('teacher'),
           [req.user.id, userId]
         );
 
-        // Remove any child assignments for this parent when they are removed
+        await client.query(
+          `UPDATE classroom_child_assignments SET status = 'approved'
+           WHERE classroom_id = $1 AND parent_id = $2`,
+          [id, userId]
+        );
+      } else if (action === 'reject') {
+        // If rejected, remove any child assignments for this parent in this classroom
         await client.query(
           `DELETE FROM classroom_child_assignments
            WHERE classroom_id = $1 AND parent_id = $2`,

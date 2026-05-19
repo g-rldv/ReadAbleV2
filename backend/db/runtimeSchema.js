@@ -8,17 +8,6 @@ let readyPromise = null;
 async function ensureRuntimeSchema(pool) {
   if (readyPromise) return readyPromise;
 
-  await pool.query(`
-  CREATE TABLE IF NOT EXISTS classroom_child_assignments (
-    id SERIAL PRIMARY KEY,
-    classroom_id INTEGER REFERENCES classrooms(id) ON DELETE CASCADE,
-    parent_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-    child_id INTEGER REFERENCES children(id) ON DELETE CASCADE,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    UNIQUE(classroom_id, child_id)
-  );
-`);
-
   readyPromise = (async () => {
     const client = await pool.connect();
 
