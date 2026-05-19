@@ -334,9 +334,7 @@ function PageForm({ page, onSave, onCancel }) {
         </div>
 
         <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
-          <SoftButton color={C.teacher.accent}
-            onClick={() => isValid && onSave(data)}
-            disabled={!isValid}>
+          <SoftButton color={C.teacher.accent} onClick={() => isValid && onSave(data)} disabled={!isValid}>
             <Save size={14} /> Save Page
           </SoftButton>
           <SoftButton color={C.textMuted} outline onClick={onCancel}>
@@ -350,9 +348,9 @@ function PageForm({ page, onSave, onCancel }) {
 
 // ─── QuestionForm ──────────────────────────────────────────────
 // Adapts to the current difficulty level:
-//   - Level 1: max 2 options, no short_answer
-//   - Level 2: max 3 options, no short_answer
-//   - Level 3–4: up to 5–6 options, short_answer allowed
+// - Level 1: max 2 options, no short_answer
+// - Level 2: max 3 options, no short_answer
+// - Level 3–4: up to 5–6 options, short_answer allowed
 // Validates that correct_answer exactly matches one option (for typed questions).
 function QuestionForm({ question, difficultyLevel, onSave, onCancel }) {
   const levelConfig = useMemo(
@@ -365,96 +363,73 @@ function QuestionForm({ question, difficultyLevel, onSave, onCancel }) {
     return Array(count).fill('');
   };
 
-  const [data, setData] = useState(() => {
-    if (question) {
-      // Ensure options doesn't exceed allowed max for the current level
-      const opts = (question.options || []).slice(0, levelConfig.maxOptions);
-      return { ...clone(question), options: opts };
-    }
-    return {
-      question_text: '',
-      question_type: levelConfig.allowedTypes[0],
-      question_category: 'literal',
-      points: 1,
-      difficulty_score: difficultyLevel * 2,
-      time_estimate: 60,
-      options: defaultOptions(),
-      correct_answer: '',
-      image_url: '',
-    };
-  });
+  const [data, setData] = useState(() => question
+    ? clone(question)
+    : {
+        question_text: '',
+        question_type: levelConfig.allowedTypes[0] || 'multiple_choice',
+        question_category: 'literal',
+        options: defaultOptions(),
+        correct_answer: '',
+        points: 1,
+        time_estimate: 60,
+        image_url: '',
+      }
+  );
 
   const [touched, setTouched] = useState({});
-  const touch = (field) => setTouched(t => ({ ...t, [field]: true }));
+  const touch = (f) => setTouched(t => ({ ...t, [f]: true }));
 
-  // When question_type changes, reset options/correct_answer if switching to yes_no
-  const handleTypeChange = (newType) => {
-    if (newType === 'yes_no') {
-      setData(d => ({ ...d, question_type: newType, options: ['Yes', 'No'], correct_answer: '' }));
-    } else if (newType === 'short_answer') {
-      setData(d => ({ ...d, question_type: newType, options: [], correct_answer: '' }));
-    } else {
-      setData(d => ({
-        ...d,
-        question_type: newType,
-        options: d.options.length ? d.options : defaultOptions(),
-        correct_answer: '',
-      }));
+  // Coerce type constraints if level switches dynamically under us
+  useEffect(() => {
+    if (!levelConfig.allowedTypes.includes(data.question_type)) {
+      setData(d => ({ ...d, question_type: levelConfig.allowedTypes[0] }));
     }
-    touch('question_type');
+  }, [levelConfig, data.question_type]);
+
+  // Adjust options arrays sizing gracefully based on chosen parameters
+  const isChoiceBased = data.question_type !== 'short_answer';
+
+  const handleTypeChange = (newType) => {
+    let opts = [...data.options];
+    if (newType === 'yes_no') {
+      opts = ['Yes', 'No'];
+    } else if (newType === 'short_answer') {
+      opts = [];
+    } else if (opts.length === 0) {
+      opts = Array(Math.min(2, levelConfig.maxOptions)).fill('');
+    }
+    setData(d => ({ ...d, question_type: newType, options: opts, correct_answer: '' }));
   };
 
-  const handleOptionChange = (index, value) => {
-    setData(d => {
-      const opts = [...d.options];
-      opts[index] = value;
-      // If the renamed option was the correct answer, clear it
-      const stillValid = opts.includes(d.correct_answer);
-      return { ...d, options: opts, correct_answer: stillValid ? d.correct_answer : '' };
-    });
+  const setOptionValue = (index, value) => {
+    const next = [...data.options];
+    next[index] = value;
+    setData(d => ({ ...d, options: next }));
   };
 
-  const addOption = () => {
+  const addOptionField = () => {
     if (data.options.length >= levelConfig.maxOptions) return;
     setData(d => ({ ...d, options: [...d.options, ''] }));
   };
 
-  const removeOption = (index) => {
-    setData(d => {
-      const opts = d.options.filter((_, i) => i !== index);
-      const stillValid = opts.includes(d.correct_answer);
-      return { ...d, options: opts, correct_answer: stillValid ? d.correct_answer : '' };
-    });
+  const removeOptionField = (index) => {
+    if (data.options.length <= 2) return;
+    const next = data.options.filter((_, i) => i !== index);
+    setData(d => ({ ...d, options: next, correct_answer: '' }));
   };
 
-  const isChoiceType = ['multiple_choice', 'picture_choice', 'yes_no'].includes(data.question_type);
-  const isShortAnswer = data.question_type === 'short_answer';
+  // Inline Validation checks
+  const validText = data.question_text.trim().length > 0;
+  const validAnswers = useMemo(() => {
+    if (data.question_type === 'short_answer') return data.correct_answer.trim().length > 0;
+    const activeOpts = data.options.map(o => o.trim()).filter(Boolean);
+    if (data.question_type === 'yes_no') return ['yes', 'no'].includes(data.correct_answer.trim().toLowerCase());
+    if (activeOpts.length < 2) return false;
+    return activeOpts.includes(data.correct_answer.trim());
+  }, [data]);
 
-  // ── Validation ──────────────────────────────────────────────
-  const validationErrors = useMemo(() => {
-    const errs = [];
-    if (!data.question_text.trim()) errs.push('Question text is required.');
-    if (!data.correct_answer.trim()) errs.push('Correct answer is required.');
-    if (isChoiceType) {
-      const filledOptions = data.options.filter(o => o.trim());
-      if (filledOptions.length < 2) errs.push('Provide at least 2 non-empty choices.');
-      const exactMatch = filledOptions.includes(data.correct_answer.trim());
-      if (!exactMatch && data.correct_answer.trim()) {
-        errs.push('Correct answer must exactly match one of the choices above.');
-      }
-    }
-    return errs;
-  }, [data, isChoiceType]);
-
-  const isFormValid = validationErrors.length === 0;
-
-  // Correct answer mismatch warning (shown live, not just on save)
-  const answerMismatch = useMemo(() => {
-    if (!isChoiceType || !data.correct_answer.trim()) return false;
-    return !data.options.filter(o => o.trim()).includes(data.correct_answer.trim());
-  }, [data.correct_answer, data.options, isChoiceType]);
-
-  const atOptionLimit = data.options.length >= levelConfig.maxOptions;
+  const isValid = validText && validAnswers;
 
   return (
     <div style={{
@@ -462,49 +437,111 @@ function QuestionForm({ question, difficultyLevel, onSave, onCancel }) {
       border: `1.5px solid ${C.student.border}`,
       borderRadius: 16, padding: '20px', marginBottom: 16,
     }}>
-      <p style={{ fontFamily: '"Fredoka One", cursive', fontSize: 16, color: C.student.textDark, margin: '0 0 10px' }}>
+      <p style={{ fontFamily: '"Fredoka One", cursive', fontSize: 16, color: C.student.textDark, margin: '0 0 14px' }}>
         {question ? 'Edit Question' : 'New Question'}
       </p>
 
-      {/* Difficulty-adaptive hint */}
-      {levelConfig.hint && <DifficultyHint text={`Level ${difficultyLevel}: ${levelConfig.hint}`} />}
+      <DifficultyHint text={levelConfig.hint} />
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-
-        {/* Question text */}
-        <div>
-          <FieldLabel required>Question Text</FieldLabel>
-          <StyledTextarea rows={2} value={data.question_text}
-            onChange={e => setData(d => ({ ...d, question_text: e.target.value }))}
-            onBlur={() => touch('question_text')}
-            placeholder="What is the question?"
-            focusColor={C.student.accent}
-            style={touched.question_text && !data.question_text.trim() ? { borderColor: '#E05050' } : {}}
-          />
-        </div>
-
-        {/* Type / Category / Points */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px,1fr))', gap: 12 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           <div>
-            <FieldLabel>Type</FieldLabel>
-            <StyledSelect value={data.question_type}
-              onChange={e => handleTypeChange(e.target.value)}
-              focusColor={C.student.accent}>
+            <FieldLabel>Question Type</FieldLabel>
+            <StyledSelect value={data.question_type} onChange={e => handleTypeChange(e.target.value)} focusColor={C.student.accent}>
               {levelConfig.allowedTypes.map(t => (
                 <option key={t} value={t}>{ALL_QUESTION_TYPE_LABELS[t]}</option>
               ))}
             </StyledSelect>
           </div>
           <div>
-            <FieldLabel>Category</FieldLabel>
-            <StyledSelect value={data.question_category}
-              onChange={e => setData(d => ({ ...d, question_category: e.target.value }))}
-              focusColor={C.student.accent}>
-              {QUESTION_CATEGORIES.map(cat => (
-                <option key={cat.id} value={cat.id}>{cat.label}</option>
+            <FieldLabel>Comprehension Category</FieldLabel>
+            <StyledSelect value={data.question_category} onChange={e => setData(d => ({ ...d, question_category: e.target.value }))} focusColor={C.student.accent}>
+              {QUESTION_CATEGORIES.map(c => (
+                <option key={c.id} value={c.id}>{c.label}</option>
               ))}
             </StyledSelect>
           </div>
+        </div>
+
+        <div>
+          <FieldLabel required>Question Content</FieldLabel>
+          <StyledInput type="text" value={data.question_text}
+            onChange={e => setData(d => ({ ...d, question_text: e.target.value }))}
+            onBlur={() => touch('question_text')}
+            placeholder="e.g., What did the caterpillar eat on Sunday?"
+            focusColor={C.student.accent}
+            style={touched.question_text && !data.question_text.trim() ? { borderColor: '#E05050' } : {}}
+          />
+          {touched.question_text && !data.question_text.trim() && (
+            <p style={{ fontSize: 11, color: '#C03030', fontWeight: 700, margin: '4px 0 0' }}>Question text is required.</p>
+          )}
+        </div>
+
+        {isChoiceBased && data.question_type !== 'yes_no' && (
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+              <FieldLabel required>Answer Choices</FieldLabel>
+              {data.options.length < levelConfig.maxOptions && (
+                <button type="button" onClick={addOptionField} style={{
+                  background: 'none', border: 'none', color: C.student.accent,
+                  fontSize: 12, fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 3
+                }}>
+                  <Plus size={12} /> Add Choice
+                </button>
+              )}
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {data.options.map((option, idx) => (
+                <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: 11, fontWeight: 800, color: C.textMuted, width: 65 }}>Choice {idx + 1}</span>
+                  <StyledInput type="text" value={option}
+                    onChange={e => setOptionValue(idx, e.target.value)}
+                    placeholder={`Option alternative ${idx + 1}`}
+                    focusColor={C.student.accent}
+                  />
+                  {data.options.length > 2 && (
+                    <button type="button" onClick={() => removeOptionField(idx)} style={{
+                      background: 'none', border: 'none', color: C.textMuted, cursor: 'pointer'
+                    }}>
+                      <Trash2 size={14} />
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div>
+          <FieldLabel required>Canonical Target Correct Answer</FieldLabel>
+          {data.question_type === 'yes_no' ? (
+            <StyledSelect value={data.correct_answer} onChange={e => setData(d => ({ ...d, correct_answer: e.target.value }))} focusColor={C.student.accent}>
+              <option value="">Select Target Match Option</option>
+              <option value="Yes">Yes</option>
+              <option value="No">No</option>
+            </StyledSelect>
+          ) : isChoiceBased ? (
+            <StyledSelect value={data.correct_answer} onChange={e => setData(d => ({ ...d, correct_answer: e.target.value }))} focusColor={C.student.accent}>
+              <option value="">Select which alternative is explicitly correct</option>
+              {data.options.map(o => o.trim()).filter(Boolean).map((opt, idx) => (
+                <option key={idx} value={opt}>{opt}</option>
+              ))}
+            </StyledSelect>
+          ) : (
+            <StyledInput type="text" value={data.correct_answer}
+              onChange={e => setData(d => ({ ...d, correct_answer: e.target.value }))}
+              placeholder="Exact grading string token fallback match matches"
+              focusColor={C.student.accent}
+            />
+          )}
+          {touch.correct_answer && !validAnswers && (
+            <p style={{ fontSize: 11, color: '#C03030', fontWeight: 700, margin: '4px 0 0' }}>
+              Target match must precisely intersect active choices lists.
+            </p>
+          )}
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
           <div>
             <FieldLabel>Points</FieldLabel>
             <StyledInput type="number" min="1" value={data.points}
@@ -512,172 +549,25 @@ function QuestionForm({ question, difficultyLevel, onSave, onCancel }) {
               focusColor={C.student.accent}
             />
           </div>
-        </div>
-
-        {/* Difficulty / Time */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           <div>
-            <FieldLabel>Difficulty (1–10)</FieldLabel>
-            <StyledInput type="number" min="1" max="10" value={data.difficulty_score}
-              onChange={e => setData(d => ({ ...d, difficulty_score: Math.min(10, Math.max(1, parseInt(e.target.value) || 1)) }))}
-              focusColor={C.student.accent}
-            />
-          </div>
-          <div>
-            <FieldLabel>Time Estimate (sec)</FieldLabel>
-            <StyledInput type="number" min="10" value={data.time_estimate}
+            <FieldLabel>Est. Time (sec)</FieldLabel>
+            <StyledInput type="number" step="10" min="10" value={data.time_estimate}
               onChange={e => setData(d => ({ ...d, time_estimate: parseInt(e.target.value) || 60 }))}
               focusColor={C.student.accent}
             />
           </div>
-        </div>
-
-        {/* Options list (for choice-based types) */}
-        {isChoiceType && (
           <div>
-            <FieldLabel>
-              Answer Options
-              <span style={{ fontWeight: 600, textTransform: 'none', marginLeft: 6, color: C.textMuted }}>
-                ({data.options.length}/{levelConfig.maxOptions} max)
-              </span>
-            </FieldLabel>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {data.options.map((option, idx) => (
-                <div key={idx} style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                  {/* Radio button preview — visual only, shows which would be "correct" */}
-                  <span style={{
-                    width: 14, height: 14, borderRadius: '50%', flexShrink: 0,
-                    border: `2px solid ${option.trim() && option.trim() === data.correct_answer.trim()
-                      ? C.teacher.accent : C.border}`,
-                    background: option.trim() && option.trim() === data.correct_answer.trim()
-                      ? C.teacher.accent : 'transparent',
-                    display: 'inline-block',
-                  }} />
-                  <StyledInput type="text" value={option}
-                    onChange={e => handleOptionChange(idx, e.target.value)}
-                    placeholder={`Option ${idx + 1}`}
-                    focusColor={C.student.accent}
-                    style={{ flex: 1 }}
-                  />
-                  {/* Disable remove if it would drop below 2 */}
-                  <button
-                    onClick={() => removeOption(idx)}
-                    disabled={data.options.length <= 2}
-                    title="Remove option"
-                    style={{
-                      width: 34, height: 34, flexShrink: 0, borderRadius: 9,
-                      border: '1.5px solid #F8C8C8', background: '#FEF0F0',
-                      color: '#C03030', cursor: data.options.length <= 2 ? 'not-allowed' : 'pointer',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      opacity: data.options.length <= 2 ? 0.4 : 1,
-                    }}>
-                    <X size={13} />
-                  </button>
-                </div>
-              ))}
-
-              {/* Add option button — hidden when at limit */}
-              {!atOptionLimit ? (
-                <button onClick={addOption}
-                  style={{
-                    alignSelf: 'flex-start', background: 'none', border: 'none',
-                    cursor: 'pointer', fontFamily: 'Nunito, sans-serif',
-                    fontSize: 12, fontWeight: 700, color: C.student.accent,
-                    display: 'flex', alignItems: 'center', gap: 4, padding: '4px 0',
-                  }}>
-                  <Plus size={13} /> Add option
-                </button>
-              ) : (
-                <p style={{
-                  fontSize: 11, fontWeight: 700, color: C.warn.text,
-                  fontFamily: 'Nunito', margin: '2px 0 0',
-                  display: 'flex', alignItems: 'center', gap: 5,
-                }}>
-                  <AlertTriangle size={11} style={{ color: C.warn.icon }} />
-                  Maximum {levelConfig.maxOptions} choices reached for Level {difficultyLevel}
-                </p>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Correct answer field */}
-        <div>
-          <FieldLabel required>
-            Correct Answer
-            {data.question_type === 'yes_no' && ' (Yes or No)'}
-            {isChoiceType && data.question_type !== 'yes_no' && ' — must match an option above exactly'}
-          </FieldLabel>
-
-          {/* For choice types: use a select driven by the filled options */}
-          {isChoiceType && data.question_type !== 'yes_no' ? (
-            <StyledSelect
-              value={data.correct_answer}
-              onChange={e => setData(d => ({ ...d, correct_answer: e.target.value }))}
-              onBlur={() => touch('correct_answer')}
+            <FieldLabel>Media URL</FieldLabel>
+            <StyledInput type="text" value={data.image_url || ''}
+              onChange={e => setData(d => ({ ...d, image_url: e.target.value }))}
+              placeholder="Optional card image URL"
               focusColor={C.student.accent}
-              style={answerMismatch ? { borderColor: '#E05050' } : {}}>
-              <option value="">— Select the correct answer —</option>
-              {data.options.filter(o => o.trim()).map((opt, idx) => (
-                <option key={idx} value={opt}>{opt}</option>
-              ))}
-            </StyledSelect>
-          ) : (
-            <StyledInput
-              type="text"
-              value={data.correct_answer}
-              onChange={e => setData(d => ({ ...d, correct_answer: e.target.value }))}
-              onBlur={() => touch('correct_answer')}
-              placeholder={data.question_type === 'yes_no' ? 'Yes or No' : 'Type the expected answer'}
-              focusColor={C.student.accent}
-              style={touched.correct_answer && !data.correct_answer.trim() ? { borderColor: '#E05050' } : {}}
             />
-          )}
-
-          {/* Mismatch warning */}
-          {answerMismatch && (
-            <p style={{ fontSize: 11, color: '#C03030', fontWeight: 700, margin: '4px 0 0', fontFamily: 'Nunito' }}>
-              This answer doesn't match any option exactly.
-            </p>
-          )}
-        </div>
-
-        {/* Image URL */}
-        <div>
-          <FieldLabel>Image URL (optional)</FieldLabel>
-          <StyledInput type="text" value={data.image_url || ''}
-            onChange={e => setData(d => ({ ...d, image_url: e.target.value }))}
-            placeholder="https://…" focusColor={C.student.accent}
-          />
-        </div>
-
-        {/* Inline validation summary (only shown after the user has touched fields) */}
-        {Object.keys(touched).length > 0 && validationErrors.length > 0 && (
-          <div style={{
-            padding: '10px 13px', borderRadius: 10,
-            background: '#FEF0F0', border: '1.5px solid #F8C8C8',
-          }}>
-            {validationErrors.map((e, i) => (
-              <p key={i} style={{
-                fontSize: 11, color: '#C03030', fontWeight: 700,
-                margin: i === 0 ? 0 : '4px 0 0', fontFamily: 'Nunito',
-                display: 'flex', alignItems: 'center', gap: 5,
-              }}>
-                <AlertCircle size={11} /> {e}
-              </p>
-            ))}
           </div>
-        )}
+        </div>
 
         <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
-          <SoftButton color={C.student.accent}
-            onClick={() => {
-              // Touch all major fields to surface errors
-              setTouched({ question_text: true, correct_answer: true });
-              if (isFormValid) onSave(data);
-            }}
-            disabled={!isFormValid}>
+          <SoftButton color={C.student.accent} onClick={() => isValid && onSave(data)} disabled={!isValid}>
             <Save size={14} /> Save Question
           </SoftButton>
           <SoftButton color={C.textMuted} outline onClick={onCancel}>
@@ -689,62 +579,31 @@ function QuestionForm({ question, difficultyLevel, onSave, onCancel }) {
   );
 }
 
-// ─── PageRow ───────────────────────────────────────────────────
+// ─── Inline Row Layout Elements ────────────────────────────────
 function PageRow({ page, onEdit, onDelete }) {
-  const [hov, setHov] = useState(false);
   return (
-    <div
-      onMouseEnter={() => setHov(true)}
-      onMouseLeave={() => setHov(false)}
-      style={{
-        display: 'flex', alignItems: 'center', gap: 14,
-        padding: '14px 16px', borderRadius: 12,
-        background: hov ? C.teacher.pageBg : '#FAFAF8',
-        border: `1.5px solid ${hov ? C.teacher.border : C.border}`,
-        transition: 'all 0.15s',
-      }}
-    >
-      <div style={{
-        width: 36, height: 36, borderRadius: 10, flexShrink: 0,
-        background: C.teacher.iconBg,
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        fontFamily: '"Fredoka One", cursive', fontSize: 14, color: C.teacher.accent,
-      }}>
-        {page.page_number}
-      </div>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <p style={{ fontSize: 13, fontWeight: 800, color: C.textPrimary, margin: 0 }}>
-          Page {page.page_number}
-        </p>
-        <p style={{
-          fontSize: 12, color: C.textSecondary, margin: '2px 0 0',
-          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+    <div style={{
+      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+      padding: '12px 16px', borderRadius: 12, border: `1.5px solid ${C.border}`,
+      background: '#FAFAF8', gap: 12,
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, minWidth: 0 }}>
+        <div style={{
+          width: 32, height: 32, borderRadius: 8, background: C.teacher.accentLight,
+          color: C.teacher.textDark, display: 'flex', alignItems: 'center',
+          justifyContent: 'center', fontSize: 13, fontWeight: 800, flexShrink: 0,
         }}>
-          {page.page_text?.substring(0, 90)}{page.page_text?.length > 90 ? '…' : ''}
+          #{page.page_number}
+        </div>
+        <p style={{ fontSize: 13, margin: 0, color: C.textPrimary, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          {page.page_text}
         </p>
-        {page.image_description && (
-          <p style={{ fontSize: 11, color: C.textMuted, margin: '2px 0 0', fontStyle: 'italic' }}>
-            Alt: {page.image_description.substring(0, 60)}{page.image_description.length > 60 ? '…' : ''}
-          </p>
-        )}
       </div>
-      <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-        <button onClick={() => onEdit(page)} title="Edit"
-          style={{
-            width: 32, height: 32, borderRadius: 8,
-            border: `1.5px solid ${C.student.border}`, background: C.student.iconBg,
-            color: C.student.accent, cursor: 'pointer',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <button onClick={() => onEdit(page)} style={{ background: 'none', border: 'none', color: C.textSecondary, cursor: 'pointer', padding: 4 }}>
           <Edit2 size={14} />
         </button>
-        <button onClick={() => onDelete(page.id)} title="Delete"
-          style={{
-            width: 32, height: 32, borderRadius: 8,
-            border: '1.5px solid #F8C8C8', background: '#FEF0F0',
-            color: '#C03030', cursor: 'pointer',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}>
+        <button onClick={() => onDelete(page.id)} style={{ background: 'none', border: 'none', color: C.textMuted, cursor: 'pointer', padding: 4 }}>
           <Trash2 size={14} />
         </button>
       </div>
@@ -752,68 +611,30 @@ function PageRow({ page, onEdit, onDelete }) {
   );
 }
 
-// ─── QuestionRow ───────────────────────────────────────────────
 function QuestionRow({ question, onEdit, onDelete }) {
-  const [hov, setHov] = useState(false);
   return (
-    <div
-      onMouseEnter={() => setHov(true)}
-      onMouseLeave={() => setHov(false)}
-      style={{
-        display: 'flex', alignItems: 'center', gap: 14,
-        padding: '14px 16px', borderRadius: 12,
-        background: hov ? C.student.pageBg : '#FAFAF8',
-        border: `1.5px solid ${hov ? C.student.border : C.border}`,
-        transition: 'all 0.15s',
-      }}
-    >
-      <div style={{
-        width: 36, height: 36, borderRadius: 10, flexShrink: 0,
-        background: C.student.iconBg,
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-      }}>
-        <ClipboardList size={16} style={{ color: C.student.accent }} />
-      </div>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <p style={{
-          fontSize: 13, fontWeight: 800, color: C.textPrimary, margin: 0,
-          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+    <div style={{
+      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+      padding: '12px 16px', borderRadius: 12, border: `1.5px solid ${C.border}`,
+      background: '#FAFAF8', gap: 12,
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, minWidth: 0 }}>
+        <div style={{
+          padding: '4px 8px', borderRadius: 6, background: C.student.accentLight,
+          color: C.student.textDark, fontSize: 10, fontWeight: 800, textTransform: 'uppercase', flexShrink: 0,
         }}>
-          {question.question_text?.substring(0, 70)}{question.question_text?.length > 70 ? '…' : ''}
-        </p>
-        <p style={{ fontSize: 11, color: C.textSecondary, margin: '2px 0 0', display: 'flex', gap: 8 }}>
-          <span style={{
-            padding: '1px 7px', borderRadius: 10,
-            background: C.student.accentLight, color: C.student.accent,
-            fontWeight: 800, fontSize: 10,
-          }}>
-            {ALL_QUESTION_TYPE_LABELS[question.question_type] || question.question_type}
-          </span>
-          <span>{question.question_category || 'literal'}</span>
-          <span>·</span>
-          <span>{question.points} pt{question.points !== 1 ? 's' : ''}</span>
-          {question.options?.length > 0 && (
-            <><span>·</span><span>{question.options.length} choices</span></>
-          )}
+          {ALL_QUESTION_TYPE_LABELS[question.question_type] || question.question_type}
+        </div>
+        <p style={{ fontSize: 13, margin: 0, color: C.textPrimary, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          {question.question_text}
         </p>
       </div>
-      <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-        <button onClick={() => onEdit(question)} title="Edit"
-          style={{
-            width: 32, height: 32, borderRadius: 8,
-            border: `1.5px solid ${C.student.border}`, background: C.student.iconBg,
-            color: C.student.accent, cursor: 'pointer',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <span style={{ fontSize: 11, fontWeight: 700, color: C.textMuted, marginRight: 4 }}>{question.points || 1} pts</span>
+        <button onClick={() => onEdit(question)} style={{ background: 'none', border: 'none', color: C.textSecondary, cursor: 'pointer', padding: 4 }}>
           <Edit2 size={14} />
         </button>
-        <button onClick={() => onDelete(question.id)} title="Delete"
-          style={{
-            width: 32, height: 32, borderRadius: 8,
-            border: '1.5px solid #F8C8C8', background: '#FEF0F0',
-            color: '#C03030', cursor: 'pointer',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}>
+        <button onClick={() => onDelete(question.id)} style={{ background: 'none', border: 'none', color: C.textMuted, cursor: 'pointer', padding: 4 }}>
           <Trash2 size={14} />
         </button>
       </div>
@@ -1336,9 +1157,11 @@ export default function AssessmentBuilderPage() {
         boxShadow: C.shadowSm,
       }}>
         {/* Summary stats */}
-        <StatPill label="Pages" value={pages.length} color={C.teacher.accent} />
-        <StatPill label="Questions" value={questions.length} color={C.student.accent} />
-        <StatPill label="Points" value={totalPoints} color={C.primary} />
+        <div style={{ display: 'flex', gap: 8 }}>
+          <StatPill label="Pages" value={pages.length} color={C.teacher.accent} />
+          <StatPill label="Questions" value={questions.length} color={C.student.accent} />
+          <StatPill label="Points" value={totalPoints} color={C.primary} />
+        </div>
 
         <div style={{ flex: '1 1 auto', display: 'flex', gap: 10, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
           <SoftButton
@@ -1365,7 +1188,7 @@ export default function AssessmentBuilderPage() {
         </div>
 
         {id && (
-          <p style={{ width: '100%', fontSize: 11, color: C.textMuted, fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: 5 }}>
+          <p style={{ width: '100%', fontSize: 11, color: C.textMuted, fontWeight: 700, margin: '8px 0 0', display: 'flex', alignItems: 'center', gap: 5 }}>
             {assessment.is_published
               ? <><CheckCircle2 size={12} style={{ color: C.teacher.accent }} /> Published — visible to parents</>
               : <><Clock size={12} /> Draft — not yet visible to parents</>}
