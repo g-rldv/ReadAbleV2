@@ -11,14 +11,17 @@ import { Volume2, VolumeX, Plus, Minus, ArrowLeft } from 'lucide-react';
 
 export default function StudentModeLayout() {
   const navigate = useNavigate();
-  const { 
-    text_size, 
-    setTextSize, 
-    tts_enabled, 
-    setTtsEnabled, 
-    bg_music_enabled, 
-    setBgMusicEnabled 
+  const {
+    settings,
+    setTextSize,
+    setTtsEnabled,
+    setBgMusicEnabled
   } = useSettings();
+  const {
+    text_size = 'medium',
+    tts_enabled = false,
+    bg_music_enabled = false
+  } = settings || {};
   const { user } = useAuth();
   const [showControls, setShowControls] = useState(true);
 
@@ -38,10 +41,10 @@ export default function StudentModeLayout() {
   return (
     <div className="min-h-screen bg-white dark:bg-slate-900 flex flex-col">
       {/* ── Header with minimal controls ─────────────────────── */}
-      <div 
+      <div
         className="bg-blue-500 dark:bg-blue-600 text-white px-6 py-4 shadow-sm flex items-center justify-between"
         style={{ minHeight: `${80 * textScale}px` }}>
-        
+
         <div className="flex items-center gap-4">
           <button
             onClick={() => navigate('/dashboard')}
@@ -49,7 +52,7 @@ export default function StudentModeLayout() {
             title="Go back">
             <ArrowLeft size={32} />
           </button>
-          <h1 
+          <h1
             className="font-bold text-white"
             style={{ fontSize: headerSize }}>
             ReadAble
@@ -60,11 +63,10 @@ export default function StudentModeLayout() {
         <div className="flex items-center gap-2">
           <button
             onClick={() => setTtsEnabled(!tts_enabled)}
-            className={`p-3 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-yellow-300 ${
-              tts_enabled 
-                ? 'bg-yellow-400 text-slate-900' 
+            className={`p-3 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-yellow-300 ${tts_enabled
+                ? 'bg-yellow-400 text-slate-900'
                 : 'bg-blue-600 dark:bg-blue-700 hover:bg-blue-700'
-            }`}
+              }`}
             title={tts_enabled ? 'Turn off sound' : 'Turn on sound'}>
             {tts_enabled ? <Volume2 size={28} /> : <VolumeX size={28} />}
           </button>
@@ -82,10 +84,10 @@ export default function StudentModeLayout() {
       {showControls && (
         <div className="bg-slate-100 dark:bg-slate-800 px-6 py-4 border-b-2 border-slate-300 dark:border-slate-700">
           <div className="max-w-4xl mx-auto flex flex-wrap items-center gap-6">
-            
+
             {/* Text Size Control */}
             <div className="flex items-center gap-3">
-              <label 
+              <label
                 style={{ fontSize: `${14 * textScale}px` }}
                 className="font-semibold text-slate-700 dark:text-slate-300">
                 Text Size
@@ -97,7 +99,7 @@ export default function StudentModeLayout() {
                   style={{ fontSize: buttonSize }}>
                   <Minus size={24} />
                 </button>
-                <div 
+                <div
                   className="px-6 py-2 bg-white dark:bg-slate-700 rounded-lg font-semibold text-slate-700 dark:text-slate-300 min-w-[80px] text-center border-2 border-slate-300 dark:border-slate-600"
                   style={{ fontSize: `${16 * textScale}px` }}>
                   {text_size.charAt(0).toUpperCase() + text_size.slice(1)}
@@ -115,11 +117,10 @@ export default function StudentModeLayout() {
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setBgMusicEnabled(!bg_music_enabled)}
-                className={`px-6 py-2 rounded-lg font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-yellow-300 ${
-                  bg_music_enabled
+                className={`px-6 py-2 rounded-lg font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-yellow-300 ${bg_music_enabled
                     ? 'bg-emerald-500 hover:bg-emerald-600 text-white'
                     : 'bg-slate-300 dark:bg-slate-600 hover:bg-slate-400 dark:hover:bg-slate-500 text-slate-700 dark:text-slate-300'
-                }`}
+                  }`}
                 style={{ fontSize: buttonSize }}>
                 {bg_music_enabled ? '🎵 Music ON' : '🔇 Music OFF'}
               </button>
@@ -129,7 +130,7 @@ export default function StudentModeLayout() {
       )}
 
       {/* ── Main content area ─────────────────────────────────── */}
-      <div 
+      <div
         className="flex-1 overflow-auto px-4 py-6 md:px-8"
         style={{ fontSize: bodySize }}>
         <div className="max-w-4xl mx-auto">
