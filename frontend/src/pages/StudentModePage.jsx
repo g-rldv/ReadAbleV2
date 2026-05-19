@@ -1,181 +1,448 @@
 // ============================================================
-// StudentModePage — Activation point for ASD-optimized student mode
+// StudentModePage — ASD-optimized assessment launcher for parents
+// Fixed: uses GET /assessments (not /assessments/assigned)
+// Fixed: starts a session first, then navigates with session ID
 // ============================================================
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { useSettings } from '../contexts/SettingsContext';
 import api from '../utils/api';
-import { Play, AlertCircle } from 'lucide-react';
+import {
+  Play, AlertCircle, Baby, BookOpen,
+  BarChart2, ChevronDown, Users, Loader2,
+} from 'lucide-react';
+
+// ─── Design tokens ─────────────────────────────────────────────
+const C = {
+  white:  '#FFFFFF',
+  border: '#DDD8F2',
+  shadowSm: '0 1px 8px rgba(80,60,160,0.07)',
+  shadowMd: '0 4px 24px rgba(80,60,160,0.12)',
+  student: {
+    pageBg:      '#EBF0FF',
+    border:      '#B8C8F0',
+    accent:      '#4058C0',
+    accentLight: '#D0D8F8',
+    textDark:    '#1A2870',
+    iconBg:      '#D0D8F8',
+  },
+  teacher: {
+    pageBg:      '#EBF4EF',
+    border:      '#B8D8C4',
+    accent:      '#3A7A5C',
+    accentLight: '#CCEADB',
+    textDark:    '#1A4A38',
+    iconBg:      '#D0EDE0',
+  },
+  parent: {
+    pageBg:      '#FDF0E8',
+    border:      '#F0C8A8',
+    accent:      '#C06038',
+    accentLight: '#FAE0C8',
+    textDark:    '#6A2810',
+    iconBg:      '#FAD8C0',
+  },
+  textPrimary:   '#28264A',
+  textSecondary: '#6A6898',
+  textMuted:     '#9A98C0',
+};
+
+const DIFFICULTY_META = {
+  1: { label: 'Foundational', color: '#3A7A5C', bg: '#CCEADB', border: '#B8D8C4' },
+  2: { label: 'Basic',        color: '#4058C0', bg: '#D0D8F8', border: '#B8C8F0' },
+  3: { label: 'Paragraphs',   color: '#7050C0', bg: '#E8DEFF', border: '#C8B8F0' },
+  4: { label: 'Complex',      color: '#C06038', bg: '#FAE0C8', border: '#F0C8A8' },
+};
+
+function DifficultyBadge({ level }) {
+  const m = DIFFICULTY_META[level] || DIFFICULTY_META[1];
+  return (
+    <span style={{
+      display: 'inline-flex', alignItems: 'center', gap: 4,
+      padding: '3px 9px', borderRadius: 8, fontSize: 11,
+      fontWeight: 800, background: m.bg,
+      border: `1.5px solid ${m.border}`, color: m.color,
+    }}>
+      <BarChart2 size={10} /> {m.label}
+    </span>
+  );
+}
 
 export default function StudentModePage() {
-  const navigate = useNavigate();
-  const { user } = useAuth();
-  const { setStudentMode, text_size } = useSettings();
-  const [assessments, setAssessments] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const navigate  = useNavigate();
+  const { user }  = useAuth();
 
-  // Text scaling
-  const sizeMap = { small: 0.8, medium: 1.0, large: 1.3 };
-  const textScale = sizeMap[text_size] || 1.0;
+  const [assessments, setAssessments]       = useState([]);
+  const [children,    setChildren]          = useState([]);
+  const [loading,     setLoading]           = useState(true);
+  const [error,       setError]             = useState(null);
 
+  // Per-assessment state: which child is selected + loading flag
+  const [selectedChild, setSelectedChild]   = useState({});   // { [assessmentId]: childId }
+  const [starting,      setStarting]        = useState(null); // assessmentId being started
+
+  // ── Load assessments + children on mount ─────────────────────
   useEffect(() => {
-    fetchAssignedAssessments();
+    (async () => {
+      try {
+        setLoading(true);
+        const [assessRes, childRes] = await Promise.all([
+          api.get('/assessments'),           // returns published assessments for this parent
+          api.get('/parent/children'),
+        ]);
+
+        const published = (assessRes.data.assessments || []).filter(a => a.is_published);
+        setAssessments(published);
+        setChildren(childRes.data.children || []);
+        setError(null);
+      } catch (err) {
+        console.error('StudentModePage fetch error:', err);
+        setError('Could not load assessments. Please try again.');
+      } finally {
+        setLoading(false);
+      }
+    })();
   }, []);
 
-  const fetchAssignedAssessments = async () => {
+  // ── Start session then navigate to GamePage ──────────────────
+  const handleStart = async (assessment) => {
+    const childId = selectedChild[assessment.id];
+    if (!childId) {
+      alert('Please select a child before starting.');
+      return;
+    }
+
+    setStarting(assessment.id);
     try {
-      setLoading(true);
-      // Get assessments assigned to this student
-      const res = await api.get('/assessments/assigned');
-      if (res.data?.assessments) {
-        setAssessments(res.data.assessments);
-      }
-      setError(null);
+      const res = await api.post('/sessions/start', {
+        assessment_id: assessment.id,
+        child_id:      childId,
+      });
+      const sessionId = res.data.session?.id;
+      if (!sessionId) throw new Error('No session ID returned');
+      navigate(`/assessment/${sessionId}`);
     } catch (err) {
-      console.error('Failed to load assessments:', err);
-      setError('Could not load assessments. Please try again.');
-      setAssessments([]);
+      console.error('Failed to start session:', err);
+      alert(err.response?.data?.error || 'Could not start assessment. Please try again.');
     } finally {
-      setLoading(false);
+      setStarting(null);
     }
   };
 
-  const handleStartAssessment = (assessmentId) => {
-    setStudentMode(true);
-    navigate(`/assessment/${assessmentId}`);
-  };
+  // ── Loading ───────────────────────────────────────────────────
+  if (loading) return (
+    <div style={{
+      fontFamily: 'Nunito, sans-serif',
+      minHeight: '60vh', display: 'flex', flexDirection: 'column',
+      alignItems: 'center', justifyContent: 'center', gap: 14,
+    }}>
+      <div style={{
+        width: 36, height: 36, borderRadius: '50%',
+        border: `3px solid ${C.student.accentLight}`,
+        borderTop: `3px solid ${C.student.accent}`,
+        animation: 'spin 0.8s linear infinite',
+      }} />
+      <p style={{ fontSize: 14, fontWeight: 700, color: C.textSecondary, margin: 0 }}>
+        Loading assessments…
+      </p>
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+    </div>
+  );
 
-  const isParentAccount = user?.role === 'parent';
+  // ── Error ─────────────────────────────────────────────────────
+  if (error) return (
+    <div style={{
+      fontFamily: 'Nunito, sans-serif',
+      display: 'flex', alignItems: 'flex-start', gap: 12,
+      padding: '18px 20px', borderRadius: 16, maxWidth: 560,
+      background: '#FEF0F0', border: '1.5px solid #F8C8C8',
+      color: '#C03030', fontWeight: 700, fontSize: 13,
+    }}>
+      <AlertCircle size={18} style={{ flexShrink: 0, marginTop: 1 }} />
+      {error}
+    </div>
+  );
 
-  return (
-    <div className="min-h-screen bg-white dark:bg-slate-900 p-6">
-      <div className="max-w-4xl mx-auto">
-        {/* Header */}
-        <div className="mb-12 text-center">
-          <h1 
-            className="font-bold text-blue-600 dark:text-blue-400 mb-4"
-            style={{ fontSize: `${40 * textScale}px` }}>
-            📚 Let's Practice Reading!
-          </h1>
-          <p 
-            className="text-slate-700 dark:text-slate-300 mb-6"
-            style={{ fontSize: `${20 * textScale}px` }}>
-            Choose an activity to get started.
-          </p>
+  // ── No assessments ────────────────────────────────────────────
+  if (assessments.length === 0) return (
+    <div style={{
+      fontFamily: 'Nunito, sans-serif',
+      maxWidth: 560, margin: '0 auto',
+    }}>
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+
+      {/* Header */}
+      <div style={{
+        background: C.student.pageBg,
+        border: `1.5px solid ${C.student.border}`,
+        borderRadius: 22, padding: '28px',
+        marginBottom: 24, boxShadow: C.shadowSm,
+      }}>
+        <h1 style={{
+          fontFamily: '"Fredoka One", cursive',
+          fontSize: 28, color: C.student.textDark, margin: '0 0 6px',
+        }}>
+          Student Mode
+        </h1>
+        <p style={{ fontSize: 14, color: C.textSecondary, margin: 0, lineHeight: 1.6 }}>
+          No published assessments are available yet. Ask your child's teacher to publish one.
+        </p>
+      </div>
+
+      <button
+        onClick={() => navigate('/parent/dashboard')}
+        style={{
+          padding: '10px 22px', borderRadius: 12,
+          border: `2px solid ${C.student.accent}`,
+          background: 'transparent', color: C.student.accent,
+          fontFamily: 'Nunito, sans-serif', fontWeight: 700,
+          fontSize: 14, cursor: 'pointer',
+        }}
+      >
+        ← Back to Dashboard
+      </button>
+    </div>
+  );
+
+  // ── No children ───────────────────────────────────────────────
+  if (children.length === 0) return (
+    <div style={{ fontFamily: 'Nunito, sans-serif', maxWidth: 560, margin: '0 auto' }}>
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      <div style={{
+        background: C.parent.pageBg,
+        border: `1.5px solid ${C.parent.border}`,
+        borderRadius: 22, padding: '28px',
+        marginBottom: 24, boxShadow: C.shadowSm,
+        textAlign: 'center',
+      }}>
+        <div style={{
+          width: 52, height: 52, borderRadius: 16,
+          background: C.parent.iconBg,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          margin: '0 auto 14px',
+        }}>
+          <Baby size={26} style={{ color: C.parent.accent }} />
         </div>
+        <h2 style={{
+          fontFamily: '"Fredoka One", cursive',
+          fontSize: 22, color: C.parent.textDark, margin: '0 0 6px',
+        }}>
+          No children yet
+        </h2>
+        <p style={{ fontSize: 13, color: C.textSecondary, margin: 0, lineHeight: 1.6 }}>
+          Add a child profile first before starting an assessment session.
+        </p>
+      </div>
+      <button
+        onClick={() => navigate('/parent/children')}
+        style={{
+          padding: '10px 22px', borderRadius: 12,
+          border: `2px solid ${C.parent.accent}`,
+          background: C.parent.accent, color: '#FFF',
+          fontFamily: 'Nunito, sans-serif', fontWeight: 700,
+          fontSize: 14, cursor: 'pointer',
+        }}
+      >
+        Add a Child
+      </button>
+    </div>
+  );
 
-        {/* Warning for parents */}
-        {isParentAccount && (
-          <div className="mb-8 p-4 bg-blue-50 dark:bg-blue-900/30 border-2 border-blue-300 dark:border-blue-600 rounded-xl">
-            <div className="flex items-start gap-3">
-              <AlertCircle size={28} className="text-blue-600 flex-shrink-0 mt-1" />
-              <p 
-                className="text-blue-700 dark:text-blue-300"
-                style={{ fontSize: `${16 * textScale}px` }}>
-                <strong>Parent Note:</strong> Your child will use this page to access and complete reading assessments in a simplified, distraction-free format designed for their needs.
-              </p>
-            </div>
+  // ── Main view ─────────────────────────────────────────────────
+  return (
+    <div style={{
+      fontFamily: '"Nunito", sans-serif',
+      color: C.textPrimary,
+      maxWidth: 720,
+      display: 'flex', flexDirection: 'column', gap: 24,
+    }}>
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+
+      {/* Hero header */}
+      <div style={{
+        background: C.student.pageBg,
+        border: `1.5px solid ${C.student.border}`,
+        borderRadius: 22, padding: '26px 28px',
+        boxShadow: C.shadowSm,
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 6 }}>
+          <div style={{
+            width: 48, height: 48, borderRadius: 14, flexShrink: 0,
+            background: C.student.iconBg,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            <BookOpen size={24} style={{ color: C.student.accent }} />
           </div>
-        )}
+          <h1 style={{
+            fontFamily: '"Fredoka One", cursive',
+            fontSize: 'clamp(22px, 4vw, 30px)',
+            color: C.student.textDark, margin: 0, lineHeight: 1.1,
+          }}>
+            Let's Read Together!
+          </h1>
+        </div>
+        <p style={{ fontSize: 14, color: C.textSecondary, margin: 0, lineHeight: 1.6 }}>
+          Choose an assessment below. Select which child will do the reading, then tap Start.
+        </p>
+      </div>
 
-        {/* Loading State */}
-        {loading && (
-          <div className="text-center py-12">
-            <div className="inline-block">
-              <div 
-                className="w-12 h-12 border-4 border-slate-300 dark:border-slate-600 border-t-blue-500 rounded-full animate-spin"
-                style={{ fontSize: `${18 * textScale}px` }}>
-              </div>
-            </div>
-            <p 
-              className="text-slate-600 dark:text-slate-400 mt-4"
-              style={{ fontSize: `${18 * textScale}px` }}>
-              Loading assessments...
-            </p>
-          </div>
-        )}
+      {/* Assessment cards */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        {assessments.map(assessment => {
+          const childId    = selectedChild[assessment.id] || '';
+          const isStarting = starting === assessment.id;
+          const canStart   = childId && !isStarting;
 
-        {/* Error State */}
-        {error && !loading && (
-          <div className="p-6 bg-rose-50 dark:bg-rose-900/30 border-2 border-rose-300 dark:border-rose-600 rounded-xl">
-            <p 
-              className="text-rose-700 dark:text-rose-300"
-              style={{ fontSize: `${18 * textScale}px` }}>
-              {error}
-            </p>
-          </div>
-        )}
+          return (
+            <div key={assessment.id} style={{
+              background: C.white,
+              border: `1.5px solid ${C.border}`,
+              borderRadius: 20, overflow: 'hidden',
+              boxShadow: C.shadowSm,
+            }}>
+              {/* Top colour stripe */}
+              <div style={{
+                height: 5,
+                background: DIFFICULTY_META[assessment.difficulty_level]?.color || C.student.accent,
+              }} />
 
-        {/* Assessments Grid */}
-        {!loading && assessments.length > 0 && (
-          <div className="grid grid-cols-1 gap-6 mb-12">
-            {assessments.map((assessment) => (
-              <div
-                key={assessment.id}
-                className="p-6 bg-gradient-to-br from-blue-50 to-sky-50 dark:from-blue-900/30 dark:to-sky-900/30 border-2 border-blue-300 dark:border-blue-600 rounded-2xl hover:shadow-lg transition-shadow">
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                  <div className="flex-1 min-w-0">
-                    <h2 
-                      className="font-bold text-blue-700 dark:text-blue-300 mb-2"
-                      style={{ fontSize: `${26 * textScale}px` }}>
-                      {assessment.title}
-                    </h2>
-                    {assessment.story_theme && (
-                      <p 
-                        className="text-slate-600 dark:text-slate-400"
-                        style={{ fontSize: `${16 * textScale}px` }}>
-                        Theme: {assessment.story_theme}
-                      </p>
-                    )}
-                    <p 
-                      className="text-slate-600 dark:text-slate-400 mt-2"
-                      style={{ fontSize: `${14 * textScale}px` }}>
-                      {assessment.question_count || 'Multiple'} questions
-                    </p>
+              <div style={{ padding: '20px 22px' }}>
+                {/* Title row */}
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 10 }}>
+                  <div style={{
+                    width: 40, height: 40, borderRadius: 12, flexShrink: 0,
+                    background: C.student.iconBg,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    <BookOpen size={18} style={{ color: C.student.accent }} />
                   </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{
+                      fontSize: 16, fontWeight: 900, color: C.textPrimary,
+                      margin: '0 0 5px', lineHeight: 1.2,
+                    }}>
+                      {assessment.title}
+                    </p>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
+                      <DifficultyBadge level={assessment.difficulty_level} />
+                      {assessment.story_theme && (
+                        <span style={{
+                          fontSize: 11, fontWeight: 700, color: C.textMuted,
+                          background: '#F0EFFA', border: `1px solid ${C.border}`,
+                          padding: '2px 8px', borderRadius: 8,
+                        }}>
+                          {assessment.story_theme}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Description */}
+                {assessment.description && (
+                  <p style={{
+                    fontSize: 13, color: C.textSecondary, lineHeight: 1.55,
+                    margin: '0 0 14px',
+                  }}>
+                    {assessment.description}
+                  </p>
+                )}
+
+                {/* Age note */}
+                {(assessment.recommended_age_min || assessment.recommended_age_max) && (
+                  <p style={{
+                    fontSize: 11, color: C.textMuted, fontWeight: 700,
+                    margin: '0 0 14px', display: 'flex', alignItems: 'center', gap: 4,
+                  }}>
+                    <Users size={10} />
+                    Recommended ages {assessment.recommended_age_min}–{assessment.recommended_age_max}
+                  </p>
+                )}
+
+                {/* Child picker + Start button */}
+                <div style={{
+                  display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap',
+                  paddingTop: 14, borderTop: `1px solid ${C.border}`,
+                }}>
+                  {/* Child selector */}
+                  <div style={{ position: 'relative', flex: '1 1 180px', minWidth: 160 }}>
+                    <ChevronDown size={13} style={{
+                      position: 'absolute', right: 10, top: '50%',
+                      transform: 'translateY(-50%)', color: C.textMuted,
+                      pointerEvents: 'none',
+                    }} />
+                    <select
+                      value={childId}
+                      onChange={e => setSelectedChild(prev => ({
+                        ...prev,
+                        [assessment.id]: e.target.value,
+                      }))}
+                      style={{
+                        width: '100%', appearance: 'none',
+                        padding: '9px 32px 9px 12px', borderRadius: 10,
+                        border: `1.5px solid ${childId ? C.student.border : C.border}`,
+                        background: childId ? C.student.pageBg : '#FAFAF8',
+                        color: childId ? C.textPrimary : C.textMuted,
+                        fontFamily: 'Nunito, sans-serif',
+                        fontSize: 13, fontWeight: 700, cursor: 'pointer',
+                        outline: 'none', transition: 'border-color 0.15s',
+                      }}
+                    >
+                      <option value="">Select child…</option>
+                      {children.map(child => (
+                        <option key={child.id} value={child.id}>
+                          {child.first_name} {child.last_name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Start button */}
                   <button
-                    onClick={() => handleStartAssessment(assessment.id)}
-                    className="flex items-center gap-2 px-8 py-4 bg-blue-500 hover:bg-blue-600 text-white font-bold rounded-xl transition-colors focus:outline-none focus:ring-4 focus:ring-blue-300 dark:focus:ring-blue-600 whitespace-nowrap"
-                    style={{ fontSize: `${18 * textScale}px` }}>
-                    <Play size={24} />
-                    Start
+                    onClick={() => handleStart(assessment)}
+                    disabled={!canStart}
+                    style={{
+                      display: 'inline-flex', alignItems: 'center', gap: 8,
+                      padding: '10px 22px', borderRadius: 12,
+                      border: `2px solid ${canStart ? C.student.accent : C.border}`,
+                      background: canStart ? C.student.accent : C.border,
+                      color: canStart ? '#FFFFFF' : C.textMuted,
+                      fontFamily: 'Nunito, sans-serif',
+                      fontWeight: 800, fontSize: 14,
+                      cursor: canStart ? 'pointer' : 'not-allowed',
+                      transition: 'all 0.15s',
+                      flexShrink: 0,
+                    }}
+                    onMouseEnter={e => { if (canStart) e.currentTarget.style.opacity = '0.85'; }}
+                    onMouseLeave={e => { e.currentTarget.style.opacity = '1'; }}
+                  >
+                    {isStarting
+                      ? <><Loader2 size={16} style={{ animation: 'spin 0.8s linear infinite' }} /> Starting…</>
+                      : <><Play size={16} /> Start</>}
                   </button>
                 </div>
               </div>
-            ))}
-          </div>
-        )}
-
-        {/* No Assessments State */}
-        {!loading && assessments.length === 0 && !error && (
-          <div className="text-center py-12 p-6 bg-slate-50 dark:bg-slate-800 rounded-xl">
-            <p 
-              className="text-slate-600 dark:text-slate-400"
-              style={{ fontSize: `${20 * textScale}px` }}>
-              No assessments available yet.
-            </p>
-            {isParentAccount && (
-              <p 
-                className="text-slate-600 dark:text-slate-400 mt-3"
-                style={{ fontSize: `${16 * textScale}px` }}>
-                Please ask your child's teacher to assign activities.
-              </p>
-            )}
-          </div>
-        )}
-
-        {/* Back to Dashboard */}
-        <div className="flex justify-center">
-          <button
-            onClick={() => navigate('/parent/dashboard')}
-            className="px-6 py-3 text-slate-700 dark:text-slate-300 border-2 border-slate-300 dark:border-slate-600 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
-            style={{ fontSize: `${16 * textScale}px` }}>
-            ← Back to Dashboard
-          </button>
-        </div>
+            </div>
+          );
+        })}
       </div>
+
+      {/* Back link */}
+      <button
+        onClick={() => navigate('/parent/dashboard')}
+        style={{
+          alignSelf: 'flex-start',
+          padding: '8px 18px', borderRadius: 10,
+          border: `1.5px solid ${C.border}`, background: 'transparent',
+          color: C.textSecondary, fontFamily: 'Nunito, sans-serif',
+          fontWeight: 700, fontSize: 13, cursor: 'pointer',
+          transition: 'all 0.15s',
+        }}
+        onMouseEnter={e => { e.currentTarget.style.borderColor = C.student.border; e.currentTarget.style.color = C.student.accent; }}
+        onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.color = C.textSecondary; }}
+      >
+        ← Back to Dashboard
+      </button>
     </div>
   );
 }
